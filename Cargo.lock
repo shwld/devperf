@@ -486,6 +486,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "devops-metrics-tools"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "chrono",
+ "clap",
+ "confy",
+ "env_logger",
+ "inquire",
+ "log",
+ "octocrab",
+ "reqwest",
+ "rpassword",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "directories"
 version = "4.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1403,25 +1422,6 @@ checksum = "034e22c514f5c0cb8a10ff341b9b048b5ceb21591f31c8f44c43b960f9b3524a"
 dependencies = [
  "libc",
  "winapi",
-]
-
-[[package]]
-name = "rust-cli-template"
-version = "0.1.0"
-dependencies = [
- "async-std",
- "chrono",
- "clap",
- "confy",
- "env_logger",
- "inquire",
- "log",
- "octocrab",
- "reqwest",
- "rpassword",
- "serde",
- "serde_json",
- "tokio",
 ]
 
 [[package]]
