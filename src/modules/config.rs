@@ -75,6 +75,19 @@ pub async fn set_github_personal_token() -> Result<(), confy::ConfyError> {
     Ok(())
 }
 
+pub async fn set_heroku_authorization_token() -> Result<(), confy::ConfyError> {
+    print!("Type a Heroku Authorization token: ");
+    std::io::stdout().flush().expect("Failed to flush stdout");
+    let read_token = read_password().expect("Failed to read token");
+    let token = read_token.is_empty().then(|| None).unwrap_or(Some(read_token));
+
+    let mut config = load_config().await;
+    config.heroku_token = token;
+    store_config(config).await?;
+
+    Ok(())
+}
+
 pub async fn set_project_config(project_name: &str) -> Result<(), confy::ConfyError> {
     log::debug!("start: {:?}", project_name);
     let mut config = load_config().await;

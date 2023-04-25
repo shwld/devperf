@@ -15,6 +15,14 @@ struct Args {
 
 #[derive(Subcommand)]
 enum Action {
+    GitHub {
+        #[clap(subcommand)]
+        sub_action: GitHubAction
+    },
+    Heroku {
+        #[clap(subcommand)]
+        sub_action: HerokuAction
+    },
     Config {
         #[clap(subcommand)]
         sub_action: ConfigAction
@@ -97,6 +105,17 @@ enum DeploymentFrequenciesAction {
     Get {},
 }
 
+#[derive(Subcommand)]
+enum GitHubAction {
+    Login {},
+}
+
+#[derive(Subcommand)]
+enum HerokuAction {
+    Login {},
+    Releases {},
+}
+
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
@@ -110,6 +129,26 @@ async fn main() {
         .init();
 
     match args.action {
+        Action::GitHub { sub_action } => {
+            match sub_action {
+                GitHubAction::Login {} => {
+                    modules::config::set_github_personal_token().await.expect("Could not set config");
+                }
+            }
+        },
+        Action::Heroku { sub_action } => {
+            match sub_action {
+                HerokuAction::Login {} => {
+                    modules::config::set_heroku_authorization_token().await.expect("Could not set config");
+                },
+                HerokuAction::Releases {  } => {
+                    // let config = modules::config::load_config().await;
+                    // let project_config = config.projects.get(&project).expect("Could not find project");
+                    let results = modules::heroku::release::list("revelup-note").await.expect("Could not get releases");
+                    println!("{}", serde_json::to_string_pretty(&results).expect("Could not convert releases to string"));
+                }
+            }
+        },
         Action::Config { sub_action } => {
              match sub_action {
                 ConfigAction::Get {} => {
