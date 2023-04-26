@@ -15,9 +15,9 @@ struct Args {
 
 #[derive(Subcommand)]
 enum Action {
-    GitHub {
+    Github {
         #[clap(subcommand)]
-        sub_action: GitHubAction
+        sub_action: GithubAction
     },
     Heroku {
         #[clap(subcommand)]
@@ -106,14 +106,17 @@ enum DeploymentFrequenciesAction {
 }
 
 #[derive(Subcommand)]
-enum GitHubAction {
+enum GithubAction {
     Login {},
 }
 
 #[derive(Subcommand)]
 enum HerokuAction {
     Login {},
-    Releases {},
+    Releases {
+        #[clap(short, long, global = true, required = false)]
+        project: String,
+    },
 }
 
 #[tokio::main]
@@ -129,9 +132,9 @@ async fn main() {
         .init();
 
     match args.action {
-        Action::GitHub { sub_action } => {
+        Action::Github { sub_action } => {
             match sub_action {
-                GitHubAction::Login {} => {
+                GithubAction::Login {} => {
                     modules::config::set_github_personal_token().await.expect("Could not set config");
                 }
             }
@@ -141,10 +144,11 @@ async fn main() {
                 HerokuAction::Login {} => {
                     modules::config::set_heroku_authorization_token().await.expect("Could not set config");
                 },
-                HerokuAction::Releases {  } => {
-                    // let config = modules::config::load_config().await;
-                    // let project_config = config.projects.get(&project).expect("Could not find project");
-                    let results = modules::heroku::release::list("revelup-note").await.expect("Could not get releases");
+                HerokuAction::Releases { project } => {
+                    let config = modules::config::load_config().await;
+                    let project_config = config.projects.get(&project).expect("Could not find project");
+                    let heroku_app = project_config.heroku_app.clone().expect("Could not find heroku app");
+                    let results = modules::heroku::release::list(&heroku_app, &project_config.github_owner, &project_config.github_repo).await.expect("Could not get releases");
                     println!("{}", serde_json::to_string_pretty(&results).expect("Could not convert releases to string"));
                 }
             }

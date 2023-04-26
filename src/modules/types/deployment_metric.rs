@@ -54,10 +54,10 @@ pub struct DeploymentMetricSummary {
 #[non_exhaustive]
 pub struct DeploymentItem {
     pub id: String,
-    pub commit_sha: String,
-    pub commit_message: String,
-    pub commit_resource_path: String,
-    pub committed_at: chrono::DateTime<chrono::Utc>,
+    pub head_commit_sha: String,
+    pub head_commit_message: String,
+    pub head_commit_resource_path: String,
+    pub head_committed_at: chrono::DateTime<chrono::Utc>,
     pub creator_login: String,
     pub deployed_at: chrono::DateTime<chrono::Utc>,
 }

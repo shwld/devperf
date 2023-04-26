@@ -84,8 +84,8 @@ pub async fn filter_date_range(owner: &str, repo: &str, deployments: Vec<Deploym
         }
     }
     let first_committed_at = if before_since_deployments.len() > 0 && ranged_deployments.len() > 0 {
-        let base = &before_since_deployments.last().expect("Could not get last").commit_sha;
-        let head = &ranged_deployments.first().expect("Could not get first").commit_sha;
+        let base = &before_since_deployments.last().expect("Could not get last").head_commit_sha;
+        let head = &ranged_deployments.first().expect("Could not get first").head_commit_sha;
         // FIXME: depending on module::github::compare::get_first_commit_committer_date() is not ideal
         github::compare::get_first_commit_committer_date(owner, repo, base, head).await.expect("Could not get first_committed_at")
     } else {

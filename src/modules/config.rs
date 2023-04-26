@@ -23,6 +23,7 @@ pub struct ProjectConfig {
     pub working_days_per_week: f32,
     pub github_personal_token: Option<String>,
     pub heroku_token: Option<String>,
+    pub deployment_source: DeploymentSource,
 }
 
 /// `Config` implements `Default`
@@ -32,6 +33,12 @@ impl ::std::default::Default for Config {
         heroku_token: None,
         projects: HashMap::new(),
     }}
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum DeploymentSource {
+    GitHubDeployment,
+    HerokuRelease,
 }
 
 pub async fn load_config() -> Config {
@@ -92,7 +99,7 @@ pub async fn set_project_config(project_name: &str) -> Result<(), confy::ConfyEr
     log::debug!("start: {:?}", project_name);
     let mut config = load_config().await;
 
-    let options: Vec<&str> = vec!["GitHub deployments", "GitHub releases", "GitHub PullRequests", "Heroku deployments"];
+    let options: Vec<&str> = vec!["GitHub deployments", "GitHub releases", "GitHub PullRequests", "Heroku releases"];
     let ans = Select::new("Select Deployment Frequency Source: ", options).prompt().expect("Failed to prompt");
     let project_config: ProjectConfig = match ans {
         "GitHub deployments" => {
@@ -129,6 +136,55 @@ pub async fn set_project_config(project_name: &str) -> Result<(), confy::ConfyEr
                 working_days_per_week: working_days_per_week,
                 github_personal_token: token,
                 heroku_token: None,
+                deployment_source: DeploymentSource::GitHubDeployment,
+            }
+        },
+        "Heroku releases" => {
+            print!("Type a Heroku access token(Empty to use default): ");
+            std::io::stdout().flush().expect("Failed to flush stdout");
+            let read_heroku_token = read_password().expect("Failed to read token");
+            let heroku_token = read_heroku_token.is_empty().then(|| None).unwrap_or(Some(read_heroku_token));
+
+            print!("Type a Heroku app name: ");
+            std::io::stdout().flush().expect("Failed to flush stdout");
+            let mut heroku_app_input = String::new();
+            std::io::stdin().read_line(&mut heroku_app_input).expect("Failed to read line");
+            let heroku_app = heroku_app_input.trim().to_owned();
+
+            print!("Type a GitHub Personal access token(Empty to use default): ");
+            std::io::stdout().flush().expect("Failed to flush stdout");
+            let read_token = read_password().expect("Failed to read token");
+            let token = read_token.is_empty().then(|| None).unwrap_or(Some(read_token));
+
+            print!("Type github owner/repo: ");
+            std::io::stdout().flush().expect("Failed to flush stdout");
+            let mut github_repo_input = String::new();
+            std::io::stdin().read_line(&mut github_repo_input).expect("Failed to read line");
+            let github_repo: &str = github_repo_input.trim();
+
+            print!("Type a developer count: ");
+            std::io::stdout().flush().expect("Failed to flush stdout");
+            let mut developers_input = String::new();
+            std::io::stdin().read_line(&mut developers_input).expect("Failed to read line");
+            let developers = developers_input.is_empty().then(|| 1).unwrap_or(developers_input.trim().parse::<u64>().expect("Failed to parse u64"));
+
+            print!("Type a working days per week: ");
+            std::io::stdout().flush().expect("Failed to flush stdout");
+            let mut working_days_per_week_input = String::new();
+            std::io::stdin().read_line(&mut working_days_per_week_input).expect("Failed to read line");
+            let working_days_per_week = working_days_per_week_input.is_empty().then(|| 1.0).unwrap_or(working_days_per_week_input.trim().parse::<f32>().expect("Failed to parse u64"));
+            let owner = github_repo.split("/").nth(0).expect("Failed to get owner");
+            let repo = github_repo.split("/").nth(1).expect("Failed to get owner");
+
+            ProjectConfig {
+                github_owner: owner.to_owned(),
+                github_repo: repo.to_owned(),
+                heroku_app: Some(heroku_app),
+                developers: developers,
+                working_days_per_week: working_days_per_week,
+                github_personal_token: token,
+                heroku_token: heroku_token,
+                deployment_source: DeploymentSource::GitHubDeployment,
             }
         },
         _ => panic!("Not implemented"),

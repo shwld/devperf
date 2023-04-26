@@ -30,15 +30,15 @@ pub async fn list(owner: &str, repo: &str, environment: &str) -> Result<Vec<Depl
         let status = statuses.iter().find(|&x| x.state.to_uppercase() == "SUCCESS").expect("Could not get status");
         let deployment = DeploymentItem {
             id: deployment.id,
-            commit_sha: deployment.commit.id,
-            commit_message: deployment.commit.message,
-            commit_resource_path: deployment.commit.commit_resource_path,
-            committed_at: deployment.commit.committed_date,
+            head_commit_sha: deployment.commit.id,
+            head_commit_message: deployment.commit.message,
+            head_commit_resource_path: deployment.commit.commit_resource_path,
+            head_committed_at: deployment.commit.committed_date,
             creator_login: deployment.creator.login,
             deployed_at: status.created_at,
         };
 
-        log::debug!("deployment added {:?}", deployment.commit_message);
+        log::debug!("deployment added {:?}", deployment.head_commit_message);
         deployments.push(deployment);
     }
 
