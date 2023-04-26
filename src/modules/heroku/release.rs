@@ -22,7 +22,7 @@ pub async fn list(app_name: &str, owner: &str, repo: &str) -> Result<Vec<Deploym
     let mut i = 0;
     for release in releases {
         i += 1;
-        if i > 10 {
+        if i > 100 {
             break;}
         let status = release.status.to_uppercase();
         if status != "SUCCEEDED" || release.slug.is_none() {
