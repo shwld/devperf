@@ -32,24 +32,24 @@ enum Action {
         #[clap(subcommand)]
         sub_action: CommitsAction,
 
-        #[clap(short, long, global = true, required = false)]
+        #[clap(short, long, global = false, required = true)]
         project: String,
     },
     Pulls {
         #[clap(subcommand)]
         sub_action: PullsAction,
 
-        #[clap(short, long, global = true, required = false)]
+        #[clap(short, long, global = false, required = true)]
         project: String,
     },
     Deployments {
         #[clap(subcommand)]
         sub_action: DeploymentsAction,
 
-        #[clap(short, long, global = true, required = false)]
-        environment: String,
+        #[clap(short, long, global = false, required = false)]
+        environment: Option<String>,
 
-        #[clap(short, long, global = true, required = false)]
+        #[clap(short, long, global = false, required = true)]
         project: String,
     },
     FourKeys {
@@ -63,9 +63,9 @@ enum Action {
         until: Option<String>,
 
         #[clap(short, long, global = true, required = false)]
-        environment: String,
+        environment: Option<String>,
 
-        #[clap(short, long, global = true, required = false)]
+        #[clap(short, long, global = false, required = true)]
         project: String,
     },
 }
@@ -201,14 +201,14 @@ async fn main() {
         Action::Deployments { sub_action, environment, project } => {
             let config = modules::config::load_config().await;
             let project_config = config.projects.get(&project).expect("Could not find project");
-            let env = if environment.is_empty() {
-                "production"
+            let env = environment.map_or("production".to_string(), |s| if s.is_empty() {
+                "production".to_string()
             } else {
-                &environment
-            };
+                s
+            });
             match sub_action {
                 DeploymentsAction::Get {} => {
-                    let results = modules::github::deployment::list(&project_config.github_owner, &project_config.github_repo, env).await.expect("Could not get deployments");
+                    let results = modules::github::deployment::list(&project_config.github_owner, &project_config.github_repo, &env).await.expect("Could not get deployments");
                     println!("{}", serde_json::to_string_pretty(&results).expect("Could not convert deployments to string"));
                 }
             }
@@ -235,17 +235,17 @@ async fn main() {
             }).expect("Could not parse until date");
             let developers = project_config.developers;
             let working_days_per_week = project_config.working_days_per_week;
-            let env = if environment.is_empty() {
-                "production"
+            let env = environment.map_or("production".to_string(), |s| if s.is_empty() {
+                "production".to_string()
             } else {
-                &environment
-            };
+                s
+            });
             let heroku_app = &project_config.heroku_app;
             match sub_action {
                 DeploymentFrequenciesAction::Get {} => {
                     match project_config.deployment_source {
                         DeploymentSource::GitHubDeployment => {
-                            let results = modules::metric::with_github_deployments::calculate_metrics(&project_config.github_owner, &project_config.github_repo, datetime_since, datetime_until, developers, working_days_per_week, env).await.expect("Could not calculate metrics");
+                            let results = modules::metric::with_github_deployments::calculate_metrics(&project_config.github_owner, &project_config.github_repo, datetime_since, datetime_until, developers, working_days_per_week, &env).await.expect("Could not calculate metrics");
                             println!("{}", serde_json::to_string_pretty(&results).expect("Could not convert metrics to string"));
                         },
                         DeploymentSource::HerokuRelease => {
