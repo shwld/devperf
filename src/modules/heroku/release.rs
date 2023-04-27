@@ -59,12 +59,12 @@ async fn get_slug(app_name: &str, slug_id: &str) -> Result<HerokuSlugItem, Error
         panic!("You must login first.");
     }
     let heroku_token = config.heroku_token.unwrap();
-    let client = reqwest::Client::new();
+    let client = create_http_client();
     let url = format!("https://api.heroku.com/apps/{app_name}/slugs/{slug_id}", app_name = app_name, slug_id = slug_id);
     let slug = client.get(url)
         .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}", token = heroku_token))
         .header(reqwest::header::ACCEPT, "application/vnd.heroku+json; version=3")
-        .send().await?
+        .send().await.expect("Could not get slug")
         .json::<HerokuSlugItem>().await?;
 
     Ok(slug)
