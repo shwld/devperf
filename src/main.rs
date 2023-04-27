@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use chrono::prelude::*;
+use chrono::{prelude::*, Duration};
 use env_logger;
 use modules::config::DeploymentSource;
 
@@ -57,10 +57,10 @@ enum Action {
         sub_action: DeploymentFrequenciesAction,
 
         #[clap(short, long, global = true, required = false)]
-        since: String,
+        since: Option<String>,
 
         #[clap(short, long, global = true, required = false)]
-        until: String,
+        until: Option<String>,
 
         #[clap(short, long, global = true, required = false)]
         environment: String,
@@ -216,11 +216,23 @@ async fn main() {
         Action::FourKeys { sub_action, project, since, until, environment } => {
             let config = modules::config::load_config().await;
             let project_config = config.projects.get(&project).expect("Could not find project");
-            let naive_since = NaiveDate::parse_from_str(&since, "%Y-%m-%d").expect("Could not parse since date");
-            let naive_until = NaiveDate::parse_from_str(&until, "%Y-%m-%d").expect("Could not parse until date");
             let time = NaiveTime::from_hms_opt(0, 0, 0).expect("Could not parse time");
-            let datetime_since = Utc.from_local_datetime(&naive_since.and_time(time)).unwrap();
-            let datetime_until = Utc.from_local_datetime(&naive_until.and_time(time)).unwrap();
+            let datetime_since = since.and_then(|s| {
+                let naive_since = NaiveDate::parse_from_str(&s, "%Y-%m-%d").expect("Could not parse since date");
+                let datetime_since = Utc.from_local_datetime(&naive_since.and_time(time)).unwrap();
+                Some(datetime_since)
+            }).or_else(|| {
+                let three_months_ago = Utc::now() - Duration::days(90);
+                Some(three_months_ago)
+            }).expect("Could not parse since date");
+            let datetime_until = until.and_then(|u| {
+                let naive_until = NaiveDate::parse_from_str(&u, "%Y-%m-%d").expect("Could not parse until date");
+                let datetime_until = Utc.from_local_datetime(&naive_until.and_time(time)).unwrap();
+                Some(datetime_until)
+            }).or_else(|| {
+                let now = Utc::now();
+                Some(now)
+            }).expect("Could not parse until date");
             let developers = project_config.developers;
             let working_days_per_week = project_config.working_days_per_week;
             let env = if environment.is_empty() {
