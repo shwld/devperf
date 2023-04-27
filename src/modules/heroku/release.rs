@@ -1,6 +1,6 @@
 use reqwest::Error;
 use serde::{Serialize, Deserialize};
-use crate::modules::{types::deployment_metric::{DeploymentItem}, github};
+use crate::modules::{types::deployment_metric::{DeploymentItem}, github, http_client::create_http_client};
 
 // FIXME: remove depends modules::github
 pub async fn list(app_name: &str, owner: &str, repo: &str) -> Result<Vec<DeploymentItem>, Error> {
@@ -9,13 +9,13 @@ pub async fn list(app_name: &str, owner: &str, repo: &str) -> Result<Vec<Deploym
         panic!("You must login first.");
     }
     let heroku_token = config.heroku_token.unwrap();
-    let client = reqwest::Client::new();
+    let client = create_http_client();
     let url = format!("https://api.heroku.com/apps/{app_name}/releases", app_name = app_name);
     let releases: Vec<HerokuReleaseItem> = client.get(url)
         .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}", token = heroku_token))
         .header(reqwest::header::ACCEPT, "application/vnd.heroku+json; version=3")
         .header(reqwest::header::RANGE, "version ..; order=desc;")
-        .send().await?
+        .send().await.expect("Could not get releases")
         .json::<Vec<HerokuReleaseItem>>().await?;
 
     let mut deployments: Vec<DeploymentItem> = Vec::new();
