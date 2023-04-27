@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use chrono::prelude::*;
 use env_logger;
+use modules::config::DeploymentSource;
 
 mod modules;
 
@@ -227,10 +228,23 @@ async fn main() {
             } else {
                 &environment
             };
+            let heroku_app = &project_config.heroku_app;
             match sub_action {
                 DeploymentFrequenciesAction::Get {} => {
-                    let results = modules::metric::with_github_deployments::calculate_metrics(&project_config.github_owner, &project_config.github_repo, datetime_since, datetime_until, developers, working_days_per_week, env).await.expect("Could not calculate metrics");
-                    println!("{}", serde_json::to_string_pretty(&results).expect("Could not convert metrics to string"));
+                    match project_config.deployment_source {
+                        DeploymentSource::GitHubDeployment => {
+                            let results = modules::metric::with_github_deployments::calculate_metrics(&project_config.github_owner, &project_config.github_repo, datetime_since, datetime_until, developers, working_days_per_week, env).await.expect("Could not calculate metrics");
+                            println!("{}", serde_json::to_string_pretty(&results).expect("Could not convert metrics to string"));
+                        },
+                        DeploymentSource::HerokuRelease => {
+                            let heroku_app = heroku_app.as_ref().expect("Could not find heroku app");
+                            let results = modules::metric::with_heroku_releases::calculate_metrics(&project_config.github_owner, &project_config.github_repo, datetime_since, datetime_until, developers, working_days_per_week, heroku_app).await.expect("Could not calculate metrics");
+                            println!("{}", serde_json::to_string_pretty(&results).expect("Could not convert metrics to string"));
+                        },
+                        // _ => {
+                        //     println!("No deployment source configured");
+                        // }
+                    }
                 }
             }
         }

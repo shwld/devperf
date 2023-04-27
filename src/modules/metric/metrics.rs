@@ -42,6 +42,7 @@ pub async fn calculate(metrics: Vec<DeploymentMetricItem>, since: DateTime<Utc>,
     let diff = until.signed_duration_since(since);
     let days = diff.num_days();
     let deployment_frequency_per_day = total_deployments as f32 / (days as f32 * (working_days_per_week / 7.0));
+    log::debug!("durations: {:?}", durations);
     let median_duration = median(durations);
     let hours = (median_duration / 3600.0) as i64;
     let minutes = ((median_duration.round() as i64 % 3600) / 60) as i64;

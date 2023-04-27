@@ -184,7 +184,7 @@ pub async fn set_project_config(project_name: &str) -> Result<(), confy::ConfyEr
                 working_days_per_week: working_days_per_week,
                 github_personal_token: token,
                 heroku_token: heroku_token,
-                deployment_source: DeploymentSource::GitHubDeployment,
+                deployment_source: DeploymentSource::HerokuRelease,
             }
         },
         _ => panic!("Not implemented"),
