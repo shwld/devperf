@@ -5,7 +5,7 @@ pub fn perform(write_project: WriteProject, project: UncreatedGitHubDeploymentPr
     Ok(GitHubDeploymentProjectCreated {
         github_personal_token: project.github_personal_token,
         github_owner_repo: project.github_owner_repo,
-        developers: project.developers,
+        developer_count: project.developer_count,
         working_days_per_week: project.working_days_per_week,
     })
 }

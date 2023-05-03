@@ -1,4 +1,4 @@
-use crate::{project_creating::{validate_github_personal_token::schema::*, validate_github_owner_repo::schema::*, schema::ProjectAccessToken}, common_types::{NonZeroU32, NonZeroF32, WriteConfigError}};
+use crate::{project_creating::{validate_github_personal_token::schema::*, validate_github_owner_repo::schema::*, schema::ProjectAccessToken, validate_developer_count::schema::ValidatedDeveloperCount, validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek}, common_types::{WriteConfigError}};
 
 // ==================================
 // This file contains the definitions of PUBLIC types (exposed at the boundary of the bounded context)
@@ -14,8 +14,8 @@ pub type WriteProject = fn () -> Result<(), WriteConfigError>;
 pub struct UncreatedGitHubDeploymentProject {
     pub github_personal_token: ProjectAccessToken<ValidatedGitHubPersonalToken>,
     pub github_owner_repo: ValidatedGitHubOwnerRepo,
-    pub developers: NonZeroU32,
-    pub working_days_per_week: NonZeroF32,
+    pub developer_count: ValidatedDeveloperCount,
+    pub working_days_per_week: ValidatedWorkingDaysPerWeek,
 }
 
 // ------------------------------------
@@ -23,8 +23,8 @@ pub struct UncreatedGitHubDeploymentProject {
 pub struct GitHubDeploymentProjectCreated {
     pub github_personal_token: ProjectAccessToken<ValidatedGitHubPersonalToken>,
     pub github_owner_repo: ValidatedGitHubOwnerRepo,
-    pub developers: NonZeroU32,
-    pub working_days_per_week: NonZeroF32,
+    pub developer_count: ValidatedDeveloperCount,
+    pub working_days_per_week: ValidatedWorkingDaysPerWeek,
 }
 
 // Events

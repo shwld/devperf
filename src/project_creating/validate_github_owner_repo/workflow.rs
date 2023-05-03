@@ -22,6 +22,14 @@ impl ValidatedGitHubOwnerRepo {
         Err(ValidateGitHubOwnerRepoError("GitHub owner/repo is invalid".to_string()))
       }
     }
+
+    pub fn get_owner(self) -> String {
+      self.github_owner
+    }
+
+    pub fn get_repo(self) -> String {
+      self.github_repo
+    }
 }
 
 #[cfg(test)]
