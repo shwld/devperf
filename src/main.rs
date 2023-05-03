@@ -1,7 +1,8 @@
 use clap::Parser;
 
 mod cli;
-mod config;
+mod common_types;
+mod project_creating;
 mod logger;
 mod github;
 

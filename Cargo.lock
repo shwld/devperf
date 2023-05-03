@@ -585,6 +585,7 @@ dependencies = [
  "inquire",
  "log",
  "octocrab",
+ "regex",
  "reqwest",
  "reqwest-middleware",
  "rpassword",
