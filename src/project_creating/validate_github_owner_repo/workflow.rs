@@ -10,7 +10,7 @@ pub fn perform(owner_repo: UnvalidatedGitHubOwnerRepo) -> Result<ValidateGitHubO
 
 impl ValidatedGitHubOwnerRepo {
     pub fn new(owner_repo: String) -> Result<Self, ValidateGitHubOwnerRepoError> {
-      let re = Regex::new(r"/^([a-z\d]+)\/([a-z\d]+)$/i").unwrap();
+      let re = Regex::new(r"^([\w\d\-]+)\/([\w\d\-]+)$").unwrap();
       let caps = re.captures(&owner_repo);
       if caps.is_some() {
         let caps = caps.unwrap();
