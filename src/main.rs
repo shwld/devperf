@@ -7,7 +7,7 @@ mod logger;
 mod github;
 
 use cli::four_keys::get_four_keys;
-use cli::initializer::initialize_cli;
+use cli::initializer;
 use cli::sub_commands::{Action};
 use cli::config::{ConfigAction, get_config_path};
 
@@ -27,7 +27,7 @@ async fn main() {
 
     match args.action {
         Action::Init {  } => {
-          initialize_cli();
+          initializer::init::perform();
         },
         Action::Config { sub_action } => {
              match sub_action {
