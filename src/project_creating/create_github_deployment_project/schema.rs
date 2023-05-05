@@ -1,4 +1,5 @@
-use crate::{project_creating::{validate_github_personal_token::schema::*, validate_github_owner_repo::schema::*, schema::ProjectAccessToken, validate_developer_count::schema::ValidatedDeveloperCount, validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek}, common_types::{WriteConfigError}};
+use crate::{project_creating::{validate_github_personal_token::schema::*, validate_github_owner_repo::schema::*, validate_developer_count::schema::ValidatedDeveloperCount, validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek}};
+use super::dao_interfaces::{WriteGitHubDeploymentProjectCreated, WriteGitHubDeploymentProjectCreatedError};
 
 // ==================================
 // This file contains the definitions of PUBLIC types (exposed at the boundary of the bounded context)
@@ -8,11 +9,10 @@ use crate::{project_creating::{validate_github_personal_token::schema::*, valida
 // ------------------------------------
 // inputs to the workflow
 
-pub type WriteProject = fn () -> Result<(), WriteConfigError>;
-
 // Project configs
 pub struct UncreatedGitHubDeploymentProject {
-    pub github_personal_token: ProjectAccessToken<ValidatedGitHubPersonalToken>,
+    pub project_name: String,
+    pub github_personal_token: ValidatedGitHubPersonalToken,
     pub github_owner_repo: ValidatedGitHubOwnerRepo,
     pub developer_count: ValidatedDeveloperCount,
     pub working_days_per_week: ValidatedWorkingDaysPerWeek,
@@ -20,8 +20,10 @@ pub struct UncreatedGitHubDeploymentProject {
 
 // ------------------------------------
 // outputs from the workflow (success case)
+#[derive(Clone)]
 pub struct GitHubDeploymentProjectCreated {
-    pub github_personal_token: ProjectAccessToken<ValidatedGitHubPersonalToken>,
+    pub project_name: String,
+    pub github_personal_token: ValidatedGitHubPersonalToken,
     pub github_owner_repo: ValidatedGitHubOwnerRepo,
     pub developer_count: ValidatedDeveloperCount,
     pub working_days_per_week: ValidatedWorkingDaysPerWeek,
@@ -33,8 +35,8 @@ pub struct GitHubDeploymentProjectCreated {
 pub type CreateGithubDeploymentProjectEvent = GitHubDeploymentProjectCreated;
 
 // Error types
-pub type CreateGithubDeploymentProjectError = WriteConfigError;
+pub type CreateGithubDeploymentProjectError = WriteGitHubDeploymentProjectCreatedError;
 
 // ------------------------------------
 // the workflow itself
-pub type CreateGithubDeploymentProject = fn (WriteProject, UncreatedGitHubDeploymentProject) -> Result<GitHubDeploymentProjectCreated, CreateGithubDeploymentProjectError>;
+pub type CreateGithubDeploymentProject = fn (WriteGitHubDeploymentProjectCreated, UncreatedGitHubDeploymentProject) -> Result<GitHubDeploymentProjectCreated, CreateGithubDeploymentProjectError>;

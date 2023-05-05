@@ -23,12 +23,8 @@ impl ValidatedGitHubOwnerRepo {
       }
     }
 
-    pub fn get_owner(self) -> String {
-      self.github_owner
-    }
-
-    pub fn get_repo(self) -> String {
-      self.github_repo
+    pub fn get_values(self) -> (String, String) {
+      (self.github_owner, self.github_repo)
     }
 }
 

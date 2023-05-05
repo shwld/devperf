@@ -9,6 +9,7 @@ pub type UnvalidatedDeveloperCount = String;
 
 // ------------------------------------
 // outputs from the workflow (success case)
+#[derive(Clone)]
 pub struct ValidatedDeveloperCount(pub(super) u32);
 
 /// Event will be created if the Acknowledgment was successfully posted

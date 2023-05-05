@@ -9,6 +9,7 @@ pub type UnvalidatedGitHubOwnerRepo = String;
 
 // ------------------------------------
 // outputs from the workflow (success case)
+#[derive(Clone)]
 pub struct ValidatedGitHubOwnerRepo {
     pub(super) github_owner: String,
     pub(super) github_repo: String,

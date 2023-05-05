@@ -7,12 +7,20 @@ pub fn perform(token: UnvalidatedGitHubPersonalToken) -> Result<ValidateGitHubPe
 // PRIVATE
 
 impl ValidatedGitHubPersonalToken {
-    pub fn new(token: String) -> Result<Self, ValidateGitHubPersonalTokenError> {
-      if token.starts_with("ghp_") {
-        Ok(ValidatedGitHubPersonalToken(token.to_string()))
+    pub fn new(token: Option<String>) -> Result<Self, ValidateGitHubPersonalTokenError> {
+      if let Some(token) = token {
+        if token.starts_with("ghp_") {
+          Ok(ValidatedGitHubPersonalToken(token.to_string()))
+        } else {
+          Err(ValidateGitHubPersonalTokenError::InvalidToken("GitHub personal token is invalid".to_string()))
+        }
       } else {
-        Err(ValidateGitHubPersonalTokenError("GitHub personal token is invalid".to_string()))
+        Err(ValidateGitHubPersonalTokenError::Required("GitHub personal token is empty".to_string()))
       }
+    }
+
+    pub fn to_string(self) -> String {
+        self.0
     }
 }
 

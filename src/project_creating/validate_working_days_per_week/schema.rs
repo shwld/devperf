@@ -9,6 +9,7 @@ pub type UnvalidatedWorkingDaysPerWeek = String;
 
 // ------------------------------------
 // outputs from the workflow (success case)
+#[derive(Clone)]
 pub struct ValidatedWorkingDaysPerWeek(pub(super) f32);
 
 /// Event will be created if the Acknowledgment was successfully posted

@@ -19,7 +19,3 @@ impl NonZeroF32 {
         }
     }
 }
-
-// Error types
-#[derive(Debug, Clone)]
-pub struct WriteConfigError;

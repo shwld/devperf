@@ -19,7 +19,11 @@ impl ValidatedDeveloperCount {
       } else {
           Err(ValidateDeveloperCountError("Developer count is not a number".to_string()))
       }
-  }
+    }
+
+    pub fn to_u32(self) -> u32 {
+        self.0
+    }
 }
 
 #[cfg(test)]

@@ -19,7 +19,11 @@ impl ValidatedWorkingDaysPerWeek {
       } else {
           Err(ValidateWorkingDaysPerWeekError("Developer count is not a number".to_string()))
       }
-  }
+    }
+
+    pub fn to_f32(self) -> f32 {
+        self.0
+    }
 }
 
 #[cfg(test)]
