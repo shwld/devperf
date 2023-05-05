@@ -2,6 +2,7 @@ use clap::Parser;
 
 mod cli;
 mod common_types;
+mod metrics_retrieving;
 mod project_creating;
 mod logger;
 mod github;

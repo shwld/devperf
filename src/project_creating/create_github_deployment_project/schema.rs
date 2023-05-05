@@ -1,4 +1,4 @@
-use crate::{project_creating::{validate_github_personal_token::schema::*, validate_github_owner_repo::schema::*, validate_developer_count::schema::ValidatedDeveloperCount, validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek}};
+use crate::{project_creating::{validate_github_personal_token::schema::*, validate_github_owner_repo::schema::*, validate_developer_count::schema::ValidatedDeveloperCount, validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek, schema::GitHubDeploymentProjectConfig}};
 use super::dao_interfaces::{WriteGitHubDeploymentProjectCreated, WriteGitHubDeploymentProjectCreatedError};
 
 // ==================================
@@ -20,14 +20,7 @@ pub struct UncreatedGitHubDeploymentProject {
 
 // ------------------------------------
 // outputs from the workflow (success case)
-#[derive(Clone)]
-pub struct GitHubDeploymentProjectCreated {
-    pub project_name: String,
-    pub github_personal_token: ValidatedGitHubPersonalToken,
-    pub github_owner_repo: ValidatedGitHubOwnerRepo,
-    pub developer_count: ValidatedDeveloperCount,
-    pub working_days_per_week: ValidatedWorkingDaysPerWeek,
-}
+pub type GitHubDeploymentProjectCreated = GitHubDeploymentProjectConfig;
 
 // Events
 /// The possible events resulting from the workflow
