@@ -3,7 +3,7 @@ use clap::Parser;
 mod cli;
 mod common_types;
 mod dependencies;
-mod metrics_retrieving;
+// mod metrics_retrieving;
 mod project_creating;
 mod logger;
 
