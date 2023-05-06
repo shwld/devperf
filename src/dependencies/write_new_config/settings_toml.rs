@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use anyhow::anyhow;
 
 use async_trait::async_trait;
 
@@ -16,6 +17,6 @@ impl WriteNewConfig for WriteNewConfigWithSettingsToml {
             projects: HashMap::new(),
         };
         config.projects.insert(params.project_name, params.project_config);
-        confy::store("devops-metrics-tools", None, config).map_err(|e| WriteNewConfigError::ConfigFileWriteError)
+        confy::store("devops-metrics-tools", None, config).map_err(|e| anyhow!(e)).map_err(WriteNewConfigError::ConfigFileWriteError)
     }
 }

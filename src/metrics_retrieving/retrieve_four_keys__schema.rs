@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Serialize, Deserialize};
 use thiserror::Error;
 
-use crate::dependencies::read_project_config::interface::{ReadProjectConfig, ReadProjectConfigError};
+use crate::dependencies::{read_project_config::interface::{ReadProjectConfig, ReadProjectConfigError}, fetch_deployments::interface::FetchDeploymentsError};
 
 // ==================================
 // This file contains the definitions of PUBLIC types (exposed at the boundary of the bounded context)
@@ -86,8 +86,10 @@ pub type RetrieveFourKeysEvent = FourKeysMetrics;
 // Error types
 #[derive(Error, Debug)]
 pub enum RetrieveFourKeysEventError {
-    #[error("Cannot write the new config")]
-    ReadProjectConfigError(ReadProjectConfigError)
+    #[error("Cannot read config")]
+    ReadProjectConfigError(#[source] ReadProjectConfigError),
+    #[error("Cannot fetch")]
+    FetchDeploymentsError(#[source] FetchDeploymentsError),
 }
 
 // ------------------------------------

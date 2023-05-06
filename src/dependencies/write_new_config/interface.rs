@@ -13,7 +13,7 @@ pub struct WriteConfigData {
 #[derive(Error, Debug)]
 pub enum WriteNewConfigError {
     #[error("Cannot write the new config")]
-    ConfigFileWriteError
+    ConfigFileWriteError(#[source] anyhow::Error),
 }
 
 #[async_trait]

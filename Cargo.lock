@@ -587,6 +587,7 @@ dependencies = [
 name = "devops-metrics-tools"
 version = "0.0.1"
 dependencies = [
+ "anyhow",
  "async-std",
  "async-trait",
  "chrono",

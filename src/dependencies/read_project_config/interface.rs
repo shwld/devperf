@@ -23,11 +23,11 @@ pub struct ProjectConfig {
 #[derive(Debug, Error)]
 pub enum ReadProjectConfigError {
     #[error("Cannot read the config file")]
-    ConfigFileReadError,
+    ConfigFileReadError(#[source] anyhow::Error),
     #[error("Cannot parse the config file")]
-    ConfigFileParseError,
+    ConfigFileParseError(#[source] anyhow::Error),
     #[error("Cannot find the project")]
-    ProjectNotFound,
+    ProjectNotFound(String),
 }
 
 #[async_trait]

@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use thiserror::Error;
 
 use crate::{common_types::DeploymentItem};
 
@@ -10,7 +11,11 @@ pub struct FetchDeploymentsParams {
     pub since: Option<DateTime<Utc>>,
 }
 
-pub struct FetchDeploymentsError(pub String);
+#[derive(Debug, Error)]
+pub enum FetchDeploymentsError {
+    #[error("Cannot read the config file")]
+    FetchDeploymentsError(#[source] anyhow::Error),
+}
 
 #[async_trait]
 pub trait FetchDeployments {

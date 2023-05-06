@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use anyhow::anyhow;
 
 use async_trait::async_trait;
 use crate::{dependencies::settings_toml::{ProjectName, Config}};
@@ -17,7 +18,8 @@ pub struct ReadProjectConfigWithSettingsToml;
 impl ReadProjectConfig for ReadProjectConfigWithSettingsToml {
     async fn perform(&self, project_name: ProjectName) -> Result<ProjectConfig, ReadProjectConfigError> {
         let conf = confy::load::<Config>("devops-metrics-tools", None)
-                .map_err(|e| ReadProjectConfigError::ConfigFileReadError)
+                .map_err(|e| anyhow!(e))
+                .map_err(ReadProjectConfigError::ConfigFileReadError)
                 .and_then(|c| {
                     let project_config = c.projects.get(&project_name);
                     if let Some(project_config) = project_config {
@@ -34,7 +36,7 @@ impl ReadProjectConfig for ReadProjectConfigWithSettingsToml {
                             },
                         })
                     } else {
-                        Err(ReadProjectConfigError::ProjectNotFound)
+                        Err(ReadProjectConfigError::ProjectNotFound("Project not found".to_string()))
                     }
                 });
 
