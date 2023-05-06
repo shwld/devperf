@@ -1,7 +1,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Serialize, Deserialize};
+use thiserror::Error;
 
-use super::retrieve_four_keys__dao::ReadConfig;
+use crate::dependencies::read_project_config::interface::{ReadProjectConfig, ReadProjectConfigError};
 
 // ==================================
 // This file contains the definitions of PUBLIC types (exposed at the boundary of the bounded context)
@@ -83,8 +84,12 @@ pub struct FourKeysMetrics {
 pub type RetrieveFourKeysEvent = FourKeysMetrics;
 
 // Error types
-pub struct RetrieveFourKeysEventError(pub String);
+#[derive(Error, Debug)]
+pub enum RetrieveFourKeysEventError {
+    #[error("Cannot write the new config")]
+    ReadProjectConfigError(ReadProjectConfigError)
+}
 
 // ------------------------------------
 // the workflow itself
-pub type RetrieveFourKeys = fn (ReadConfig, RetrieveFourKeysExecutionContext) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError>;
+pub type RetrieveFourKeys = fn (dyn ReadProjectConfig, RetrieveFourKeysExecutionContext) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError>;

@@ -1,27 +1,25 @@
-use super::{retrieve_four_keys__schema::{RetrieveFourKeysExecutionContext, RetrieveFourKeysEvent, RetrieveFourKeysEventError}, retrieve_four_keys__dao::ReadConfig};
+use crate::{dependencies::read_project_config::interface::{ReadProjectConfig, ProjectConfig}};
+
+use super::{retrieve_four_keys__schema::{RetrieveFourKeysExecutionContext, RetrieveFourKeysEvent, RetrieveFourKeysEventError, DeploymentCommitItem}};
 
 // ---------------------------
 // Fetch deployments step
 // ---------------------------
 
-fn fetch_deployments() {
-
+fn fetch_deployments(project_config: ProjectConfig) {
+    unimplemented!()
 }
+
+// ---------------------------
+// Calculation step
+// ---------------------------
+
 
 // ---------------------------
 // overall workflow
 // ---------------------------
-pub fn perform(read_config: ReadConfig, context: RetrieveFourKeysExecutionContext) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError> {
+pub async fn perform<TReadProjectConfig: ReadProjectConfig>(read_config: TReadProjectConfig, context: RetrieveFourKeysExecutionContext) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError> {
+    let project_config = read_config.perform(context.project_name).await.map_err(RetrieveFourKeysEventError::ReadProjectConfigError)?;
+    let deployments = fetch_deployments(project_config);
     unimplemented!()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::super::retrieve_four_keys__schema::RetrieveFourKeys;
-
-    #[test]
-    fn verify_perform_type() {
-        // 型チェックのために代入する
-        let _type_check: RetrieveFourKeys = super::perform;
-    }
 }
