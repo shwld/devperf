@@ -2,10 +2,10 @@ use clap::Parser;
 
 mod cli;
 mod common_types;
+mod dependencies;
 mod metrics_retrieving;
 mod project_creating;
 mod logger;
-mod github;
 
 use cli::four_keys::get_four_keys;
 use cli::initializer;

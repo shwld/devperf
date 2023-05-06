@@ -588,6 +588,7 @@ name = "devops-metrics-tools"
 version = "0.0.1"
 dependencies = [
  "async-std",
+ "async-trait",
  "chrono",
  "clap",
  "confy",
