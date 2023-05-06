@@ -1,7 +1,8 @@
 use async_trait::async_trait;
+use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use crate::{common_types::DeploymentItem, dependencies::github_api_client::{GitHubAPIClient}};
-use super::{super::github_api_client::{GitHubClientError}, interface::{FetchDeploymentsError, FetchDeployments, FetchDeploymentsParams}};
+use super::{interface::{FetchDeploymentsError, FetchDeployments, FetchDeploymentsParams}};
 
 fn deployments_query(owner: &str, repo: &str, environment: &str, after: Option<String>) -> String {
     let query = format!("
@@ -146,7 +147,7 @@ pub struct DeploymentsCreatorGraphQLResponse {
     pub login: String,
 }
 
-async fn fetch_deployments(github_api_client: GitHubAPIClient, params: FetchDeploymentsParams) -> Result<Vec<DeploymentsDeploymentsNodeGraphQLResponse>, GitHubClientError> {
+async fn fetch_deployments(github_api_client: &GitHubAPIClient, params: FetchDeploymentsParams) -> Result<Vec<DeploymentsDeploymentsNodeGraphQLResponse>, FetchDeploymentsError> {
     let mut after: Option<String> = None;
     let mut has_next_page = true;
     let mut deployment_nodes: Vec<DeploymentsDeploymentsNodeGraphQLResponse> = Vec::new();
@@ -155,7 +156,7 @@ async fn fetch_deployments(github_api_client: GitHubAPIClient, params: FetchDepl
     let mut loop_count = 0;
     while has_next_page && loop_count < 50 {
         let query = deployments_query(&params.owner, &params.repo, &params.environment, after);
-        let results: DeploymentsGraphQLResponse = github_api_client.graphql(&query).await.expect("Could not get deployments");
+        let results: DeploymentsGraphQLResponse = github_api_client.graphql(&query).await.map_err(|e| anyhow!(e)).map_err(FetchDeploymentsError::FetchDeploymentsError)?;
         deployment_nodes = [&deployment_nodes[..], &results.data.repository_owner.repository.deployments.nodes[..]].concat();
         has_next_page = results.data.repository_owner.repository.deployments.page_info.has_next_page;
         after = results.data.repository_owner.repository.deployments.page_info.end_cursor;
@@ -201,7 +202,7 @@ struct FetchDeploymentsWithGithubDeployment {
 #[async_trait]
 impl FetchDeployments for FetchDeploymentsWithGithubDeployment {
     async fn perform(&self, params: FetchDeploymentsParams) -> Result<Vec<DeploymentItem>, FetchDeploymentsError> {
-        let deployments = fetch_deployments(self.github_api_client, params)
+        let deployments = fetch_deployments(&self.github_api_client, params)
             .await?
             .iter()
             .filter(|&x| has_success_status(x))

@@ -12,6 +12,7 @@ use crate::dependencies::{read_project_config::interface::{ReadProjectConfig, Re
 // ------------------------------------
 // inputs to the workflow
 
+#[derive(Clone)]
 pub struct RetrieveFourKeysExecutionContext {
     pub project_name: String,
     pub since: DateTime<Utc>,
