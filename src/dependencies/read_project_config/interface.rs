@@ -1,0 +1,36 @@
+use async_trait::async_trait;
+use thiserror::Error;
+
+type ProjectName = String;
+
+#[derive(Debug, Clone)]
+pub enum DeploymentSource {
+    GitHubDeployment,
+    HerokuRelease,
+}
+
+#[derive(Debug, Clone)]
+pub struct ProjectConfig {
+    pub project_name: ProjectName,
+    pub github_personal_token: String,
+    pub github_owner: String,
+    pub github_repo: String,
+    pub developer_count: u32,
+    pub working_days_per_week: f32,
+    pub deployment_source: DeploymentSource,
+}
+
+#[derive(Debug, Error)]
+pub enum ReadProjectConfigError {
+    #[error("Cannot read the config file")]
+    ConfigFileReadError,
+    #[error("Cannot parse the config file")]
+    ConfigFileParseError,
+    #[error("Cannot find the project")]
+    ProjectNotFound,
+}
+
+#[async_trait]
+pub trait ReadProjectConfig {
+    async fn perform(&self, project_name: ProjectName) -> Result<ProjectConfig, ReadProjectConfigError>;
+}

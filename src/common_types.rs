@@ -36,16 +36,10 @@ pub struct DeploymentItem {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectConfig {
+    pub github_personal_token: Option<String>,
     pub github_owner: String,
     pub github_repo: String,
     pub developer_count: u32,
     pub working_days_per_week: f32,
     pub deployment_source: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConfigData {
-    pub project_name: String,
-    pub github_personal_token: String,
-    pub project_config: ProjectConfig,
 }
