@@ -1,5 +1,6 @@
-use crate::{project_creating::{validate_github_personal_token::schema::*, validate_github_owner_repo::schema::*, validate_developer_count::schema::ValidatedDeveloperCount, validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek, public_schema::GitHubDeploymentProjectConfig}};
+use crate::{project_creating::{validate_github_personal_token::schema::*, validate_github_owner_repo::schema::*, validate_developer_count::schema::ValidatedDeveloperCount, validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek, public_schema::GitHubDeploymentProjectConfig}, dependencies::write_new_config::interface::WriteNewConfigError};
 use super::dao_interfaces::{WriteGitHubDeploymentProjectCreated, WriteGitHubDeploymentProjectCreatedError};
+use thiserror::Error;
 
 // ==================================
 // This file contains the definitions of PUBLIC types (exposed at the boundary of the bounded context)
@@ -28,7 +29,11 @@ pub type GitHubDeploymentProjectCreated = GitHubDeploymentProjectConfig;
 pub type CreateGithubDeploymentProjectEvent = GitHubDeploymentProjectCreated;
 
 // Error types
-pub type CreateGithubDeploymentProjectError = WriteGitHubDeploymentProjectCreatedError;
+#[derive(Error, Debug)]
+pub enum CreateGithubDeploymentProjectError {
+    #[error("Cannot write the new config")]
+    WriteNewConfigError(WriteNewConfigError)
+}
 
 // ------------------------------------
 // the workflow itself

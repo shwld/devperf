@@ -1,8 +1,9 @@
-use super::dao_interfaces::{WriteGitHubDeploymentProjectCreated};
+use crate::dependencies::write_new_config::interface::WriteNewConfig;
+
 use super::dto::{GitHubDeploymentProjectCreatedDto};
 use super::schema::*;
 
-pub fn perform(write_project: WriteGitHubDeploymentProjectCreated, project: UncreatedGitHubDeploymentProject) -> Result<CreateGithubDeploymentProjectEvent, CreateGithubDeploymentProjectError> {
+pub fn perform<T: WriteNewConfig>(write_new_config: T, project: UncreatedGitHubDeploymentProject) -> Result<CreateGithubDeploymentProjectEvent, CreateGithubDeploymentProjectError> {
     let project = GitHubDeploymentProjectCreated {
         project_name: project.project_name,
         github_personal_token: project.github_personal_token,
@@ -11,17 +12,6 @@ pub fn perform(write_project: WriteGitHubDeploymentProjectCreated, project: Uncr
         working_days_per_week: project.working_days_per_week,
     };
     let project_dto = GitHubDeploymentProjectCreatedDto::from_git_hub_deployment_project_created(project.clone());
-    write_project(project_dto)?;
+    write_new_config.perform(project_dto).map_err(CreateGithubDeploymentProjectError::WriteNewConfigError)?;
     Ok(project)
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::project_creating::create_github_deployment_project::schema::CreateGithubDeploymentProject;
-
-    #[test]
-    fn verify_perform_type() {
-        // 型チェックのために代入する
-        let _type_check: CreateGithubDeploymentProject = super::perform;
-    }
 }
