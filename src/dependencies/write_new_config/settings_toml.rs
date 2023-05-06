@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 
-use super::interface::{WriteNewConfig, WriteNewConfigData, WriteNewConfigError, Config};
+use crate::{common_types::ConfigData, dependencies::settings_toml::Config};
+
+use super::interface::{WriteNewConfig, WriteNewConfigError};
 
 
 pub struct WriteNewConfigWithSettingsToml;
 impl WriteNewConfig for WriteNewConfigWithSettingsToml {
-    fn perform(&self, params: WriteNewConfigData) -> Result<(), WriteNewConfigError> {
+    fn perform(&self, params: ConfigData) -> Result<(), WriteNewConfigError> {
         let mut config = Config {
             github_personal_token: params.github_personal_token,
             projects: HashMap::new(),
