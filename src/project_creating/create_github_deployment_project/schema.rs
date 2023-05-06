@@ -1,5 +1,4 @@
-use crate::{project_creating::{validate_github_personal_token::schema::*, validate_github_owner_repo::schema::*, validate_developer_count::schema::ValidatedDeveloperCount, validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek, public_schema::GitHubDeploymentProjectConfig}, dependencies::write_new_config::interface::WriteNewConfigError};
-use super::dao_interfaces::{WriteGitHubDeploymentProjectCreated, WriteGitHubDeploymentProjectCreatedError};
+use crate::{project_creating::{validate_github_personal_token::schema::*, validate_github_owner_repo::schema::*, validate_developer_count::schema::ValidatedDeveloperCount, validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek, public_schema::GitHubDeploymentProjectConfig}, dependencies::write_new_config::interface::{WriteNewConfigError, WriteNewConfig}};
 use thiserror::Error;
 
 // ==================================
@@ -9,6 +8,10 @@ use thiserror::Error;
 
 // ------------------------------------
 // inputs to the workflow
+
+// Error types
+#[derive(Debug, Clone)]
+pub struct WriteGitHubDeploymentProjectCreatedError(pub String);
 
 // Project configs
 pub struct UncreatedGitHubDeploymentProject {
@@ -37,4 +40,4 @@ pub enum CreateGithubDeploymentProjectError {
 
 // ------------------------------------
 // the workflow itself
-pub type CreateGithubDeploymentProject = fn (WriteGitHubDeploymentProjectCreated, UncreatedGitHubDeploymentProject) -> Result<GitHubDeploymentProjectCreated, CreateGithubDeploymentProjectError>;
+pub type CreateGithubDeploymentProject = fn (dyn WriteNewConfig, UncreatedGitHubDeploymentProject) -> Result<GitHubDeploymentProjectCreated, CreateGithubDeploymentProjectError>;

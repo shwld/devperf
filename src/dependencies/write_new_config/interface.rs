@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use thiserror::Error;
 
 use crate::common_types::ConfigData;
@@ -8,6 +9,7 @@ pub enum WriteNewConfigError {
     ConfigFileWriteError
 }
 
+#[async_trait]
 pub trait WriteNewConfig {
-    fn perform(&self, params: ConfigData) -> Result<(), WriteNewConfigError>;
+    async fn perform(&self, params: ConfigData) -> Result<(), WriteNewConfigError>;
 }

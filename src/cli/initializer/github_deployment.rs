@@ -1,7 +1,7 @@
 use crate::{project_creating::{create_github_deployment_project::{schema::{UncreatedGitHubDeploymentProject}, self}}, dependencies::write_new_config::settings_toml::WriteNewConfigWithSettingsToml};
 use super::{input::{github_personal_token, github_owner_repo, developer_count, working_days_per_week, project_name}};
 
-pub fn init() {
+pub async fn init() {
     let project_name = project_name::input();
     let token = github_personal_token::input();
     let owner_repo = github_owner_repo::input();
@@ -16,7 +16,7 @@ pub fn init() {
         github_personal_token: token,
     };
 
-    match create_github_deployment_project::workflow::perform(WriteNewConfigWithSettingsToml, uncreated_project) {
+    match create_github_deployment_project::workflow::perform(WriteNewConfigWithSettingsToml, uncreated_project).await {
         Ok(_project) => {
             println!("Complete project creation!");
         },
