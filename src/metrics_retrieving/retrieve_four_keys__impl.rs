@@ -1,9 +1,16 @@
-// mod retrieve_four_keys_schema;
-
-// pub use retrieve_four_keys_schema::*;
-
 use super::{retrieve_four_keys__schema::{RetrieveFourKeysExecutionContext, RetrieveFourKeysEvent, RetrieveFourKeysEventError}, retrieve_four_keys__dao::ReadConfig};
 
+// ---------------------------
+// Fetch deployments step
+// ---------------------------
+
+fn fetch_deployments() {
+
+}
+
+// ---------------------------
+// overall workflow
+// ---------------------------
 pub fn perform(read_config: ReadConfig, context: RetrieveFourKeysExecutionContext) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError> {
     unimplemented!()
 }
