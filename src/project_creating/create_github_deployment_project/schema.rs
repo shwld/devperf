@@ -1,4 +1,4 @@
-use crate::{project_creating::{validate_github_personal_token::schema::*, validate_github_owner_repo::schema::*, validate_developer_count::schema::ValidatedDeveloperCount, validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek, schema::GitHubDeploymentProjectConfig}};
+use crate::{project_creating::{validate_github_personal_token::schema::*, validate_github_owner_repo::schema::*, validate_developer_count::schema::ValidatedDeveloperCount, validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek, public_schema::GitHubDeploymentProjectConfig}};
 use super::dao_interfaces::{WriteGitHubDeploymentProjectCreated, WriteGitHubDeploymentProjectCreatedError};
 
 // ==================================

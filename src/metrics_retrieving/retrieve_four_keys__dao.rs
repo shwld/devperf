@@ -1,4 +1,4 @@
-use crate::project_creating::schema::ProjectConfig;
+use crate::project_creating::public_schema::ProjectConfig;
 
 // Error types
 #[derive(Debug, Clone)]
