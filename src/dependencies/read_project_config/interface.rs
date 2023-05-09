@@ -10,14 +10,23 @@ pub enum DeploymentSource {
 }
 
 #[derive(Debug, Clone)]
-pub struct ProjectConfig {
-    pub project_name: ProjectName,
+pub struct GitHubDeploymentResourceConfig {
     pub github_personal_token: String,
     pub github_owner: String,
     pub github_repo: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum ResourceConfig {
+    GitHubDeployment(GitHubDeploymentResourceConfig),
+}
+
+#[derive(Debug, Clone)]
+pub struct ProjectConfig {
+    pub project_name: ProjectName,
     pub developer_count: u32,
     pub working_days_per_week: f32,
-    pub deployment_source: DeploymentSource,
+    pub resource: ResourceConfig,
 }
 
 #[derive(Debug, Error)]

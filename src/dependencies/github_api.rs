@@ -1,7 +1,7 @@
 use octocrab::{Octocrab};
 use thiserror::Error;
 
-use super::read_project_config::interface::ProjectConfig;
+use super::read_project_config::interface::{ProjectConfig, ResourceConfig};
 
 #[derive(Clone)]
 pub struct GitHubAPI {
@@ -24,7 +24,12 @@ pub type GetGitHubPersonalToken = fn () -> Result<String, GetGitHubPersonalToken
 
 impl GitHubAPI {
     pub fn get_client(self) -> Result<Octocrab, GitHubClientError> {
-        let token = String::from(&self.project_config.github_personal_token);
+        let token = match &self.project_config.resource {
+            ResourceConfig::GitHubDeployment(resource_config) => {
+                resource_config.github_personal_token
+            },
+            _ => unimplemented!(),
+        };
         let octocrab = Octocrab::builder()
             .personal_token(token)
             .build()?;

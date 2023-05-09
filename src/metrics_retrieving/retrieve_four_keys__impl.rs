@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc, NaiveTime, LocalResult, NaiveDate};
 use futures::future::{try_join_all};
 
-use crate::{dependencies::{read_project_config::interface::{ReadProjectConfig, ProjectConfig, DeploymentSource}, fetch_deployments::interface::{FetchDeployments, FetchDeploymentsParams, DeploymentItem, CommitOrRepositoryInfo}, get_first_commit_from_compare::interface::{GetFirstCommitFromCompare, FirstCommitFromCompareParams}}, common_types::{NonEmptyVec}, metrics_retrieving::retrieve_four_keys__schema::FirstCommitOrRepositoryInfo};
+use crate::{dependencies::{read_project_config::interface::{ReadProjectConfig, ProjectConfig, DeploymentSource, ResourceConfig}, fetch_deployments::interface::{FetchDeployments, FetchDeploymentsParams, DeploymentItem, CommitOrRepositoryInfo}, get_first_commit_from_compare::interface::{GetFirstCommitFromCompare, FirstCommitFromCompareParams}}, common_types::{NonEmptyVec}, metrics_retrieving::retrieve_four_keys__schema::FirstCommitOrRepositoryInfo};
 
 use super::{retrieve_four_keys__schema::{RetrieveFourKeysExecutionContext, RetrieveFourKeysEvent, RetrieveFourKeysEventError, DeploymentMetricItem, DeploymentCommitItem, DeploymentMetric, FourKeysMetrics, DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, RepositoryInfo}};
 
@@ -10,11 +10,11 @@ use super::{retrieve_four_keys__schema::{RetrieveFourKeysExecutionContext, Retri
 // ---------------------------
 
 async fn fetch_deployments<F: FetchDeployments>(fetch_deployments_from_github_deployments: &F, project_config: ProjectConfig, since: DateTime<Utc>, environment: &str) -> Result<Vec<DeploymentItem>, RetrieveFourKeysEventError> {
-    let deployments = match project_config.deployment_source {
-        DeploymentSource::GitHubDeployment => {
+    let deployments = match project_config.resource {
+        ResourceConfig::GitHubDeployment(resource_config) => {
             fetch_deployments_from_github_deployments.perform(FetchDeploymentsParams {
-                owner: project_config.github_owner,
-                repo: project_config.github_repo,
+                owner: resource_config.github_owner,
+                repo: resource_config.github_repo,
                 environment: environment.to_string(),
                 since: Some(since),
             }).await.map_err(RetrieveFourKeysEventError::FetchDeploymentsError)
@@ -32,11 +32,15 @@ async fn fetch_deployments<F: FetchDeployments>(fetch_deployments_from_github_de
 pub async fn to_metric_item<F: GetFirstCommitFromCompare>(get_first_commit_from_compare: &F, deployment: DeploymentItem, project_config: ProjectConfig) -> Result<DeploymentMetricItem, RetrieveFourKeysEventError> {
     let first_commit = match deployment.base {
         CommitOrRepositoryInfo::Commit(first_commit) => {
-            let commit = get_first_commit_from_compare.perform(FirstCommitFromCompareParams {
-                owner: project_config.github_owner,
-                repo: project_config.github_repo,
-                base: first_commit.sha,
-                head: deployment.head_commit.sha.clone(),
+            let commit = get_first_commit_from_compare.perform(match project_config.resource {
+                ResourceConfig::GitHubDeployment(resource_config) => {
+                    FirstCommitFromCompareParams {
+                        owner: resource_config.github_owner,
+                        repo: resource_config.github_repo,
+                        base: first_commit.sha,
+                        head: deployment.head_commit.sha.clone(),
+                    }},
+                    _ => unimplemented!(),
             }).await?;
             FirstCommitOrRepositoryInfo::FirstCommit(DeploymentCommitItem {
                 sha: commit.sha,
