@@ -1,11 +1,12 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 
-use crate::dependencies::github_api_client::GitHubAPIClient;
+use crate::dependencies::github_api::GitHubAPI;
 
 use super::interface::{FirstCommitFromCompareParams, FirstCommitItem, GetFirstCommitFromCompareError, GetFirstCommitFromCompare};
 
-pub async fn get_first_commit_from_compare(github_api_client: &GitHubAPIClient, params: &FirstCommitFromCompareParams) -> Result<FirstCommitItem, GetFirstCommitFromCompareError> {
+pub async fn get_first_commit_from_compare(github_api: GitHubAPI, params: &FirstCommitFromCompareParams) -> Result<FirstCommitItem, GetFirstCommitFromCompareError> {
+    let github_api_client = github_api.get_client().map_err(|e| anyhow::anyhow!(e)).map_err(GetFirstCommitFromCompareError::CreateAPIClientError)?;
     if params.base.is_empty() || params.head.is_empty() {
         return Err(GetFirstCommitFromCompareError::EmptyBaseOrHead(format!("base: {:?}, head: {:?}", params.base, params.head)))
     }
@@ -39,13 +40,13 @@ pub async fn get_first_commit_from_compare(github_api_client: &GitHubAPIClient, 
     })
 }
 
-struct GetFirstCommitFromCompareWithGitHub {
-    github_api_client: GitHubAPIClient,
+pub struct GetFirstCommitFromCompareWithGitHub {
+    pub github_api: GitHubAPI,
 }
 #[async_trait]
 impl GetFirstCommitFromCompare for GetFirstCommitFromCompareWithGitHub {
     async fn perform(&self, params: FirstCommitFromCompareParams) -> Result<FirstCommitItem, GetFirstCommitFromCompareError> {
-        let first_commit = get_first_commit_from_compare(&self.github_api_client, &params).await?;
+        let first_commit = get_first_commit_from_compare(self.github_api.clone(), &params).await?;
         Ok(first_commit)
     }
 }

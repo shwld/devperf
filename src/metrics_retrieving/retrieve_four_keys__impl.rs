@@ -9,13 +9,13 @@ use super::{retrieve_four_keys__schema::{RetrieveFourKeysExecutionContext, Retri
 // Fetch deployments step
 // ---------------------------
 
-async fn fetch_deployments<F: FetchDeployments>(fetch_deployments_from_github_deployments: &F, project_config: ProjectConfig, since: DateTime<Utc>) -> Result<Vec<DeploymentItem>, RetrieveFourKeysEventError> {
+async fn fetch_deployments<F: FetchDeployments>(fetch_deployments_from_github_deployments: &F, project_config: ProjectConfig, since: DateTime<Utc>, environment: &str) -> Result<Vec<DeploymentItem>, RetrieveFourKeysEventError> {
     let deployments = match project_config.deployment_source {
         DeploymentSource::GitHubDeployment => {
             fetch_deployments_from_github_deployments.perform(FetchDeploymentsParams {
                 owner: project_config.github_owner,
                 repo: project_config.github_repo,
-                environment: "production".to_string(),
+                environment: environment.to_string(),
                 since: Some(since),
             }).await.map_err(RetrieveFourKeysEventError::FetchDeploymentsError)
         },
@@ -164,17 +164,15 @@ fn calculate_four_keys(metrics_items: Vec<DeploymentMetricItem>, project_config:
 // overall workflow
 // ---------------------------
 pub async fn perform<
-    FReadConfig: ReadProjectConfig,
     FFetchDeploymentsFromGitHubDeployments: FetchDeployments,
     FGetFirstCommitFromCompare: GetFirstCommitFromCompare,
 >(
-    read_config: FReadConfig,
     fetch_deployments_from_github_deployments: FFetchDeploymentsFromGitHubDeployments,
     get_first_commit_from_compare: FGetFirstCommitFromCompare,
+    project_config: ProjectConfig,
     context: RetrieveFourKeysExecutionContext
 ) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError> {
-    let project_config = read_config.perform(context.clone().project_name).await.map_err(RetrieveFourKeysEventError::ReadProjectConfigError)?;
-    let deployments = fetch_deployments(&fetch_deployments_from_github_deployments, project_config.clone(), context.since).await?;
+    let deployments = fetch_deployments(&fetch_deployments_from_github_deployments, project_config.clone(), context.since, &context.environment).await?;
     let convert_items = deployments.into_iter().map(|deployment| {
         to_metric_item(&get_first_commit_from_compare, deployment, project_config.clone())
     });

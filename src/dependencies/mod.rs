@@ -1,4 +1,4 @@
-pub(super) mod github_api_client;
+pub(super) mod github_api;
 pub(super) mod settings_toml;
 
 pub mod get_first_commit_from_compare;

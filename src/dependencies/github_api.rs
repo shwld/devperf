@@ -1,7 +1,12 @@
 use octocrab::{Octocrab};
 use thiserror::Error;
 
-pub type GitHubAPIClient = Octocrab;
+use super::read_project_config::interface::ProjectConfig;
+
+#[derive(Clone)]
+pub struct GitHubAPI {
+    pub project_config: ProjectConfig,
+}
 #[derive(Error, Debug)]
 pub enum GitHubClientError {
     #[error("Octocrab error")]
@@ -17,11 +22,13 @@ pub enum GetGitHubPersonalTokenError {
 }
 pub type GetGitHubPersonalToken = fn () -> Result<String, GetGitHubPersonalTokenError>;
 
-pub fn create_github_client(get_personal_token: GetGitHubPersonalToken) -> Result<GitHubAPIClient, GitHubClientError> {
-    let token = get_personal_token()?;
-    let octocrab = Octocrab::builder()
-        .personal_token(token)
-        .build()?;
+impl GitHubAPI {
+    pub fn get_client(self) -> Result<Octocrab, GitHubClientError> {
+        let token = String::from(&self.project_config.github_personal_token);
+        let octocrab = Octocrab::builder()
+            .personal_token(token)
+            .build()?;
 
-    Ok(octocrab)
+        Ok(octocrab)
+    }
 }

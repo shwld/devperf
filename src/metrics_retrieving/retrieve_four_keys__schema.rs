@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc, NaiveDate};
 use serde::{Serialize, Deserialize};
 use thiserror::Error;
 
-use crate::dependencies::{read_project_config::interface::{ReadProjectConfig, ReadProjectConfigError}, fetch_deployments::interface::FetchDeploymentsError, get_first_commit_from_compare::interface::GetFirstCommitFromCompareError};
+use crate::dependencies::{read_project_config::interface::{ProjectConfig}, fetch_deployments::interface::FetchDeploymentsError, get_first_commit_from_compare::interface::GetFirstCommitFromCompareError};
 
 // ==================================
 // This file contains the definitions of PUBLIC types (exposed at the boundary of the bounded context)
@@ -17,6 +17,7 @@ pub struct RetrieveFourKeysExecutionContext {
     pub project_name: String,
     pub since: DateTime<Utc>,
     pub until: DateTime<Utc>,
+    pub environment: String,
 }
 
 // ------------------------------------
@@ -87,8 +88,6 @@ pub type RetrieveFourKeysEvent = FourKeysMetrics;
 // Error types
 #[derive(Error, Debug)]
 pub enum RetrieveFourKeysEventError {
-    #[error("Cannot read config")]
-    ReadProjectConfigError(#[source] ReadProjectConfigError),
     #[error("Cannot fetch")]
     FetchDeploymentsError(#[source] FetchDeploymentsError),
     #[error("GetFirstCommitFromCompareError")]
@@ -99,4 +98,4 @@ pub enum RetrieveFourKeysEventError {
 
 // ------------------------------------
 // the workflow itself
-pub type RetrieveFourKeys = fn (dyn ReadProjectConfig, RetrieveFourKeysExecutionContext) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError>;
+pub type RetrieveFourKeys = fn (ProjectConfig, RetrieveFourKeysExecutionContext) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError>;

@@ -19,11 +19,13 @@ pub struct FirstCommitFromCompareParams {
 
 #[derive(Debug, Error)]
 pub enum GetFirstCommitFromCompareError {
+    #[error("Create API client error")]
+    CreateAPIClientError(#[source] anyhow::Error),
     #[error("Empty base or head")]
     EmptyBaseOrHead(String),
     #[error("Base equals head")]
     BaseEqualsHead(String),
-    #[error("Cannot read the config file")]
+    #[error("Api client error")]
     APIClientError(#[source] anyhow::Error),
     #[error("API response is not normal")]
     APIResponseError(String),

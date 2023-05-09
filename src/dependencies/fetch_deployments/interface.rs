@@ -11,11 +11,13 @@ pub struct FetchDeploymentsParams {
 
 #[derive(Debug, Error)]
 pub enum FetchDeploymentsError {
-    #[error("Cannot read the config file")]
+    #[error("Create API client error")]
+    CreateAPIClientError(#[source] anyhow::Error),
+    #[error("Fetch deployments error")]
     FetchDeploymentsError(#[source] anyhow::Error),
-    #[error("Cannot get the initial commit")]
-    GetInitialCommitError(#[source] anyhow::Error),
-    #[error("Cannot get the initial commit")]
+    #[error("Cannot get repository")]
+    RepositoryNotFound(String),
+    #[error("Fetch deployments result is empty list")]
     FetchDeploymentsResultIsEmptyList(#[source] anyhow::Error),
 }
 

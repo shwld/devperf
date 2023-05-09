@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use anyhow::{anyhow, Context as _};
 use chrono::{DateTime, Utc, NaiveDate, NaiveTime};
 use serde::{Deserialize, Serialize};
-use crate::{dependencies::github_api_client::{GitHubAPIClient}, common_types::NonEmptyVec};
+use crate::{dependencies::github_api::{GitHubAPI}, common_types::NonEmptyVec};
 use super::{interface::{FetchDeploymentsError, FetchDeployments, FetchDeploymentsParams, DeploymentItem, CommitItem}, get_initial_commit_item::get_initial_commit_item};
 
 fn deployments_query(owner: &str, repo: &str, environment: &str, after: Option<String>) -> String {
@@ -148,7 +148,9 @@ pub struct DeploymentsCreatorGraphQLResponse {
     pub login: String,
 }
 
-async fn fetch_deployments(github_api_client: &GitHubAPIClient, params: FetchDeploymentsParams) -> Result<Vec<DeploymentsDeploymentsNodeGraphQLResponse>, FetchDeploymentsError> {
+
+async fn fetch_deployments(github_api: GitHubAPI, params: FetchDeploymentsParams) -> Result<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>, FetchDeploymentsError> {
+    let github_api_client = github_api.clone().get_client().map_err(|e| anyhow::anyhow!(e)).map_err(FetchDeploymentsError::CreateAPIClientError)?;
     let mut after: Option<String> = None;
     let mut has_next_page = true;
     let mut deployment_nodes: Vec<DeploymentsDeploymentsNodeGraphQLResponse> = Vec::new();
@@ -251,13 +253,13 @@ fn convert_to_items(deployment_nodes: NonEmptyVec<DeploymentsDeploymentsNodeGrap
     deployment_items
 }
 
-struct FetchDeploymentsWithGithubDeployment {
-    github_api_client: GitHubAPIClient,
+pub struct FetchDeploymentsWithGithubDeployment {
+    pub github_api: GitHubAPI,
 }
 #[async_trait]
 impl FetchDeployments for FetchDeploymentsWithGithubDeployment {
     async fn perform(&self, params: FetchDeploymentsParams) -> Result<Vec<DeploymentItem>, FetchDeploymentsError> {
-        let deployment_nodes = fetch_deployments(&self.github_api_client, params)
+        let deployment_nodes = fetch_deployments(self.github_api.clone(), params)
             .await?
             .into_iter()
             .filter(|x| has_success_status(x))
