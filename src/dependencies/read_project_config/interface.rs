@@ -17,8 +17,18 @@ pub struct GitHubDeploymentResourceConfig {
 }
 
 #[derive(Debug, Clone)]
+pub struct HerokuReleaseResourceConfig {
+    pub github_personal_token: String,
+    pub heroku_app_name: String,
+    pub heroku_api_token: String,
+    pub github_owner: String,
+    pub github_repo: String,
+}
+
+#[derive(Debug, Clone)]
 pub enum ResourceConfig {
     GitHubDeployment(GitHubDeploymentResourceConfig),
+    HerokuRelease(HerokuReleaseResourceConfig),
 }
 
 #[derive(Debug, Clone)]
@@ -37,6 +47,10 @@ pub enum ReadProjectConfigError {
     ConfigFileParseError(#[source] anyhow::Error),
     #[error("Cannot find the project")]
     ProjectNotFound(String),
+    #[error("Cannot read heroku app name")]
+    CannotReadHerokuAppName(String),
+    #[error("Cannot read heroku api token")]
+    CannotReadHerokuApiToken(String),
 }
 
 #[async_trait]

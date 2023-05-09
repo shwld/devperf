@@ -3,7 +3,7 @@ use anyhow::anyhow;
 
 use async_trait::async_trait;
 use crate::{dependencies::settings_toml::{ProjectName, Config}};
-use super::interface::{ReadProjectConfig, ReadProjectConfigError, ProjectConfig, DeploymentSource, GitHubDeploymentResourceConfig, ResourceConfig};
+use super::interface::{ReadProjectConfig, ReadProjectConfigError, ProjectConfig, DeploymentSource, GitHubDeploymentResourceConfig, ResourceConfig, HerokuReleaseResourceConfig};
 
 /// `Config` implements `Default`
 impl ::std::default::Default for Config {
@@ -23,6 +23,7 @@ impl ReadProjectConfig for ReadProjectConfigWithSettingsToml {
                 .and_then(|c| {
                     let project_config = c.projects.get(&project_name);
                     if let Some(project_config) = project_config {
+                        // TODO: ここでバリデーションしないとだめじゃない...?
                         match project_config.clone().deployment_source.as_str() {
                             "github_deployment" => {
                                 Ok(ProjectConfig {
@@ -31,6 +32,20 @@ impl ReadProjectConfig for ReadProjectConfigWithSettingsToml {
                                     working_days_per_week: project_config.clone().working_days_per_week,
                                     resource: ResourceConfig::GitHubDeployment(GitHubDeploymentResourceConfig {
                                         github_personal_token: project_config.clone().github_personal_token.unwrap_or(c.github_personal_token.clone()),
+                                        github_owner: project_config.clone().github_owner,
+                                        github_repo: project_config.clone().github_repo,
+                                    }),
+                                })
+                            },
+                            "heroku_release" => {
+                                Ok(ProjectConfig {
+                                    project_name: project_name,
+                                    developer_count: project_config.clone().developer_count,
+                                    working_days_per_week: project_config.clone().working_days_per_week,
+                                    resource: ResourceConfig::HerokuRelease(HerokuReleaseResourceConfig {
+                                        github_personal_token: project_config.clone().github_personal_token.unwrap_or(c.github_personal_token.clone()),
+                                        heroku_app_name: project_config.clone().heroku_app_name.ok_or(ReadProjectConfigError::CannotReadHerokuAppName("Cannot read".to_string()))?,
+                                        heroku_api_token: project_config.clone().heroku_api_token.ok_or(ReadProjectConfigError::CannotReadHerokuApiToken("Cannot read".to_string()))?,
                                         github_owner: project_config.clone().github_owner,
                                         github_repo: project_config.clone().github_repo,
                                     }),

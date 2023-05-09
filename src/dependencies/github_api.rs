@@ -25,9 +25,8 @@ pub type GetGitHubPersonalToken = fn () -> Result<String, GetGitHubPersonalToken
 impl GitHubAPI {
     pub fn get_client(self) -> Result<Octocrab, GitHubClientError> {
         let token = match &self.project_config.resource {
-            ResourceConfig::GitHubDeployment(resource_config) => {
-                resource_config.github_personal_token
-            },
+            ResourceConfig::GitHubDeployment(resource_config) => resource_config.github_personal_token.clone(),
+            ResourceConfig::HerokuRelease(resource_config) => resource_config.github_personal_token.clone(),
             _ => unimplemented!(),
         };
         let octocrab = Octocrab::builder()

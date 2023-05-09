@@ -15,6 +15,8 @@ pub enum FetchDeploymentsError {
     CreateAPIClientError(#[source] anyhow::Error),
     #[error("Fetch deployments error")]
     FetchDeploymentsError(#[source] anyhow::Error),
+    #[error("Get commit error")]
+    CommitIsNotFound(#[source] anyhow::Error),
     #[error("Cannot get repository created at")]
     GetRepositoryCreatedAtError(#[source] anyhow::Error),
     #[error("Cannot get repository")]
