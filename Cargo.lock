@@ -595,6 +595,7 @@ dependencies = [
  "confy",
  "cranenum",
  "env_logger",
+ "futures",
  "http-cache-reqwest",
  "inquire",
  "log",

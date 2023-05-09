@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, NaiveDate};
 use serde::{Serialize, Deserialize};
 use thiserror::Error;
 
@@ -44,8 +44,8 @@ pub struct DeploymentMetricItem {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct DeploymentMetricSummary {
-    pub date: chrono::NaiveDate,
-    pub deploys: u64,
+    pub date: NaiveDate,
+    pub deploys: u32,
     pub items: Vec<DeploymentMetricItem>,
 }
 
@@ -61,12 +61,12 @@ pub struct DeploymentMetricLeadTimeForChanges {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct DeploymentMetric {
-    pub since: chrono::DateTime<chrono::Utc>,
+    pub since: DateTime<chrono::Utc>,
     pub until: chrono::DateTime<chrono::Utc>,
-    pub developers: u64,
+    pub developers: u32,
     pub working_days_per_week: f32,
-    pub deploys: u64,
-    pub deploys_a_day_a_developer: f32,
+    pub deploys: u32,
+    pub deploys_per_a_day_per_a_developer: f32,
     pub deployment_frequency_per_day: f32,
     pub lead_time_for_changes: DeploymentMetricLeadTimeForChanges,
     pub environment: String,
@@ -93,6 +93,8 @@ pub enum RetrieveFourKeysEventError {
     FetchDeploymentsError(#[source] FetchDeploymentsError),
     #[error("GetFirstCommitFromCompareError")]
     GetFirstCommitFromCompareError(#[from] GetFirstCommitFromCompareError),
+    #[error("Cannot get date")]
+    CannotGetDate(String),
 }
 
 // ------------------------------------
