@@ -59,7 +59,7 @@ async fn main() -> anyhow::Result<()> {
                 "production".to_string()
             };
             let result = get_four_keys(&project, datetime_since, datetime_until, &environment).await?;
-            println!("{:?}", result);
+            println!("{:#?}", result);
         }
     }
     Ok(())

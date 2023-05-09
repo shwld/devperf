@@ -177,14 +177,16 @@ async fn fetch_deployments(github_api: GitHubAPI, params: FetchDeploymentsParams
         has_next_page = results.data.repository_owner.repository.deployments.page_info.has_next_page;
         after = results.data.repository_owner.repository.deployments.page_info.end_cursor;
 
+        log::debug!("has_next_page: {:#?}", has_next_page);
         // 初回デプロイとリードタイムを比較するためのリポジトリ作成日を取得
         if !has_next_page {
             let repo_creatd_at = get_created_at(github_api.clone(), &params.owner, &params.repo).await.map_err(|e| anyhow!(e)).map_err(FetchDeploymentsError::GetRepositoryCreatedAtError)?;
-            let time = NaiveTime::from_hms_opt(0, 0, 0).expect("Could not parse time");
-            let oldest_time = NaiveDate::from_ymd_opt(1970, 1, 1).expect("invalid date").and_time(time).and_local_timezone(Utc).unwrap();
+            log::debug!("repo_creatd_at: {:#?}", repo_creatd_at);
             deployment_nodes.push(DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryInfo(RepositoryInfo { created_at: repo_creatd_at }));
         }
     }
+    log::debug!("deployment_nodes: {:#?}", deployment_nodes);
+
 
     Ok(deployment_nodes)
 }
@@ -271,10 +273,13 @@ impl FetchDeployments for FetchDeploymentsWithGithubDeployment {
             .into_iter()
             .filter(|x| has_success_status(x))
             .collect::<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>>();
+        log::debug!("deployment_nodes: {:#?}", deployment_nodes);
         let non_empty_nodes = NonEmptyVec::new(deployment_nodes)
             .map_err(|e| anyhow::anyhow!(e))
             .map_err(FetchDeploymentsError::FetchDeploymentsResultIsEmptyList)?;
+        log::debug!("non_empty_nodes: {:#?}", non_empty_nodes);
         let deployment_items = convert_to_items(non_empty_nodes);
+        log::debug!("deployment_items: {:#?}", deployment_items);
 
         Ok(deployment_items)
     }
