@@ -12,10 +12,10 @@ impl ValidatedHerokuAppName {
         if token.len() > 1 {
           Ok(ValidatedHerokuAppName(token.to_string()))
         } else {
-          Err(ValidateHerokuAppNameError::InvalidToken("GitHub personal token is invalid".to_string()))
+          Err(ValidateHerokuAppNameError::InvalidName("Heroku app name is invalid".to_string()))
         }
       } else {
-        Err(ValidateHerokuAppNameError::Required("GitHub personal token is empty".to_string()))
+        Err(ValidateHerokuAppNameError::Required("Heroku app name is empty".to_string()))
       }
     }
 

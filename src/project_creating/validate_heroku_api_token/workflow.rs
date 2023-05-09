@@ -12,10 +12,10 @@ impl ValidatedHerokuApiToken {
         if token.len() > 20 {
           Ok(ValidatedHerokuApiToken(token.to_string()))
         } else {
-          Err(ValidateHerokuApiTokenError::InvalidToken("GitHub personal token is invalid".to_string()))
+          Err(ValidateHerokuApiTokenError::InvalidToken("Heroku authorization token is invalid".to_string()))
         }
       } else {
-        Err(ValidateHerokuApiTokenError::Required("GitHub personal token is empty".to_string()))
+        Err(ValidateHerokuApiTokenError::Required("Heroku authorization token is empty".to_string()))
       }
     }
 

@@ -36,6 +36,8 @@ impl GitHubDeploymentProjectCreatedDto {
             github_personal_token: domain_obj.github_personal_token.to_string(),
             project_config: ProjectConfig {
                 github_personal_token: None,
+                heroku_api_token: None,
+                heroku_app_name: None,
                 deployment_source: "github_deployment".to_string(),
                 github_owner: owner,
                 github_repo: repo,
