@@ -149,7 +149,7 @@ pub struct DeploymentsCreatorGraphQLResponse {
 }
 
 
-async fn fetch_deployments(github_api: GitHubAPI, params: FetchDeploymentsParams) -> Result<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>, FetchDeploymentsError> {
+async fn fetch_deployments(github_api: GitHubAPI, params: FetchDeploymentsParams) -> Result<Vec<DeploymentsDeploymentsNodeGraphQLResponse>, FetchDeploymentsError> {
     let github_api_client = github_api.clone().get_client().map_err(|e| anyhow::anyhow!(e)).map_err(FetchDeploymentsError::CreateAPIClientError)?;
     let mut after: Option<String> = None;
     let mut has_next_page = true;
@@ -165,7 +165,7 @@ async fn fetch_deployments(github_api: GitHubAPI, params: FetchDeploymentsParams
 
         // 初回デプロイと比較するための初回コミット用のデータを追加する。もうちょっとスマートに書きたい
         if !has_next_page {
-            let initial_commit = get_initial_commit_item(github_api_client, &params.owner, &params.repo).await.map_err(|e| anyhow!(e)).map_err(FetchDeploymentsError::GetInitialCommitError)?;
+            let initial_commit = get_initial_commit_item(github_api.clone(), &params.owner, &params.repo).await.map_err(|e| anyhow!(e)).map_err(FetchDeploymentsError::GetInitialCommitError)?;
             let time = NaiveTime::from_hms_opt(0, 0, 0).expect("Could not parse time");
             let oldest_time = NaiveDate::from_ymd_opt(1970, 1, 1).expect("invalid date").and_time(time).and_local_timezone(Utc).unwrap();
             deployment_nodes.push(DeploymentsDeploymentsNodeGraphQLResponse {

@@ -16,7 +16,7 @@ pub enum FetchDeploymentsError {
     #[error("Fetch deployments error")]
     FetchDeploymentsError(#[source] anyhow::Error),
     #[error("Cannot get repository")]
-    RepositoryNotFound(String),
+    GetInitialCommitError(#[source] anyhow::Error),
     #[error("Fetch deployments result is empty list")]
     FetchDeploymentsResultIsEmptyList(#[source] anyhow::Error),
 }

@@ -1,12 +1,14 @@
 use async_std::task::block_on;
 use thiserror::Error;
-use crate::dependencies::github_api_client::GitHubAPIClient;
+use crate::dependencies::github_api::GitHubAPI;
 
 use super::interface::CommitItem;
 
 
 #[derive(Debug, Error)]
 pub enum GetInitialDeploymentItemError {
+    #[error("Create API client error")]
+    CreateAPIClientError(#[source] anyhow::Error),
     #[error("Cannot read the config file")]
     FetchDeploymentsError(#[source] octocrab::Error),
     #[error("Cannot get the first commit")]
@@ -20,7 +22,8 @@ pub enum GetInitialDeploymentItemError {
 }
 
 
-pub async fn get_initial_commit_item(github_api_client: &GitHubAPIClient, owner: &str, repo: &str) -> Result<CommitItem, GetInitialDeploymentItemError> {
+pub async fn get_initial_commit_item(github_api: GitHubAPI, owner: &str, repo: &str) -> Result<CommitItem, GetInitialDeploymentItemError> {
+    let github_api_client = github_api.clone().get_client().map_err(|e| anyhow::anyhow!(e)).map_err(GetInitialDeploymentItemError::CreateAPIClientError)?;
     let query = format!("repo:{owner}/{repo}", owner = owner, repo = repo);
     let page_commit = github_api_client
         .search()
