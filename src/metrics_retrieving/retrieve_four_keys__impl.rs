@@ -1,9 +1,9 @@
 use chrono::{DateTime, Utc, NaiveTime, LocalResult, NaiveDate};
 use futures::future::{try_join_all};
 
-use crate::{dependencies::{read_project_config::interface::{ReadProjectConfig, ProjectConfig, DeploymentSource}, fetch_deployments::interface::{FetchDeployments, FetchDeploymentsParams, DeploymentItem}, get_first_commit_from_compare::interface::{GetFirstCommitFromCompare, FirstCommitFromCompareParams}}, common_types::{NonEmptyVec}};
+use crate::{dependencies::{read_project_config::interface::{ReadProjectConfig, ProjectConfig, DeploymentSource}, fetch_deployments::interface::{FetchDeployments, FetchDeploymentsParams, DeploymentItem, CommitOrRepositoryInfo}, get_first_commit_from_compare::interface::{GetFirstCommitFromCompare, FirstCommitFromCompareParams}}, common_types::{NonEmptyVec}, metrics_retrieving::retrieve_four_keys__schema::FirstCommitOrRepositoryInfo};
 
-use super::{retrieve_four_keys__schema::{RetrieveFourKeysExecutionContext, RetrieveFourKeysEvent, RetrieveFourKeysEventError, DeploymentMetricItem, DeploymentCommitItem, DeploymentMetric, FourKeysMetrics, DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary}};
+use super::{retrieve_four_keys__schema::{RetrieveFourKeysExecutionContext, RetrieveFourKeysEvent, RetrieveFourKeysEventError, DeploymentMetricItem, DeploymentCommitItem, DeploymentMetric, FourKeysMetrics, DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, RepositoryInfo}};
 
 // ---------------------------
 // Fetch deployments step
@@ -30,14 +30,33 @@ async fn fetch_deployments<F: FetchDeployments>(fetch_deployments_from_github_de
 // ---------------------------
 
 pub async fn to_metric_item<F: GetFirstCommitFromCompare>(get_first_commit_from_compare: &F, deployment: DeploymentItem, project_config: ProjectConfig) -> Result<DeploymentMetricItem, RetrieveFourKeysEventError> {
-    let first_commit = get_first_commit_from_compare.perform(FirstCommitFromCompareParams {
-        owner: project_config.github_owner,
-        repo: project_config.github_repo,
-        base: deployment.base_commit.sha,
-        head: deployment.head_commit.sha.clone(),
-    }).await?;
+    let first_commit = match deployment.base {
+        CommitOrRepositoryInfo::Commit(first_commit) => {
+            let commit = get_first_commit_from_compare.perform(FirstCommitFromCompareParams {
+                owner: project_config.github_owner,
+                repo: project_config.github_repo,
+                base: first_commit.sha,
+                head: deployment.head_commit.sha.clone(),
+            }).await?;
+            FirstCommitOrRepositoryInfo::FirstCommit(DeploymentCommitItem {
+                sha: commit.sha,
+                message: commit.message,
+                resource_path: commit.resource_path,
+                committed_at: commit.committed_at,
+                creator_login: commit.creator_login,
+            })
+        },
+        CommitOrRepositoryInfo::RepositoryInfo(info) => {
+            FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo { created_at: info.created_at })
+        },
+    };
+    let first_committed_at = match first_commit.clone() {
+        FirstCommitOrRepositoryInfo::FirstCommit(commit) => commit.committed_at,
+        FirstCommitOrRepositoryInfo::RepositoryInfo(info) => info.created_at,
+    };
+
     let head_commit = deployment.head_commit.clone();
-    let lead_time_for_changes_seconds = (deployment.deployed_at - first_commit.committed_at).num_seconds();
+    let lead_time_for_changes_seconds = (deployment.deployed_at - first_committed_at).num_seconds();
     let deployment_metric = DeploymentMetricItem {
         id: deployment.id,
         head_commit: DeploymentCommitItem {
@@ -47,13 +66,7 @@ pub async fn to_metric_item<F: GetFirstCommitFromCompare>(get_first_commit_from_
             committed_at: head_commit.committed_at,
             creator_login: head_commit.creator_login,
         },
-        first_commit: DeploymentCommitItem {
-            sha: first_commit.sha,
-            message: first_commit.message,
-            resource_path: first_commit.resource_path,
-            committed_at: first_commit.committed_at,
-            creator_login: first_commit.creator_login,
-        },
+        first_commit: first_commit,
         deployed_at: deployment.deployed_at,
         lead_time_for_changes_seconds: lead_time_for_changes_seconds,
     };

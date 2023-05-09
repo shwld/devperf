@@ -15,8 +15,10 @@ pub enum FetchDeploymentsError {
     CreateAPIClientError(#[source] anyhow::Error),
     #[error("Fetch deployments error")]
     FetchDeploymentsError(#[source] anyhow::Error),
+    #[error("Cannot get repository created at")]
+    GetRepositoryCreatedAtError(#[source] anyhow::Error),
     #[error("Cannot get repository")]
-    GetInitialCommitError(#[source] anyhow::Error),
+    RepositoryNotFound(String),
     #[error("Fetch deployments result is empty list")]
     FetchDeploymentsResultIsEmptyList(#[source] anyhow::Error),
 }
@@ -31,10 +33,21 @@ pub struct CommitItem {
 }
 
 #[derive(Debug, Clone)]
+pub struct RepositoryInfo {
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone)]
+pub enum CommitOrRepositoryInfo {
+    Commit(CommitItem),
+    RepositoryInfo(RepositoryInfo),
+}
+
+#[derive(Debug, Clone)]
 pub struct DeploymentItem {
     pub id: String,
     pub head_commit: CommitItem,
-    pub base_commit: CommitItem,
+    pub base: CommitOrRepositoryInfo,
     pub creator_login: String,
     pub deployed_at: DateTime<Utc>,
 }

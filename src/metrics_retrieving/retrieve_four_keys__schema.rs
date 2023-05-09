@@ -33,11 +33,22 @@ pub struct DeploymentCommitItem {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RepositoryInfo {
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum FirstCommitOrRepositoryInfo {
+    FirstCommit(DeploymentCommitItem),
+    RepositoryInfo(RepositoryInfo),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct DeploymentMetricItem {
     pub id: String,
     pub head_commit: DeploymentCommitItem,
-    pub first_commit: DeploymentCommitItem,
+    pub first_commit: FirstCommitOrRepositoryInfo,
     pub deployed_at: chrono::DateTime<chrono::Utc>,
     pub lead_time_for_changes_seconds: i64,
 }

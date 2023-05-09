@@ -1,5 +1,8 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, NaiveTime, NaiveDate, TimeZone};
 
 pub fn parse(s: &str) -> Result<DateTime<Utc>, anyhow::Error> {
-    DateTime::parse_from_rfc3339(s).map_err(|e| anyhow::anyhow!(e)).map(|x| x.with_timezone(&Utc))
+    let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap();
+    let naive_since = NaiveDate::parse_from_str(&s, "%Y-%m-%d")?;
+    let datetime = Utc.from_local_datetime(&naive_since.and_time(time)).unwrap();
+    Ok(datetime)
 }
