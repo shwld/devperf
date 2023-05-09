@@ -197,7 +197,7 @@ async fn fetch_deployments(github_api_client: &GitHubAPIClient, params: FetchDep
     Ok(deployment_nodes)
 }
 
-fn has_success_status(deployment: DeploymentsDeploymentsNodeGraphQLResponse) -> bool {
+fn has_success_status(deployment: &DeploymentsDeploymentsNodeGraphQLResponse) -> bool {
     let statuses = deployment.statuses.nodes.iter().map(|x| x.state.to_uppercase()).collect::<Vec<String>>();
     let has_success = statuses.len() > 0 && statuses.iter().any(|state| state == "SUCCESS");
     has_success
@@ -217,7 +217,7 @@ fn find_status(deployment: &DeploymentsDeploymentsNodeGraphQLResponse) -> Option
 fn convert_to_items(deployment_nodes: NonEmptyVec<DeploymentsDeploymentsNodeGraphQLResponse>) -> Vec<DeploymentItem> {
     let mut sorted: NonEmptyVec<DeploymentsDeploymentsNodeGraphQLResponse> = deployment_nodes.clone();
     sorted.sort_by_key(|a| a.created_at);
-    let (first_item, rest) = (sorted.first(), sorted.rest());
+    let (first_item, rest) = sorted.get();
     let first_commit = CommitItem {
         sha: first_item.commit.id.clone(),
         message: first_item.commit.message.clone(),
@@ -230,26 +230,21 @@ fn convert_to_items(deployment_nodes: NonEmptyVec<DeploymentsDeploymentsNodeGrap
         .iter()
         .scan(first_commit, |previous: &mut CommitItem, deployment: &DeploymentsDeploymentsNodeGraphQLResponse| {
             let status = find_status(deployment);
+            let commit_item = CommitItem {
+                sha: deployment.clone().commit.id,
+                message: deployment.clone().commit.message,
+                resource_path: deployment.clone().commit.commit_resource_path,
+                committed_at: deployment.clone().commit.committed_date,
+                creator_login: deployment.clone().creator.login,
+            };
             let deployment_item = DeploymentItem {
-                id: deployment.id,
-                head_commit: CommitItem {
-                    sha: deployment.commit.id,
-                    message: deployment.commit.message,
-                    resource_path: deployment.commit.commit_resource_path,
-                    committed_at: deployment.commit.committed_date,
-                    creator_login: deployment.creator.login,
-                },
+                id: deployment.clone().id,
+                head_commit: commit_item.clone(),
                 base_commit: previous.clone(),
-                creator_login: deployment.creator.login,
+                creator_login: deployment.clone().creator.login,
                 deployed_at: status.map_or(deployment.created_at, |x| x.created_at),
             };
-            *previous = CommitItem {
-                sha: deployment.commit.id,
-                message: deployment.commit.message,
-                resource_path: deployment.commit.commit_resource_path,
-                committed_at: deployment.commit.committed_date,
-                creator_login: deployment.creator.login,
-            };
+            *previous = commit_item;
             Some(deployment_item)
         }).collect::<Vec<DeploymentItem>>();
 
@@ -265,7 +260,7 @@ impl FetchDeployments for FetchDeploymentsWithGithubDeployment {
         let deployment_nodes = fetch_deployments(&self.github_api_client, params)
             .await?
             .into_iter()
-            .filter(|&x| has_success_status(x))
+            .filter(|x| has_success_status(x))
             .collect::<Vec<DeploymentsDeploymentsNodeGraphQLResponse>>();
         let non_empty_nodes = NonEmptyVec::new(deployment_nodes)
             .map_err(|e| anyhow::anyhow!(e))

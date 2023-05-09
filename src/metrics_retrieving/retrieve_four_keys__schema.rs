@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Serialize, Deserialize};
 use thiserror::Error;
 
-use crate::dependencies::{read_project_config::interface::{ReadProjectConfig, ReadProjectConfigError}, fetch_deployments::interface::FetchDeploymentsError};
+use crate::dependencies::{read_project_config::interface::{ReadProjectConfig, ReadProjectConfigError}, fetch_deployments::interface::FetchDeploymentsError, get_first_commit_from_compare::interface::GetFirstCommitFromCompareError};
 
 // ==================================
 // This file contains the definitions of PUBLIC types (exposed at the boundary of the bounded context)
@@ -91,6 +91,8 @@ pub enum RetrieveFourKeysEventError {
     ReadProjectConfigError(#[source] ReadProjectConfigError),
     #[error("Cannot fetch")]
     FetchDeploymentsError(#[source] FetchDeploymentsError),
+    #[error("GetFirstCommitFromCompareError")]
+    GetFirstCommitFromCompareError(#[from] GetFirstCommitFromCompareError),
 }
 
 // ------------------------------------

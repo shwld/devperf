@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use serde::{Serialize, Deserialize};
 use thiserror::Error;
 
@@ -50,10 +49,13 @@ impl<T: Clone> NonEmptyVec<T> {
     pub fn sort_by_key<F, K>(&self, key_fn: F) -> Self where
     F: FnMut(&T) -> K,
     K: Ord,  {
-        let mut vec = self.get_all();
+        let mut vec = self.clone().get_all();
         vec.sort_by_key(key_fn);
 
         Self::new(vec).expect("NonEmptyVec::sort_by_key should never return an empty vector")
+    }
+    pub fn get(self) -> (T, Vec<T>) {
+        (self.0, self.1)
     }
 }
 
