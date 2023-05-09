@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Serialize, Deserialize};
+use thiserror::Error;
 
 pub struct NonZeroU32(u32);
 impl NonZeroU32 {
@@ -23,15 +24,37 @@ impl NonZeroF32 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct DeploymentItem {
-    pub id: String,
-    pub head_commit_sha: String,
-    pub head_commit_message: String,
-    pub head_commit_resource_path: String,
-    pub head_committed_at: DateTime<Utc>,
-    pub creator_login: String,
-    pub deployed_at: DateTime<Utc>,
+#[derive(Clone, Debug)]
+pub struct NonEmptyVec<T: Clone>(T, Vec<T>);
+#[derive(Debug, Error)]
+pub enum NonEmptyVecCreateErr {
+    #[error("Cannot create a NonEmptyVec from an empty vector")]
+    EmptyVec,
+}
+impl<T: Clone> NonEmptyVec<T> {
+    pub fn new(vec: Vec<T>) -> Result<NonEmptyVec<T>, NonEmptyVecCreateErr> {
+        let (first, rest) = vec.split_first().ok_or(NonEmptyVecCreateErr::EmptyVec)?;
+        Ok(NonEmptyVec(first.clone(), rest.to_vec()))
+    }
+    pub fn get_all(self) -> Vec<T> {
+        let first = vec![self.0];
+        let rest = self.1;
+        [first, rest].concat()
+    }
+    pub fn first(self) -> T {
+        self.0
+    }
+    pub fn rest(self) -> Vec<T> {
+        self.1
+    }
+    pub fn sort_by_key<F, K>(&self, key_fn: F) -> Self where
+    F: FnMut(&T) -> K,
+    K: Ord,  {
+        let mut vec = self.get_all();
+        vec.sort_by_key(key_fn);
+
+        Self::new(vec).expect("NonEmptyVec::sort_by_key should never return an empty vector")
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
