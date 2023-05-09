@@ -9,10 +9,18 @@ use super::{retrieve_four_keys__schema::{RetrieveFourKeysExecutionContext, Retri
 // Fetch deployments step
 // ---------------------------
 
-async fn fetch_deployments<F: FetchDeployments>(fetch_deployments_from_github_deployments: &F, project_config: ProjectConfig, since: DateTime<Utc>, environment: &str) -> Result<Vec<DeploymentItem>, RetrieveFourKeysEventError> {
+async fn fetch_deployments<FGD: FetchDeployments, FHR: FetchDeployments>(fetch_deployments_with_github_deployments: &FGD, fetch_deployments_with_heroku_release: &FHR, project_config: ProjectConfig, since: DateTime<Utc>, environment: &str) -> Result<Vec<DeploymentItem>, RetrieveFourKeysEventError> {
     let deployments = match project_config.resource {
         ResourceConfig::GitHubDeployment(resource_config) => {
-            fetch_deployments_from_github_deployments.perform(FetchDeploymentsParams {
+            fetch_deployments_with_github_deployments.perform(FetchDeploymentsParams {
+                owner: resource_config.github_owner,
+                repo: resource_config.github_repo,
+                environment: environment.to_string(),
+                since: Some(since),
+            }).await.map_err(RetrieveFourKeysEventError::FetchDeploymentsError)
+        },
+        ResourceConfig::HerokuRelease(resource_config) => {
+            fetch_deployments_with_heroku_release.perform(FetchDeploymentsParams {
                 owner: resource_config.github_owner,
                 repo: resource_config.github_repo,
                 environment: environment.to_string(),
@@ -181,15 +189,17 @@ fn calculate_four_keys(metrics_items: Vec<DeploymentMetricItem>, project_config:
 // overall workflow
 // ---------------------------
 pub async fn perform<
-    FFetchDeploymentsFromGitHubDeployments: FetchDeployments,
+    FFetchDeploymentsWithGitHubDeployments: FetchDeployments,
+    FFetchDeploymentsWithHerokuRelease: FetchDeployments,
     FGetFirstCommitFromCompare: GetFirstCommitFromCompare,
 >(
-    fetch_deployments_from_github_deployments: FFetchDeploymentsFromGitHubDeployments,
+    fetch_deployments_with_github_deployments: FFetchDeploymentsWithGitHubDeployments,
+    fetch_deployments_with_heroku_release: FFetchDeploymentsWithHerokuRelease,
     get_first_commit_from_compare: FGetFirstCommitFromCompare,
     project_config: ProjectConfig,
     context: RetrieveFourKeysExecutionContext
 ) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError> {
-    let deployments = fetch_deployments(&fetch_deployments_from_github_deployments, project_config.clone(), context.since, &context.environment).await?;
+    let deployments = fetch_deployments(&fetch_deployments_with_github_deployments, &fetch_deployments_with_heroku_release, project_config.clone(), context.since, &context.environment).await?;
     let convert_items = deployments.into_iter().map(|deployment| {
         to_metric_item(&get_first_commit_from_compare, deployment, project_config.clone())
     });

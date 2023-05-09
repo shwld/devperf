@@ -1,7 +1,7 @@
 use anyhow::Result;
 use inquire::{Select};
 
-use crate::{cli::initializer::{github_deployment}};
+use crate::{cli::initializer::{github_deployment, heroku_release}};
 
 pub async fn perform() -> Result<()> {
     println!("Initialize CLI");
@@ -13,7 +13,7 @@ pub async fn perform() -> Result<()> {
             github_deployment::init().await;
         },
         "Heroku releases" => {
-            unimplemented!();
+            heroku_release::init().await;
         },
         _ => panic!("Not implemented"),
     };
