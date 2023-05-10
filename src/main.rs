@@ -4,7 +4,6 @@ use clap::Parser;
 mod apps;
 mod common_types;
 mod dependencies;
-mod logger;
 mod metrics_retrieving;
 mod project_creating;
 mod shared;
@@ -13,7 +12,7 @@ use apps::cli::config::{get_config_path, ConfigAction};
 use apps::cli::four_keys::get_four_keys;
 use apps::cli::initializer;
 use apps::cli::sub_commands::Action;
-use shared::datetime_utc;
+use shared::{datetime_utc, setup_logger};
 
 #[derive(Parser)]
 struct Args {
@@ -27,7 +26,7 @@ struct Args {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    logger::config::init(args.verbose);
+    setup_logger::init(args.verbose);
 
     match args.action {
         Action::Init {} => {
