@@ -1,8 +1,8 @@
 use cranenum::Cranenum;
 
 use crate::{
-    common_types::ProjectConfig,
     dependencies::write_new_config::interface::WriteConfigData,
+    persistence::project_config::ProjectConfig,
     project_creating::{
         validate_developer_count::{self, schema::ValidateDeveloperCountError},
         validate_github_owner_repo::{self, schema::ValidateGitHubOwnerRepoError},

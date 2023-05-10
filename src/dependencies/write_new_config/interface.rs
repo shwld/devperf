@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use thiserror::Error;
 
-use crate::common_types::ProjectConfig;
+use crate::persistence::project_config::ProjectConfig;
 
 #[derive(Debug, Clone)]
 pub struct WriteConfigData {

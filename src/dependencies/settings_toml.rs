@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::common_types::ProjectConfig;
+use crate::persistence::project_config::ProjectConfig;
 
 pub type ProjectName = String;
 
