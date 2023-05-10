@@ -4,11 +4,11 @@ use crate::{
     dependencies::write_new_config::interface::WriteConfigData,
     persistence::project_config::ProjectConfig,
     project_creating::{
-        validate_developer_count::{self, schema::ValidateDeveloperCountError},
         validate_github_owner_repo::{self, schema::ValidateGitHubOwnerRepoError},
         validate_github_personal_token::{self, schema::ValidateGitHubPersonalTokenError},
         validate_working_days_per_week::{self, schema::ValidateWorkingDaysPerWeekError},
     },
+    project_parameter_validating::validate_developer_count::{self, ValidateDeveloperCountError},
 };
 
 use super::create_github_deployment_project_schema::GitHubDeploymentProjectCreated;
@@ -34,9 +34,8 @@ impl GitHubDeploymentProjectCreatedDto {
             "{}/{}",
             dto.project_config.github_owner, dto.project_config.github_repo
         ))?;
-        let developer_count = validate_developer_count::workflow::perform(
-            dto.project_config.developer_count.to_string(),
-        )?;
+        let developer_count =
+            validate_developer_count::perform(dto.project_config.developer_count.to_string())?;
         let working_days_per_week = validate_working_days_per_week::workflow::perform(
             dto.project_config.working_days_per_week.to_string(),
         )?;

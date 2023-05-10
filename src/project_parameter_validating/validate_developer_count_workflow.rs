@@ -1,4 +1,4 @@
-use super::schema::*;
+use super::validate_developer_count_schema::*;
 
 pub fn perform(
     count: UnvalidatedDeveloperCount,
