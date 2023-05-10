@@ -1,7 +1,7 @@
 use crate::dependencies::write_new_config::interface::WriteNewConfig;
 
-use super::dto::HerokuReleaseProjectCreatedDto;
-use super::schema::*;
+use super::create_heroku_release_project_dto::HerokuReleaseProjectCreatedDto;
+use super::create_heroku_release_project_schema::*;
 
 pub async fn perform<T: WriteNewConfig>(
     write_new_config: T,

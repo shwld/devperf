@@ -4,9 +4,7 @@ use super::input::{
 };
 use crate::{
     dependencies::write_new_config::settings_toml::WriteNewConfigWithSettingsToml,
-    project_creating::create_heroku_release_project::{
-        self, schema::UncreatedHerokuReleaseProject,
-    },
+    project_creating::create_heroku_release_project::{self, UncreatedHerokuReleaseProject},
 };
 
 pub async fn init() {
@@ -28,11 +26,8 @@ pub async fn init() {
         github_personal_token: github_token,
     };
 
-    match create_heroku_release_project::workflow::perform(
-        WriteNewConfigWithSettingsToml,
-        uncreated_project,
-    )
-    .await
+    match create_heroku_release_project::perform(WriteNewConfigWithSettingsToml, uncreated_project)
+        .await
     {
         Ok(_project) => {
             println!("Complete project creation!");

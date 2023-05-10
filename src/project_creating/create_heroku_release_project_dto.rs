@@ -13,7 +13,7 @@ use crate::{
     },
 };
 
-use super::schema::HerokuReleaseProjectCreated;
+use super::create_heroku_release_project_schema::HerokuReleaseProjectCreated;
 
 pub type HerokuReleaseProjectCreatedDto = WriteConfigData;
 
