@@ -4,7 +4,6 @@ use crate::{
     dependencies::write_new_config::interface::WriteConfigData,
     persistence::project_config::ProjectConfig,
     project_creating::{
-        validate_heroku_api_token::{self, schema::ValidateHerokuApiTokenError},
         validate_heroku_app_name::{self, schema::ValidateHerokuAppNameError},
         validate_working_days_per_week::{self, schema::ValidateWorkingDaysPerWeekError},
     },
@@ -12,6 +11,7 @@ use crate::{
         validate_developer_count::{self, ValidateDeveloperCountError},
         validate_github_owner_repo::{self, ValidateGitHubOwnerRepoError},
         validate_github_personal_token::{self, ValidateGitHubPersonalTokenError},
+        validate_heroku_auth_token::{self, ValidateHerokuApiTokenError},
     },
 };
 
@@ -38,9 +38,8 @@ impl HerokuReleaseProjectCreatedDto {
         let heroku_app_name = validate_heroku_app_name::workflow::perform(
             dto.project_config.clone().heroku_app_name,
         )?;
-        let heroku_api_token = validate_heroku_api_token::workflow::perform(
-            dto.project_config.clone().heroku_api_token,
-        )?;
+        let heroku_api_token =
+            validate_heroku_auth_token::perform(dto.project_config.clone().heroku_api_token)?;
         let github_owner_repo = validate_github_owner_repo::perform(format!(
             "{}/{}",
             dto.project_config.github_owner, dto.project_config.github_repo

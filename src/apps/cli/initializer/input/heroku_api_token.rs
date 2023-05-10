@@ -1,6 +1,8 @@
 use inquire::{Password, PasswordDisplayMode};
 
-use crate::project_creating::validate_heroku_api_token::{self, schema::ValidatedHerokuApiToken};
+use crate::project_parameter_validating::validate_heroku_auth_token::{
+    self, ValidatedHerokuApiToken,
+};
 
 pub fn input() -> ValidatedHerokuApiToken {
     let value = Password::new("Type a Heroku Authorization token: ")
@@ -8,7 +10,7 @@ pub fn input() -> ValidatedHerokuApiToken {
         .without_confirmation()
         .prompt()
         .unwrap();
-    let value = validate_heroku_api_token::workflow::perform(Some(value));
+    let value = validate_heroku_auth_token::perform(Some(value));
 
     if let Ok(value) = value {
         value

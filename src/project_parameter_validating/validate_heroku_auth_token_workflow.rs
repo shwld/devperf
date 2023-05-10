@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::schema::*;
+use super::validate_heroku_auth_token_schema::*;
 
 pub fn perform(
     token: UnvalidatedHerokuApiToken,
