@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
 use clap::Parser;
 
-mod cli;
+mod apps;
 mod common_types;
 mod dependencies;
 mod logger;
@@ -9,10 +9,10 @@ mod metrics_retrieving;
 mod project_creating;
 mod shared;
 
-use cli::config::{get_config_path, ConfigAction};
-use cli::four_keys::get_four_keys;
-use cli::initializer;
-use cli::sub_commands::Action;
+use apps::cli::config::{get_config_path, ConfigAction};
+use apps::cli::four_keys::get_four_keys;
+use apps::cli::initializer;
+use apps::cli::sub_commands::Action;
 use shared::datetime_utc;
 
 #[derive(Parser)]

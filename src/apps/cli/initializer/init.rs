@@ -1,7 +1,7 @@
 use anyhow::Result;
 use inquire::Select;
 
-use crate::cli::initializer::{github_deployment, heroku_release};
+use super::{github_deployment, heroku_release};
 
 pub async fn perform() -> Result<()> {
     println!("Initialize CLI");
