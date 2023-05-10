@@ -1,2 +1,2 @@
-pub mod settings_toml;
 pub mod interface;
+pub mod settings_toml;

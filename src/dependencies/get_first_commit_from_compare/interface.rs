@@ -39,5 +39,8 @@ pub enum GetFirstCommitFromCompareError {
 
 #[async_trait]
 pub trait GetFirstCommitFromCompare {
-    async fn perform(&self, params: FirstCommitFromCompareParams) -> Result<FirstCommitItem, GetFirstCommitFromCompareError>;
+    async fn perform(
+        &self,
+        params: FirstCommitFromCompareParams,
+    ) -> Result<FirstCommitItem, GetFirstCommitFromCompareError>;
 }

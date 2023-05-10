@@ -1,32 +1,57 @@
-use chrono::{DateTime, Utc, NaiveDate};
-use futures::{future::{try_join_all}};
+use chrono::{DateTime, NaiveDate, Utc};
+use futures::future::try_join_all;
 
-use crate::{dependencies::{read_project_config::interface::{ReadProjectConfig, ProjectConfig, ResourceConfig}, fetch_deployments::interface::{FetchDeployments, FetchDeploymentsParams, DeploymentItem, CommitOrRepositoryInfo}, get_first_commit_from_compare::interface::{GetFirstCommitFromCompare, FirstCommitFromCompareParams}}, metrics_retrieving::retrieve_four_keys__schema::FirstCommitOrRepositoryInfo};
+use crate::{
+    dependencies::{
+        fetch_deployments::interface::{
+            CommitOrRepositoryInfo, DeploymentItem, FetchDeployments, FetchDeploymentsParams,
+        },
+        get_first_commit_from_compare::interface::{
+            FirstCommitFromCompareParams, GetFirstCommitFromCompare,
+        },
+        read_project_config::interface::{ProjectConfig, ReadProjectConfig, ResourceConfig},
+    },
+    metrics_retrieving::retrieve_four_keys__schema::FirstCommitOrRepositoryInfo,
+};
 
-use super::{retrieve_four_keys__schema::{RetrieveFourKeysExecutionContext, RetrieveFourKeysEvent, RetrieveFourKeysEventError, DeploymentMetricItem, DeploymentCommitItem, DeploymentMetric, FourKeysMetrics, DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, RepositoryInfo}};
+use super::retrieve_four_keys__schema::{
+    DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
+    DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, FourKeysMetrics, RepositoryInfo,
+    RetrieveFourKeysEvent, RetrieveFourKeysEventError, RetrieveFourKeysExecutionContext,
+};
 
 // ---------------------------
 // Fetch deployments step
 // ---------------------------
 
-async fn fetch_deployments<FGD: FetchDeployments, FHR: FetchDeployments>(fetch_deployments_with_github_deployments: &FGD, fetch_deployments_with_heroku_release: &FHR, project_config: ProjectConfig, since: DateTime<Utc>, environment: &str) -> Result<Vec<DeploymentItem>, RetrieveFourKeysEventError> {
+async fn fetch_deployments<FGD: FetchDeployments, FHR: FetchDeployments>(
+    fetch_deployments_with_github_deployments: &FGD,
+    fetch_deployments_with_heroku_release: &FHR,
+    project_config: ProjectConfig,
+    since: DateTime<Utc>,
+    environment: &str,
+) -> Result<Vec<DeploymentItem>, RetrieveFourKeysEventError> {
     let deployments = match project_config.resource {
         ResourceConfig::GitHubDeployment(resource_config) => {
-            fetch_deployments_with_github_deployments.perform(FetchDeploymentsParams {
+            fetch_deployments_with_github_deployments
+                .perform(FetchDeploymentsParams {
+                    owner: resource_config.github_owner,
+                    repo: resource_config.github_repo,
+                    environment: environment.to_string(),
+                    since: Some(since),
+                })
+                .await
+                .map_err(RetrieveFourKeysEventError::FetchDeploymentsError)
+        }
+        ResourceConfig::HerokuRelease(resource_config) => fetch_deployments_with_heroku_release
+            .perform(FetchDeploymentsParams {
                 owner: resource_config.github_owner,
                 repo: resource_config.github_repo,
                 environment: environment.to_string(),
                 since: Some(since),
-            }).await.map_err(RetrieveFourKeysEventError::FetchDeploymentsError)
-        },
-        ResourceConfig::HerokuRelease(resource_config) => {
-            fetch_deployments_with_heroku_release.perform(FetchDeploymentsParams {
-                owner: resource_config.github_owner,
-                repo: resource_config.github_repo,
-                environment: environment.to_string(),
-                since: Some(since),
-            }).await.map_err(RetrieveFourKeysEventError::FetchDeploymentsError)
-        },
+            })
+            .await
+            .map_err(RetrieveFourKeysEventError::FetchDeploymentsError),
         _ => unimplemented!(),
     }?;
 
@@ -37,43 +62,53 @@ async fn fetch_deployments<FGD: FetchDeployments, FHR: FetchDeployments>(fetch_d
 // Convert to MetricItem step
 // ---------------------------
 
-pub async fn to_metric_item<F: GetFirstCommitFromCompare>(get_first_commit_from_compare: &F, deployment: DeploymentItem, project_config: ProjectConfig) -> Result<DeploymentMetricItem, RetrieveFourKeysEventError> {
+pub async fn to_metric_item<F: GetFirstCommitFromCompare>(
+    get_first_commit_from_compare: &F,
+    deployment: DeploymentItem,
+    project_config: ProjectConfig,
+) -> Result<DeploymentMetricItem, RetrieveFourKeysEventError> {
     let first_commit: Option<FirstCommitOrRepositoryInfo> = match deployment.base {
         CommitOrRepositoryInfo::Commit(first_commit) => {
-            let commit = get_first_commit_from_compare.perform(match project_config.resource {
-                ResourceConfig::GitHubDeployment(resource_config) => {
-                    FirstCommitFromCompareParams {
-                        owner: resource_config.github_owner,
-                        repo: resource_config.github_repo,
-                        base: first_commit.sha,
-                        head: deployment.head_commit.sha.clone(),
+            let commit = get_first_commit_from_compare
+                .perform(match project_config.resource {
+                    ResourceConfig::GitHubDeployment(resource_config) => {
+                        FirstCommitFromCompareParams {
+                            owner: resource_config.github_owner,
+                            repo: resource_config.github_repo,
+                            base: first_commit.sha,
+                            head: deployment.head_commit.sha.clone(),
+                        }
                     }
-                },
-                ResourceConfig::HerokuRelease(resource_config) => {
-                    FirstCommitFromCompareParams {
-                        owner: resource_config.github_owner,
-                        repo: resource_config.github_repo,
-                        base: first_commit.sha,
-                        head: deployment.head_commit.sha.clone(),
+                    ResourceConfig::HerokuRelease(resource_config) => {
+                        FirstCommitFromCompareParams {
+                            owner: resource_config.github_owner,
+                            repo: resource_config.github_repo,
+                            base: first_commit.sha,
+                            head: deployment.head_commit.sha.clone(),
+                        }
                     }
-                },
-                _ => unimplemented!(),
-            }).await;
+                    _ => unimplemented!(),
+                })
+                .await;
             log::debug!("first_commit: {:?}", commit);
             match commit {
-                Ok(commit) => Some(FirstCommitOrRepositoryInfo::FirstCommit(DeploymentCommitItem {
-                    sha: commit.sha,
-                    message: commit.message,
-                    resource_path: commit.resource_path,
-                    committed_at: commit.committed_at,
-                    creator_login: commit.creator_login,
-                })),
+                Ok(commit) => Some(FirstCommitOrRepositoryInfo::FirstCommit(
+                    DeploymentCommitItem {
+                        sha: commit.sha,
+                        message: commit.message,
+                        resource_path: commit.resource_path,
+                        committed_at: commit.committed_at,
+                        creator_login: commit.creator_login,
+                    },
+                )),
                 Err(_) => None,
             }
-        },
-        CommitOrRepositoryInfo::RepositoryInfo(info) => {
-            Some(FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo { created_at: info.created_at }))
-        },
+        }
+        CommitOrRepositoryInfo::RepositoryInfo(info) => Some(
+            FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo {
+                created_at: info.created_at,
+            }),
+        ),
     };
     let lead_time_for_changes_seconds = if let Some(first_commit) = first_commit.clone() {
         let first_committed_at = match first_commit {
@@ -85,7 +120,6 @@ pub async fn to_metric_item<F: GetFirstCommitFromCompare>(get_first_commit_from_
         None
     };
 
-
     let head_commit = deployment.head_commit.clone();
     let first_commit = first_commit.unwrap_or(FirstCommitOrRepositoryInfo::FirstCommit(
         DeploymentCommitItem {
@@ -94,7 +128,7 @@ pub async fn to_metric_item<F: GetFirstCommitFromCompare>(get_first_commit_from_
             resource_path: deployment.head_commit.resource_path,
             committed_at: deployment.head_commit.committed_at,
             creator_login: deployment.head_commit.creator_login,
-        }
+        },
     ));
     let deployment_metric = DeploymentMetricItem {
         id: deployment.id,
@@ -105,14 +139,13 @@ pub async fn to_metric_item<F: GetFirstCommitFromCompare>(get_first_commit_from_
             committed_at: head_commit.committed_at,
             creator_login: head_commit.creator_login,
         },
-        first_commit: first_commit,
+        first_commit,
         deployed_at: deployment.deployed_at,
-        lead_time_for_changes_seconds: lead_time_for_changes_seconds,
+        lead_time_for_changes_seconds,
     };
 
     Ok(deployment_metric)
 }
-
 
 // ---------------------------
 // Calculation step
@@ -134,7 +167,7 @@ fn split_by_day(metrics_items: Vec<DeploymentMetricItem>) -> Vec<Vec<DeploymentM
 
         inner_items.push(item);
     }
-    if inner_items.len() > 0 {
+    if !inner_items.is_empty() {
         items_by_day.push(inner_items);
     }
 
@@ -157,29 +190,40 @@ fn median(numbers: Vec<i64>) -> f64 {
     }
 }
 
-fn calculate_four_keys(metrics_items: Vec<DeploymentMetricItem>, project_config: ProjectConfig, context: RetrieveFourKeysExecutionContext) -> Result<FourKeysMetrics, RetrieveFourKeysEventError> {
-    let ranged_items = metrics_items.into_iter().filter(|it| it.deployed_at >= context.since && it.deployed_at <= context.until).collect::<Vec<DeploymentMetricItem>>();
+fn calculate_four_keys(
+    metrics_items: Vec<DeploymentMetricItem>,
+    project_config: ProjectConfig,
+    context: RetrieveFourKeysExecutionContext,
+) -> Result<FourKeysMetrics, RetrieveFourKeysEventError> {
+    let ranged_items = metrics_items
+        .into_iter()
+        .filter(|it| it.deployed_at >= context.since && it.deployed_at <= context.until)
+        .collect::<Vec<DeploymentMetricItem>>();
     let items_by_day = split_by_day(ranged_items);
     log::debug!("items_by_day: {:?}", items_by_day);
 
-    let total_deployments = items_by_day.iter().fold(0, |total, i| total + i.len() as u32);
+    let total_deployments = items_by_day
+        .iter()
+        .fold(0, |total, i| total + i.len() as u32);
     let duration_since = context.until.signed_duration_since(context.since);
     let days = duration_since.num_days();
-    let deployment_frequency_per_day = total_deployments as f32 / (days as f32 * (project_config.working_days_per_week / 7.0));
+    let deployment_frequency_per_day =
+        total_deployments as f32 / (days as f32 * (project_config.working_days_per_week / 7.0));
 
-    let durations = items_by_day.iter().flat_map(|items| {
-        items
-            .iter()
-    }).flat_map(|item| item.lead_time_for_changes_seconds).collect::<Vec<i64>>();
+    let durations = items_by_day
+        .iter()
+        .flat_map(|items| items.iter())
+        .flat_map(|item| item.lead_time_for_changes_seconds)
+        .collect::<Vec<i64>>();
     log::debug!("durations: {:?}", durations);
     let median_duration = median(durations);
     let hours = (median_duration / 3600.0) as i64;
-    let minutes = ((median_duration.round() as i64 % 3600) / 60) as i64;
-    let seconds = ((median_duration.round() as i64) - (hours * 3600) - (minutes * 60)) as i64;
+    let minutes = (median_duration.round() as i64 % 3600) / 60;
+    let seconds = (median_duration.round() as i64) - (hours * 3600) - (minutes * 60);
     let lead_time = DeploymentMetricLeadTimeForChanges {
-        hours: hours,
-        minutes: minutes,
-        seconds: seconds,
+        hours,
+        minutes,
+        seconds,
         total_seconds: median_duration,
     };
 
@@ -189,25 +233,29 @@ fn calculate_four_keys(metrics_items: Vec<DeploymentMetricItem>, project_config:
         developers: project_config.developer_count,
         working_days_per_week: project_config.working_days_per_week,
         deploys: total_deployments,
-        deployment_frequency_per_day: deployment_frequency_per_day,
-        deploys_per_a_day_per_a_developer: deployment_frequency_per_day / project_config.developer_count as f32,
+        deployment_frequency_per_day,
+        deploys_per_a_day_per_a_developer: deployment_frequency_per_day
+            / project_config.developer_count as f32,
         lead_time_for_changes: lead_time,
         environment: "production".to_string(), // TODO: get
     };
 
-    let deployment_frequencies_by_day = items_by_day.into_iter().map(|items| {
-        // TODO: 型定義でTotalityを確保したい
-        let date = items[0].deployed_at.date_naive();
-        let deployments = items.len() as u32;
-        DeploymentMetricSummary {
-            date: date,
-            deploys: deployments,
-            items: items,
-        }
-    }).collect::<Vec<DeploymentMetricSummary>>();
+    let deployment_frequencies_by_day = items_by_day
+        .into_iter()
+        .map(|items| {
+            // TODO: 型定義でTotalityを確保したい
+            let date = items[0].deployed_at.date_naive();
+            let deployments = items.len() as u32;
+            DeploymentMetricSummary {
+                date,
+                deploys: deployments,
+                items,
+            }
+        })
+        .collect::<Vec<DeploymentMetricSummary>>();
 
     let deployment_frequency = FourKeysMetrics {
-        metrics: metrics,
+        metrics,
         deployments: deployment_frequencies_by_day,
     };
 
@@ -226,16 +274,27 @@ pub async fn perform<
     fetch_deployments_with_heroku_release: FFetchDeploymentsWithHerokuRelease,
     get_first_commit_from_compare: FGetFirstCommitFromCompare,
     project_config: ProjectConfig,
-    context: RetrieveFourKeysExecutionContext
+    context: RetrieveFourKeysExecutionContext,
 ) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError> {
-    let deployments = fetch_deployments(&fetch_deployments_with_github_deployments, &fetch_deployments_with_heroku_release, project_config.clone(), context.since, &context.environment).await?;
+    let deployments = fetch_deployments(
+        &fetch_deployments_with_github_deployments,
+        &fetch_deployments_with_heroku_release,
+        project_config.clone(),
+        context.since,
+        &context.environment,
+    )
+    .await?;
     let convert_items = deployments.into_iter().map(|deployment| {
-        to_metric_item(&get_first_commit_from_compare, deployment, project_config.clone())
+        to_metric_item(
+            &get_first_commit_from_compare,
+            deployment,
+            project_config.clone(),
+        )
     });
     let metrics_items = try_join_all(convert_items).await?;
     // .collect::<Result<NonEmptyVec<DeploymentMetricItem>, RetrieveFourKeysEventError>>()?;
 
-    let result = calculate_four_keys(metrics_items, project_config, context);
+    
 
-    result
+    calculate_four_keys(metrics_items, project_config, context)
 }

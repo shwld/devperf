@@ -1,6 +1,8 @@
 use super::schema::*;
 
-pub fn perform(token: UnvalidatedHerokuApiToken) -> Result<ValidateHerokuApiTokenEvent, ValidateHerokuApiTokenError> {
+pub fn perform(
+    token: UnvalidatedHerokuApiToken,
+) -> Result<ValidateHerokuApiTokenEvent, ValidateHerokuApiTokenError> {
     ValidatedHerokuApiToken::new(token)
 }
 
@@ -8,15 +10,19 @@ pub fn perform(token: UnvalidatedHerokuApiToken) -> Result<ValidateHerokuApiToke
 
 impl ValidatedHerokuApiToken {
     pub fn new(token: Option<String>) -> Result<Self, ValidateHerokuApiTokenError> {
-      if let Some(token) = token {
-        if token.len() > 20 {
-          Ok(ValidatedHerokuApiToken(token.to_string()))
+        if let Some(token) = token {
+            if token.len() > 20 {
+                Ok(ValidatedHerokuApiToken(token))
+            } else {
+                Err(ValidateHerokuApiTokenError::InvalidToken(
+                    "Heroku authorization token is invalid".to_string(),
+                ))
+            }
         } else {
-          Err(ValidateHerokuApiTokenError::InvalidToken("Heroku authorization token is invalid".to_string()))
+            Err(ValidateHerokuApiTokenError::Required(
+                "Heroku authorization token is empty".to_string(),
+            ))
         }
-      } else {
-        Err(ValidateHerokuApiTokenError::Required("Heroku authorization token is empty".to_string()))
-      }
     }
 
     pub fn to_string(self) -> String {

@@ -34,4 +34,7 @@ pub enum ValidateGitHubPersonalTokenError {
 
 // ------------------------------------
 // the workflow itself
-pub type ValidateGitHubPersonalToken = fn(UnvalidatedGitHubPersonalToken) -> Result<ValidateGitHubPersonalTokenEvent, ValidateGitHubPersonalTokenError>;
+pub type ValidateGitHubPersonalToken =
+    fn(
+        UnvalidatedGitHubPersonalToken,
+    ) -> Result<ValidateGitHubPersonalTokenEvent, ValidateGitHubPersonalTokenError>;

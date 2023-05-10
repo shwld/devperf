@@ -55,5 +55,8 @@ pub enum ReadProjectConfigError {
 
 #[async_trait]
 pub trait ReadProjectConfig {
-    async fn perform(&self, project_name: ProjectName) -> Result<ProjectConfig, ReadProjectConfigError>;
+    async fn perform(
+        &self,
+        project_name: ProjectName,
+    ) -> Result<ProjectConfig, ReadProjectConfigError>;
 }

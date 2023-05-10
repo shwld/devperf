@@ -1,6 +1,8 @@
 use super::schema::*;
 
-pub fn perform(count: UnvalidatedDeveloperCount) -> Result<ValidateDeveloperCountEvent, ValidateDeveloperCountError> {
+pub fn perform(
+    count: UnvalidatedDeveloperCount,
+) -> Result<ValidateDeveloperCountEvent, ValidateDeveloperCountError> {
     ValidatedDeveloperCount::new(count)
 }
 
@@ -8,17 +10,21 @@ pub fn perform(count: UnvalidatedDeveloperCount) -> Result<ValidateDeveloperCoun
 
 impl ValidatedDeveloperCount {
     pub fn new(count: String) -> Result<Self, ValidateDeveloperCountError> {
-      let count = count.parse::<u32>();
-      if count.is_ok() {
-          let count = count.unwrap();
-          if count > 0 {
-            Ok(ValidatedDeveloperCount(count))
-          } else {
-            Err(ValidateDeveloperCountError("Developer count is zero".to_string()))
-          }
-      } else {
-          Err(ValidateDeveloperCountError("Developer count is not a number".to_string()))
-      }
+        let count = count.parse::<u32>();
+        if count.is_ok() {
+            let count = count.unwrap();
+            if count > 0 {
+                Ok(ValidatedDeveloperCount(count))
+            } else {
+                Err(ValidateDeveloperCountError(
+                    "Developer count is zero".to_string(),
+                ))
+            }
+        } else {
+            Err(ValidateDeveloperCountError(
+                "Developer count is not a number".to_string(),
+            ))
+        }
     }
 
     pub fn to_u32(self) -> u32 {
@@ -29,7 +35,6 @@ impl ValidatedDeveloperCount {
 #[cfg(test)]
 mod tests {
     use crate::project_creating::validate_developer_count::schema::ValidateDeveloperCount;
-
 
     #[test]
     fn verify_perform_type() {

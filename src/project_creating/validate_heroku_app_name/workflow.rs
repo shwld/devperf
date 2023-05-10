@@ -1,6 +1,8 @@
 use super::schema::*;
 
-pub fn perform(token: UnvalidatedHerokuAppName) -> Result<ValidateHerokuAppNameEvent, ValidateHerokuAppNameError> {
+pub fn perform(
+    token: UnvalidatedHerokuAppName,
+) -> Result<ValidateHerokuAppNameEvent, ValidateHerokuAppNameError> {
     ValidatedHerokuAppName::new(token)
 }
 
@@ -8,15 +10,19 @@ pub fn perform(token: UnvalidatedHerokuAppName) -> Result<ValidateHerokuAppNameE
 
 impl ValidatedHerokuAppName {
     pub fn new(token: Option<String>) -> Result<Self, ValidateHerokuAppNameError> {
-      if let Some(token) = token {
-        if token.len() > 1 {
-          Ok(ValidatedHerokuAppName(token.to_string()))
+        if let Some(token) = token {
+            if token.len() > 1 {
+                Ok(ValidatedHerokuAppName(token))
+            } else {
+                Err(ValidateHerokuAppNameError::InvalidName(
+                    "Heroku app name is invalid".to_string(),
+                ))
+            }
         } else {
-          Err(ValidateHerokuAppNameError::InvalidName("Heroku app name is invalid".to_string()))
+            Err(ValidateHerokuAppNameError::Required(
+                "Heroku app name is empty".to_string(),
+            ))
         }
-      } else {
-        Err(ValidateHerokuAppNameError::Required("Heroku app name is empty".to_string()))
-      }
     }
 
     pub fn to_string(self) -> String {

@@ -56,5 +56,8 @@ pub struct DeploymentItem {
 
 #[async_trait]
 pub trait FetchDeployments {
-    async fn perform(&self, params: FetchDeploymentsParams) -> Result<Vec<DeploymentItem>, FetchDeploymentsError>;
+    async fn perform(
+        &self,
+        params: FetchDeploymentsParams,
+    ) -> Result<Vec<DeploymentItem>, FetchDeploymentsError>;
 }

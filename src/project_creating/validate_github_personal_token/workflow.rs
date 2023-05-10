@@ -1,6 +1,8 @@
 use super::schema::*;
 
-pub fn perform(token: UnvalidatedGitHubPersonalToken) -> Result<ValidateGitHubPersonalTokenEvent, ValidateGitHubPersonalTokenError> {
+pub fn perform(
+    token: UnvalidatedGitHubPersonalToken,
+) -> Result<ValidateGitHubPersonalTokenEvent, ValidateGitHubPersonalTokenError> {
     ValidatedGitHubPersonalToken::new(token)
 }
 
@@ -8,15 +10,19 @@ pub fn perform(token: UnvalidatedGitHubPersonalToken) -> Result<ValidateGitHubPe
 
 impl ValidatedGitHubPersonalToken {
     pub fn new(token: Option<String>) -> Result<Self, ValidateGitHubPersonalTokenError> {
-      if let Some(token) = token {
-        if token.starts_with("ghp_") {
-          Ok(ValidatedGitHubPersonalToken(token.to_string()))
+        if let Some(token) = token {
+            if token.starts_with("ghp_") {
+                Ok(ValidatedGitHubPersonalToken(token))
+            } else {
+                Err(ValidateGitHubPersonalTokenError::InvalidToken(
+                    "GitHub personal token is invalid".to_string(),
+                ))
+            }
         } else {
-          Err(ValidateGitHubPersonalTokenError::InvalidToken("GitHub personal token is invalid".to_string()))
+            Err(ValidateGitHubPersonalTokenError::Required(
+                "GitHub personal token is empty".to_string(),
+            ))
         }
-      } else {
-        Err(ValidateGitHubPersonalTokenError::Required("GitHub personal token is empty".to_string()))
-      }
     }
 
     pub fn to_string(self) -> String {

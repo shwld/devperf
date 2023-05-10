@@ -1,8 +1,12 @@
-use chrono::{DateTime, Utc, NaiveDate};
-use serde::{Serialize, Deserialize};
+use chrono::{DateTime, NaiveDate, Utc};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::dependencies::{read_project_config::interface::{ProjectConfig}, fetch_deployments::interface::FetchDeploymentsError, get_first_commit_from_compare::interface::GetFirstCommitFromCompareError};
+use crate::dependencies::{
+    fetch_deployments::interface::FetchDeploymentsError,
+    get_first_commit_from_compare::interface::GetFirstCommitFromCompareError,
+    read_project_config::interface::ProjectConfig,
+};
 
 // ==================================
 // This file contains the definitions of PUBLIC types (exposed at the boundary of the bounded context)
@@ -109,4 +113,7 @@ pub enum RetrieveFourKeysEventError {
 
 // ------------------------------------
 // the workflow itself
-pub type RetrieveFourKeys = fn (ProjectConfig, RetrieveFourKeysExecutionContext) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError>;
+pub type RetrieveFourKeys = fn(
+    ProjectConfig,
+    RetrieveFourKeysExecutionContext,
+) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError>;

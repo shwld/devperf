@@ -1,4 +1,4 @@
-use clap::{Subcommand};
+use clap::Subcommand;
 
 use super::config::ConfigAction;
 

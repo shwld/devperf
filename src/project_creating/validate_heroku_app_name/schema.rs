@@ -34,4 +34,5 @@ pub enum ValidateHerokuAppNameError {
 
 // ------------------------------------
 // the workflow itself
-pub type ValidateHerokuAppName = fn(UnvalidatedHerokuAppName) -> Result<ValidateHerokuAppNameEvent, ValidateHerokuAppNameError>;
+pub type ValidateHerokuAppName =
+    fn(UnvalidatedHerokuAppName) -> Result<ValidateHerokuAppNameEvent, ValidateHerokuAppNameError>;

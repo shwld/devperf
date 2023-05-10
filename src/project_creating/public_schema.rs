@@ -1,8 +1,15 @@
-use super::{validate_github_personal_token::schema::ValidatedGitHubPersonalToken, validate_github_owner_repo::schema::ValidatedGitHubOwnerRepo, validate_developer_count::schema::ValidatedDeveloperCount, validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek, validate_heroku_app_name::schema::ValidatedHerokuAppName, validate_heroku_api_token::schema::ValidatedHerokuApiToken};
+use super::{
+    validate_developer_count::schema::ValidatedDeveloperCount,
+    validate_github_owner_repo::schema::ValidatedGitHubOwnerRepo,
+    validate_github_personal_token::schema::ValidatedGitHubPersonalToken,
+    validate_heroku_api_token::schema::ValidatedHerokuApiToken,
+    validate_heroku_app_name::schema::ValidatedHerokuAppName,
+    validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek,
+};
 
 pub enum ProjectAccessToken<T> {
-  UseGlobal,
-  Override(T),
+    UseGlobal,
+    Override(T),
 }
 
 #[derive(Clone)]

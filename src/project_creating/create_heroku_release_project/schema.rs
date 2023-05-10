@@ -1,4 +1,14 @@
-use crate::{project_creating::{validate_github_personal_token::schema::*, validate_github_owner_repo::schema::*, validate_developer_count::schema::ValidatedDeveloperCount, validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek, public_schema::HerokuReleaseProjectConfig, validate_heroku_app_name::schema::ValidatedHerokuAppName, validate_heroku_api_token::schema::ValidatedHerokuApiToken}, dependencies::write_new_config::interface::{WriteNewConfigError, WriteNewConfig}};
+use crate::{
+    dependencies::write_new_config::interface::{WriteNewConfig, WriteNewConfigError},
+    project_creating::{
+        public_schema::HerokuReleaseProjectConfig,
+        validate_developer_count::schema::ValidatedDeveloperCount,
+        validate_github_owner_repo::schema::*, validate_github_personal_token::schema::*,
+        validate_heroku_api_token::schema::ValidatedHerokuApiToken,
+        validate_heroku_app_name::schema::ValidatedHerokuAppName,
+        validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek,
+    },
+};
 use thiserror::Error;
 
 // ==================================
@@ -37,9 +47,13 @@ pub type CreateHerokuReleaseProjectEvent = HerokuReleaseProjectCreated;
 #[derive(Error, Debug)]
 pub enum CreateHerokuReleaseProjectError {
     #[error("Cannot write the new config")]
-    WriteNewConfigError(WriteNewConfigError)
+    WriteNewConfigError(WriteNewConfigError),
 }
 
 // ------------------------------------
 // the workflow itself
-pub type CreateHerokuReleaseProject = fn (dyn WriteNewConfig, UncreatedHerokuReleaseProject) -> Result<HerokuReleaseProjectCreated, CreateHerokuReleaseProjectError>;
+pub type CreateHerokuReleaseProject =
+    fn(
+        dyn WriteNewConfig,
+        UncreatedHerokuReleaseProject,
+    ) -> Result<HerokuReleaseProjectCreated, CreateHerokuReleaseProjectError>;
