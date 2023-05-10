@@ -8,12 +8,12 @@ use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    common_types::NonEmptyVec,
     dependencies::{
         fetch_deployments::interface::{CommitItem, DeploymentItem},
         github_api::GitHubAPI,
         read_project_config::interface::{ProjectConfig, ResourceConfig},
     },
+    shared::non_empty_vec::NonEmptyVec,
 };
 
 use super::interface::{

@@ -2,7 +2,7 @@ use super::interface::{
     CommitItem, CommitOrRepositoryInfo, DeploymentItem, FetchDeployments, FetchDeploymentsError,
     FetchDeploymentsParams, RepositoryInfo,
 };
-use crate::{common_types::NonEmptyVec, dependencies::github_api::GitHubAPI};
+use crate::{dependencies::github_api::GitHubAPI, shared::non_empty_vec::NonEmptyVec};
 use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
