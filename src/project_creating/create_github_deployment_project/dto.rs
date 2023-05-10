@@ -17,10 +17,10 @@ pub type GitHubDeploymentProjectCreatedDto = WriteConfigData;
 
 #[derive(Cranenum)]
 pub enum ToGitHubDeploymentProjectCreatedError {
-    ValidateGitHubPersonalTokenError(ValidateGitHubPersonalTokenError),
-    ValidateGitHubOwnerRepoError(ValidateGitHubOwnerRepoError),
-    ValidateDeveloperCountError(ValidateDeveloperCountError),
-    ValidateWorkingDaysPerWeekError(ValidateWorkingDaysPerWeekError),
+    GitHubPersonalToken(ValidateGitHubPersonalTokenError),
+    GitHubOwnerRepo(ValidateGitHubOwnerRepoError),
+    DeveloperCount(ValidateDeveloperCountError),
+    WorkingDaysPerWeek(ValidateWorkingDaysPerWeekError),
 }
 
 impl GitHubDeploymentProjectCreatedDto {

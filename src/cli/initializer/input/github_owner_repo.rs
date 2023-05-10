@@ -9,8 +9,8 @@ pub fn input() -> ValidatedGitHubOwnerRepo {
         .unwrap();
     let value = validate_github_owner_repo::workflow::perform(value);
 
-    if value.is_ok() {
-        value.unwrap()
+    if let Ok(value) = value {
+        value
     } else {
         println!("Invalid owner/repo");
         input()

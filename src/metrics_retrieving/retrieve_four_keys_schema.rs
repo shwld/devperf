@@ -5,7 +5,6 @@ use thiserror::Error;
 use crate::dependencies::{
     fetch_deployments::interface::FetchDeploymentsError,
     get_first_commit_from_compare::interface::GetFirstCommitFromCompareError,
-    read_project_config::interface::ProjectConfig,
 };
 
 // ==================================
@@ -107,13 +106,11 @@ pub enum RetrieveFourKeysEventError {
     FetchDeploymentsError(#[source] FetchDeploymentsError),
     #[error("GetFirstCommitFromCompareError")]
     GetFirstCommitFromCompareError(#[from] GetFirstCommitFromCompareError),
-    #[error("Cannot get date")]
-    CannotGetDate(String),
 }
 
 // ------------------------------------
 // the workflow itself
-pub type RetrieveFourKeys = fn(
-    ProjectConfig,
-    RetrieveFourKeysExecutionContext,
-) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError>;
+// pub type RetrieveFourKeys = fn(
+//     ProjectConfig,
+//     RetrieveFourKeysExecutionContext,
+// ) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError>;

@@ -11,8 +11,8 @@ pub fn input() -> ValidatedWorkingDaysPerWeek {
         .unwrap();
     let value = validate_working_days_per_week::workflow::perform(value);
 
-    if value.is_ok() {
-        value.unwrap()
+    if let Ok(value) = value {
+        value
     } else {
         println!("Invalid working days per weed");
         input()

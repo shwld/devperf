@@ -11,8 +11,7 @@ pub fn perform(
 impl ValidatedWorkingDaysPerWeek {
     pub fn new(count: String) -> Result<Self, ValidateWorkingDaysPerWeekError> {
         let count = count.parse::<f32>();
-        if count.is_ok() {
-            let count = count.unwrap();
+        if let Ok(count) = count {
             if count > 0.0 && count < 7.0 {
                 Ok(ValidatedWorkingDaysPerWeek(count))
             } else {
@@ -27,18 +26,18 @@ impl ValidatedWorkingDaysPerWeek {
         }
     }
 
-    pub fn to_f32(self) -> f32 {
+    pub fn to_f32(&self) -> f32 {
         self.0
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::project_creating::validate_working_days_per_week::schema::ValidateWorkingDaysPerWeek;
+// #[cfg(test)]
+// mod tests {
+//     use crate::project_creating::validate_working_days_per_week::schema::ValidateWorkingDaysPerWeek;
 
-    #[test]
-    fn verify_perform_type() {
-        // 型チェックのために代入する
-        let _type_check: ValidateWorkingDaysPerWeek = super::perform;
-    }
-}
+//     #[test]
+//     fn verify_perform_type() {
+//         // 型チェックのために代入する
+//         let _type_check: ValidateWorkingDaysPerWeek = super::perform;
+//     }
+// }

@@ -10,8 +10,8 @@ pub fn input() -> ValidatedHerokuAppName {
         .unwrap();
     let value = validate_heroku_app_name::workflow::perform(Some(value));
 
-    if value.is_ok() {
-        value.unwrap()
+    if let Ok(value) = value {
+        value
     } else {
         println!("Invalid token");
         input()

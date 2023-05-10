@@ -1,3 +1,5 @@
+use std::fmt;
+
 use super::schema::*;
 
 pub fn perform(
@@ -24,19 +26,21 @@ impl ValidatedHerokuAppName {
             ))
         }
     }
+}
 
-    pub fn to_string(self) -> String {
-        self.0
+impl fmt::Display for ValidatedHerokuAppName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::project_creating::validate_heroku_app_name::schema::ValidateHerokuAppName;
+// #[cfg(test)]
+// mod tests {
+//     use crate::project_creating::validate_heroku_app_name::schema::ValidateHerokuAppName;
 
-    #[test]
-    fn verify_perform_type() {
-        // 型チェックのために代入する
-        let _type_check: ValidateHerokuAppName = super::perform;
-    }
-}
+//     #[test]
+//     fn verify_perform_type() {
+//         // 型チェックのために代入する
+//         let _type_check: ValidateHerokuAppName = super::perform;
+//     }
+// }

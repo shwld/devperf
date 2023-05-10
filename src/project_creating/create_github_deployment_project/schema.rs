@@ -1,5 +1,5 @@
 use crate::{
-    dependencies::write_new_config::interface::{WriteNewConfig, WriteNewConfigError},
+    dependencies::write_new_config::interface::WriteNewConfigError,
     project_creating::{
         public_schema::GitHubDeploymentProjectConfig,
         validate_developer_count::schema::ValidatedDeveloperCount,
@@ -48,8 +48,8 @@ pub enum CreateGithubDeploymentProjectError {
 
 // ------------------------------------
 // the workflow itself
-pub type CreateGithubDeploymentProject =
-    fn(
-        dyn WriteNewConfig,
-        UncreatedGitHubDeploymentProject,
-    ) -> Result<GitHubDeploymentProjectCreated, CreateGithubDeploymentProjectError>;
+// pub type CreateGithubDeploymentProject =
+//     fn(
+//         dyn WriteNewConfig,
+//         UncreatedGitHubDeploymentProject,
+//     ) -> Result<GitHubDeploymentProjectCreated, CreateGithubDeploymentProjectError>;

@@ -11,8 +11,7 @@ pub fn perform(
 impl ValidatedDeveloperCount {
     pub fn new(count: String) -> Result<Self, ValidateDeveloperCountError> {
         let count = count.parse::<u32>();
-        if count.is_ok() {
-            let count = count.unwrap();
+        if let Ok(count) = count {
             if count > 0 {
                 Ok(ValidatedDeveloperCount(count))
             } else {
@@ -27,18 +26,18 @@ impl ValidatedDeveloperCount {
         }
     }
 
-    pub fn to_u32(self) -> u32 {
+    pub fn to_u32(&self) -> u32 {
         self.0
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::project_creating::validate_developer_count::schema::ValidateDeveloperCount;
+// #[cfg(test)]
+// mod tests {
+//     use crate::project_creating::validate_developer_count::schema::ValidateDeveloperCount;
 
-    #[test]
-    fn verify_perform_type() {
-        // 型チェックのために代入する
-        let _type_check: ValidateDeveloperCount = super::perform;
-    }
-}
+//     #[test]
+//     fn verify_perform_type() {
+//         // 型チェックのために代入する
+//         let _type_check: ValidateDeveloperCount = super::perform;
+//     }
+// }

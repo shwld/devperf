@@ -25,7 +25,7 @@ pub struct ValidateWorkingDaysPerWeekError(pub(super) String);
 
 // ------------------------------------
 // the workflow itself
-pub type ValidateWorkingDaysPerWeek =
-    fn(
-        UnvalidatedWorkingDaysPerWeek,
-    ) -> Result<ValidateWorkingDaysPerWeekEvent, ValidateWorkingDaysPerWeekError>;
+// pub type ValidateWorkingDaysPerWeek =
+//     fn(
+//         UnvalidatedWorkingDaysPerWeek,
+//     ) -> Result<ValidateWorkingDaysPerWeekEvent, ValidateWorkingDaysPerWeekError>;

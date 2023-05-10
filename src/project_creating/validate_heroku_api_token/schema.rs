@@ -34,7 +34,7 @@ pub enum ValidateHerokuApiTokenError {
 
 // ------------------------------------
 // the workflow itself
-pub type ValidateHerokuApiToken =
-    fn(
-        UnvalidatedHerokuApiToken,
-    ) -> Result<ValidateHerokuApiTokenEvent, ValidateHerokuApiTokenError>;
+// pub type ValidateHerokuApiToken =
+//     fn(
+//         UnvalidatedHerokuApiToken,
+//     ) -> Result<ValidateHerokuApiTokenEvent, ValidateHerokuApiTokenError>;

@@ -9,7 +9,7 @@ use crate::{
         get_first_commit_from_compare::interface::{
             FirstCommitFromCompareParams, GetFirstCommitFromCompare,
         },
-        read_project_config::interface::{ProjectConfig, ReadProjectConfig, ResourceConfig},
+        read_project_config::interface::{ProjectConfig, ResourceConfig},
     },
     metrics_retrieving::retrieve_four_keys_schema::FirstCommitOrRepositoryInfo,
 };
@@ -52,7 +52,6 @@ async fn fetch_deployments<FGD: FetchDeployments, FHR: FetchDeployments>(
             })
             .await
             .map_err(RetrieveFourKeysEventError::FetchDeploymentsError),
-        _ => unimplemented!(),
     }?;
 
     Ok(deployments)
@@ -87,7 +86,6 @@ pub async fn to_metric_item<F: GetFirstCommitFromCompare>(
                             head: deployment.head_commit.sha.clone(),
                         }
                     }
-                    _ => unimplemented!(),
                 })
                 .await;
             log::debug!("first_commit: {:?}", commit);

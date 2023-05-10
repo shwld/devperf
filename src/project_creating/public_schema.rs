@@ -7,11 +7,6 @@ use super::{
     validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek,
 };
 
-pub enum ProjectAccessToken<T> {
-    UseGlobal,
-    Override(T),
-}
-
 #[derive(Clone)]
 pub struct GitHubDeploymentProjectConfig {
     pub project_name: String,
@@ -30,9 +25,4 @@ pub struct HerokuReleaseProjectConfig {
     pub heroku_api_token: ValidatedHerokuApiToken,
     pub developer_count: ValidatedDeveloperCount,
     pub working_days_per_week: ValidatedWorkingDaysPerWeek,
-}
-
-pub enum ProjectConfig {
-    GitHubDeployment(GitHubDeploymentProjectConfig),
-    HerokuRelease,
 }

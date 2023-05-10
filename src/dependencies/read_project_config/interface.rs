@@ -4,12 +4,6 @@ use thiserror::Error;
 type ProjectName = String;
 
 #[derive(Debug, Clone)]
-pub enum DeploymentSource {
-    GitHubDeployment,
-    HerokuRelease,
-}
-
-#[derive(Debug, Clone)]
 pub struct GitHubDeploymentResourceConfig {
     pub github_personal_token: String,
     pub github_owner: String,
@@ -43,8 +37,6 @@ pub struct ProjectConfig {
 pub enum ReadProjectConfigError {
     #[error("Cannot read the config file")]
     ConfigFileReadError(#[source] anyhow::Error),
-    #[error("Cannot parse the config file")]
-    ConfigFileParseError(#[source] anyhow::Error),
     #[error("Cannot find the project")]
     ProjectNotFound(String),
     #[error("Cannot read heroku app name")]

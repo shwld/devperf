@@ -180,6 +180,7 @@ async fn get_created_at(
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)] // most are HerokuRelease
 pub enum DeploymentNodeGraphQLResponseOrRepositoryInfo {
     DeploymentsDeploymentsNodeGraphQLResponse(DeploymentsDeploymentsNodeGraphQLResponse),
     RepositoryInfo(RepositoryInfo),
@@ -205,7 +206,7 @@ async fn fetch_deployments(
             .graphql(&query)
             .await
             .map_err(|e| anyhow!(e))
-            .map_err(FetchDeploymentsError::FetchDeploymentsError)?;
+            .map_err(FetchDeploymentsError::FetchError)?;
         let new_nodes = results.data.repository_owner.repository.deployments.nodes.into_iter().map(DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse).collect::<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>>();
         deployment_nodes = [&deployment_nodes[..], &new_nodes[..]].concat();
         has_next_page = results
@@ -265,7 +266,8 @@ fn find_status(
         .statuses
         .nodes
         .iter()
-        .find(|&x| x.state.to_uppercase() == "SUCCESS").cloned();
+        .find(|&x| x.state.to_uppercase() == "SUCCESS")
+        .cloned();
 
     status
 }
@@ -273,8 +275,7 @@ fn find_status(
 fn convert_to_items(
     deployment_nodes: NonEmptyVec<DeploymentNodeGraphQLResponseOrRepositoryInfo>,
 ) -> Vec<DeploymentItem> {
-    let mut sorted: NonEmptyVec<DeploymentNodeGraphQLResponseOrRepositoryInfo> =
-        deployment_nodes;
+    let mut sorted: NonEmptyVec<DeploymentNodeGraphQLResponseOrRepositoryInfo> = deployment_nodes;
     sorted.sort_by_key(|a| match a {
         DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse(deployment) => deployment.created_at,
         DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryInfo(info) => info.created_at,

@@ -19,12 +19,12 @@ pub type HerokuReleaseProjectCreatedDto = WriteConfigData;
 
 #[derive(Cranenum)]
 pub enum ToHerokuReleaseProjectCreatedError {
-    ValidateGitHubPersonalTokenError(ValidateGitHubPersonalTokenError),
-    ValidateGitHubOwnerRepoError(ValidateGitHubOwnerRepoError),
-    ValidateDeveloperCountError(ValidateDeveloperCountError),
-    ValidateWorkingDaysPerWeekError(ValidateWorkingDaysPerWeekError),
-    ValidateHerokuAppNameError(ValidateHerokuAppNameError),
-    ValidateHerokuApiTokenError(ValidateHerokuApiTokenError),
+    GitHubPersonalToken(ValidateGitHubPersonalTokenError),
+    GitHubOwnerRepo(ValidateGitHubOwnerRepoError),
+    DeveloperCount(ValidateDeveloperCountError),
+    WorkingDaysPerWeek(ValidateWorkingDaysPerWeekError),
+    HerokuAppName(ValidateHerokuAppNameError),
+    HerokuApiToken(ValidateHerokuApiTokenError),
 }
 
 impl HerokuReleaseProjectCreatedDto {

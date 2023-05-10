@@ -28,7 +28,7 @@ pub struct ValidateGitHubOwnerRepoError(pub(super) String);
 
 // ------------------------------------
 // the workflow itself
-pub type ValidateGitHubOwnerRepo =
-    fn(
-        UnvalidatedGitHubOwnerRepo,
-    ) -> Result<ValidateGitHubOwnerRepoEvent, ValidateGitHubOwnerRepoError>;
+// pub type ValidateGitHubOwnerRepo =
+//     fn(
+//         UnvalidatedGitHubOwnerRepo,
+//     ) -> Result<ValidateGitHubOwnerRepoEvent, ValidateGitHubOwnerRepoError>;

@@ -9,8 +9,8 @@ pub fn input() -> ValidatedDeveloperCount {
         .unwrap();
     let value = validate_developer_count::workflow::perform(value);
 
-    if value.is_ok() {
-        value.unwrap()
+    if let Ok(value) = value {
+        value
     } else {
         println!("Invalid developer count");
         input()

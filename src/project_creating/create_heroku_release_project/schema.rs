@@ -1,5 +1,5 @@
 use crate::{
-    dependencies::write_new_config::interface::{WriteNewConfig, WriteNewConfigError},
+    dependencies::write_new_config::interface::WriteNewConfigError,
     project_creating::{
         public_schema::HerokuReleaseProjectConfig,
         validate_developer_count::schema::ValidatedDeveloperCount,
@@ -52,8 +52,8 @@ pub enum CreateHerokuReleaseProjectError {
 
 // ------------------------------------
 // the workflow itself
-pub type CreateHerokuReleaseProject =
-    fn(
-        dyn WriteNewConfig,
-        UncreatedHerokuReleaseProject,
-    ) -> Result<HerokuReleaseProjectCreated, CreateHerokuReleaseProjectError>;
+// pub type CreateHerokuReleaseProject =
+//     fn(
+//         dyn WriteNewConfig,
+//         UncreatedHerokuReleaseProject,
+//     ) -> Result<HerokuReleaseProjectCreated, CreateHerokuReleaseProjectError>;

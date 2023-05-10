@@ -88,7 +88,6 @@ pub struct HerokuSlugStackItem {
 }
 
 pub fn create_http_client() -> ClientWithMiddleware {
-    
     ClientBuilder::new(Client::new())
         .with(Cache(HttpCache {
             mode: CacheMode::Default,
@@ -163,6 +162,7 @@ struct GitHubRepositoryInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)] // most are HerokuRelease
 enum HerokuReleaseOrRepositoryInfo {
     HerokuRelease(HerokuRelease),
     RepositoryInfo(GitHubRepositoryInfo),
@@ -171,7 +171,6 @@ enum HerokuReleaseOrRepositoryInfo {
 #[derive(Debug, Clone)]
 struct HerokuRelease {
     pub release: HerokuReleaseItem,
-    pub slug: HerokuSlugItem,
     pub commit: RepoCommit,
 }
 
@@ -184,11 +183,7 @@ async fn attach_commit(
     let commit = get_commit(github_api.clone(), project_config.clone(), &slug.commit).await?;
 
     Ok(HerokuReleaseOrRepositoryInfo::HerokuRelease(
-        HerokuRelease {
-            release,
-            slug,
-            commit,
-        },
+        HerokuRelease { release, commit },
     ))
 }
 
@@ -337,11 +332,11 @@ impl FetchDeployments for FetchDeploymentsWithHerokuRelease {
             .send()
             .await
             .map_err(|e| anyhow::anyhow!(e))
-            .map_err(FetchDeploymentsError::FetchDeploymentsError)?
+            .map_err(FetchDeploymentsError::FetchError)?
             .json::<Vec<HerokuReleaseItem>>()
             .await
             .map_err(|e| anyhow::anyhow!(e))
-            .map_err(FetchDeploymentsError::FetchDeploymentsError)?;
+            .map_err(FetchDeploymentsError::FetchError)?;
 
         let succeeded_releases = releases
             .into_iter()
