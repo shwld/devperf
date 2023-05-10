@@ -50,7 +50,7 @@ pub struct DeploymentMetricItem {
     pub head_commit: DeploymentCommitItem,
     pub first_commit: FirstCommitOrRepositoryInfo,
     pub deployed_at: chrono::DateTime<chrono::Utc>,
-    pub lead_time_for_changes_seconds: i64,
+    pub lead_time_for_changes_seconds: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc, NaiveTime, LocalResult, NaiveDate};
-use futures::future::{try_join_all};
+use futures::{future::{try_join_all}, SinkExt};
 
 use crate::{dependencies::{read_project_config::interface::{ReadProjectConfig, ProjectConfig, DeploymentSource, ResourceConfig}, fetch_deployments::interface::{FetchDeployments, FetchDeploymentsParams, DeploymentItem, CommitOrRepositoryInfo}, get_first_commit_from_compare::interface::{GetFirstCommitFromCompare, FirstCommitFromCompareParams}}, common_types::{NonEmptyVec}, metrics_retrieving::retrieve_four_keys__schema::FirstCommitOrRepositoryInfo};
 
@@ -38,7 +38,7 @@ async fn fetch_deployments<FGD: FetchDeployments, FHR: FetchDeployments>(fetch_d
 // ---------------------------
 
 pub async fn to_metric_item<F: GetFirstCommitFromCompare>(get_first_commit_from_compare: &F, deployment: DeploymentItem, project_config: ProjectConfig) -> Result<DeploymentMetricItem, RetrieveFourKeysEventError> {
-    let first_commit = match deployment.base {
+    let first_commit: Option<FirstCommitOrRepositoryInfo> = match deployment.base {
         CommitOrRepositoryInfo::Commit(first_commit) => {
             let commit = get_first_commit_from_compare.perform(match project_config.resource {
                 ResourceConfig::GitHubDeployment(resource_config) => {
@@ -47,28 +47,54 @@ pub async fn to_metric_item<F: GetFirstCommitFromCompare>(get_first_commit_from_
                         repo: resource_config.github_repo,
                         base: first_commit.sha,
                         head: deployment.head_commit.sha.clone(),
-                    }},
-                    _ => unimplemented!(),
-            }).await?;
-            FirstCommitOrRepositoryInfo::FirstCommit(DeploymentCommitItem {
-                sha: commit.sha,
-                message: commit.message,
-                resource_path: commit.resource_path,
-                committed_at: commit.committed_at,
-                creator_login: commit.creator_login,
-            })
+                    }
+                },
+                ResourceConfig::HerokuRelease(resource_config) => {
+                    FirstCommitFromCompareParams {
+                        owner: resource_config.github_owner,
+                        repo: resource_config.github_repo,
+                        base: first_commit.sha,
+                        head: deployment.head_commit.sha.clone(),
+                    }
+                },
+                _ => unimplemented!(),
+            }).await;
+            match commit {
+                Ok(commit) => Some(FirstCommitOrRepositoryInfo::FirstCommit(DeploymentCommitItem {
+                    sha: commit.sha,
+                    message: commit.message,
+                    resource_path: commit.resource_path,
+                    committed_at: commit.committed_at,
+                    creator_login: commit.creator_login,
+                })),
+                Err(_) => None,
+            }
         },
         CommitOrRepositoryInfo::RepositoryInfo(info) => {
-            FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo { created_at: info.created_at })
+            Some(FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo { created_at: info.created_at }))
         },
     };
-    let first_committed_at = match first_commit.clone() {
-        FirstCommitOrRepositoryInfo::FirstCommit(commit) => commit.committed_at,
-        FirstCommitOrRepositoryInfo::RepositoryInfo(info) => info.created_at,
+    let lead_time_for_changes_seconds = if let Some(first_commit) = first_commit.clone() {
+        let first_committed_at = match first_commit {
+            FirstCommitOrRepositoryInfo::FirstCommit(commit) => commit.committed_at,
+            FirstCommitOrRepositoryInfo::RepositoryInfo(info) => info.created_at,
+        };
+        Some((deployment.deployed_at - first_committed_at).num_seconds())
+    } else {
+        None
     };
 
+
     let head_commit = deployment.head_commit.clone();
-    let lead_time_for_changes_seconds = (deployment.deployed_at - first_committed_at).num_seconds();
+    let first_commit = first_commit.unwrap_or(FirstCommitOrRepositoryInfo::FirstCommit(
+        DeploymentCommitItem {
+            sha: deployment.head_commit.sha,
+            message: deployment.head_commit.message,
+            resource_path: deployment.head_commit.resource_path,
+            committed_at: deployment.head_commit.committed_at,
+            creator_login: deployment.head_commit.creator_login,
+        }
+    ));
     let deployment_metric = DeploymentMetricItem {
         id: deployment.id,
         head_commit: DeploymentCommitItem {
@@ -142,7 +168,7 @@ fn calculate_four_keys(metrics_items: Vec<DeploymentMetricItem>, project_config:
     let durations = items_by_day.iter().flat_map(|items| {
         items
             .iter()
-    }).map(|item| item.lead_time_for_changes_seconds).collect::<Vec<i64>>();
+    }).flat_map(|item| item.lead_time_for_changes_seconds).collect::<Vec<i64>>();
     let median_duration = median(durations);
     let hours = (median_duration / 3600.0) as i64;
     let minutes = ((median_duration.round() as i64 % 3600) / 60) as i64;
