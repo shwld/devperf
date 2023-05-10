@@ -1,7 +1,7 @@
 use inquire::Text;
 
-use crate::project_creating::validate_working_days_per_week::{
-    self, schema::ValidatedWorkingDaysPerWeek,
+use crate::project_parameter_validating::validate_working_days_per_week::{
+    self, ValidatedWorkingDaysPerWeek,
 };
 
 pub fn input() -> ValidatedWorkingDaysPerWeek {
@@ -9,7 +9,7 @@ pub fn input() -> ValidatedWorkingDaysPerWeek {
         .with_placeholder("5.0")
         .prompt()
         .unwrap();
-    let value = validate_working_days_per_week::workflow::perform(value);
+    let value = validate_working_days_per_week::perform(value);
 
     if let Ok(value) = value {
         value

@@ -3,15 +3,13 @@ use cranenum::Cranenum;
 use crate::{
     dependencies::write_new_config::interface::WriteConfigData,
     persistence::project_config::ProjectConfig,
-    project_creating::validate_working_days_per_week::{
-        self, schema::ValidateWorkingDaysPerWeekError,
-    },
     project_parameter_validating::{
         validate_developer_count::{self, ValidateDeveloperCountError},
         validate_github_owner_repo::{self, ValidateGitHubOwnerRepoError},
         validate_github_personal_token::{self, ValidateGitHubPersonalTokenError},
         validate_heroku_app_name::{self, ValidateHerokuAppNameError},
         validate_heroku_auth_token::{self, ValidateHerokuApiTokenError},
+        validate_working_days_per_week::{self, ValidateWorkingDaysPerWeekError},
     },
 };
 
@@ -45,7 +43,7 @@ impl HerokuReleaseProjectCreatedDto {
         ))?;
         let developer_count =
             validate_developer_count::perform(dto.project_config.developer_count.to_string())?;
-        let working_days_per_week = validate_working_days_per_week::workflow::perform(
+        let working_days_per_week = validate_working_days_per_week::perform(
             dto.project_config.working_days_per_week.to_string(),
         )?;
         Ok(HerokuReleaseProjectCreated {

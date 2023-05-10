@@ -1,4 +1,4 @@
-use super::schema::*;
+use super::validate_working_days_per_week_schema::*;
 
 pub fn perform(
     count: UnvalidatedWorkingDaysPerWeek,
