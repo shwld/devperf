@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::schema::*;
+use super::validate_heroku_app_name_schema::*;
 
 pub fn perform(
     token: UnvalidatedHerokuAppName,
