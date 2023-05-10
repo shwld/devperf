@@ -19,7 +19,6 @@ pub enum ToHerokuReleaseProjectCreatedError {
 impl HerokuReleaseProjectCreatedDto {
     pub fn to_heroku_release_project_created(dto: &HerokuReleaseProjectCreatedDto) -> Result<HerokuReleaseProjectCreated, ToHerokuReleaseProjectCreatedError> {
         let github_personal_token = validate_github_personal_token::workflow::perform(Some(dto.github_personal_token.to_string()))?;
-        let github_owner_repo = validate_github_owner_repo::workflow::perform(format!("{}/{}", dto.project_config.github_owner, dto.project_config.github_repo))?;
         let heroku_app_name = validate_heroku_app_name::workflow::perform(dto.project_config.clone().heroku_app_name)?;
         let heroku_api_token = validate_heroku_api_token::workflow::perform(dto.project_config.clone().heroku_api_token)?;
         let github_owner_repo = validate_github_owner_repo::workflow::perform(format!("{}/{}", dto.project_config.github_owner, dto.project_config.github_repo))?;

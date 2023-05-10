@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use anyhow::{anyhow, Context as _};
-use chrono::{DateTime, Utc, NaiveDate, NaiveTime};
+use anyhow::{anyhow};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use crate::{dependencies::github_api::{GitHubAPI}, common_types::NonEmptyVec};
 use super::{interface::{FetchDeploymentsError, FetchDeployments, FetchDeploymentsParams, DeploymentItem, CommitItem, RepositoryInfo, CommitOrRepositoryInfo}};
@@ -225,7 +225,7 @@ fn convert_to_items(deployment_nodes: NonEmptyVec<DeploymentNodeGraphQLResponseO
     // TODO: 無理やりすぎる
     let rest = rest.iter().flat_map(|x| match x {
         DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse(deployment) => Some(deployment.clone()),
-        DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryInfo(info) => None,
+        DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryInfo(_info) => None,
     }).collect::<Vec<DeploymentsDeploymentsNodeGraphQLResponse>>();
 
     let first_commit: CommitOrRepositoryInfo = match first_item {

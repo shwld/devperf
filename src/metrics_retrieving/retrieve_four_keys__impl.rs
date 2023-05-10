@@ -1,7 +1,7 @@
-use chrono::{DateTime, Utc, NaiveTime, LocalResult, NaiveDate};
-use futures::{future::{try_join_all}, SinkExt};
+use chrono::{DateTime, Utc, NaiveDate};
+use futures::{future::{try_join_all}};
 
-use crate::{dependencies::{read_project_config::interface::{ReadProjectConfig, ProjectConfig, DeploymentSource, ResourceConfig}, fetch_deployments::interface::{FetchDeployments, FetchDeploymentsParams, DeploymentItem, CommitOrRepositoryInfo}, get_first_commit_from_compare::interface::{GetFirstCommitFromCompare, FirstCommitFromCompareParams}}, common_types::{NonEmptyVec}, metrics_retrieving::retrieve_four_keys__schema::FirstCommitOrRepositoryInfo};
+use crate::{dependencies::{read_project_config::interface::{ReadProjectConfig, ProjectConfig, ResourceConfig}, fetch_deployments::interface::{FetchDeployments, FetchDeploymentsParams, DeploymentItem, CommitOrRepositoryInfo}, get_first_commit_from_compare::interface::{GetFirstCommitFromCompare, FirstCommitFromCompareParams}}, metrics_retrieving::retrieve_four_keys__schema::FirstCommitOrRepositoryInfo};
 
 use super::{retrieve_four_keys__schema::{RetrieveFourKeysExecutionContext, RetrieveFourKeysEvent, RetrieveFourKeysEventError, DeploymentMetricItem, DeploymentCommitItem, DeploymentMetric, FourKeysMetrics, DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, RepositoryInfo}};
 

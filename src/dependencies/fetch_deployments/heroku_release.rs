@@ -168,7 +168,7 @@ fn convert_to_items(deployment_nodes: NonEmptyVec<HerokuReleaseOrRepositoryInfo>
     // TODO: 無理やりすぎる
     let rest = rest.iter().flat_map(|x| match x {
         HerokuReleaseOrRepositoryInfo::HerokuRelease(release) => Some(release.clone()),
-        HerokuReleaseOrRepositoryInfo::RepositoryInfo(info) => None,
+        HerokuReleaseOrRepositoryInfo::RepositoryInfo(_info) => None,
     }).collect::<Vec<HerokuRelease>>();
 
     let first_commit: CommitOrRepositoryInfo = match first_item {

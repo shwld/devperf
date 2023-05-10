@@ -3,7 +3,7 @@ use anyhow::anyhow;
 
 use async_trait::async_trait;
 use crate::{dependencies::settings_toml::{ProjectName, Config}};
-use super::interface::{ReadProjectConfig, ReadProjectConfigError, ProjectConfig, DeploymentSource, GitHubDeploymentResourceConfig, ResourceConfig, HerokuReleaseResourceConfig};
+use super::interface::{ReadProjectConfig, ReadProjectConfigError, ProjectConfig, GitHubDeploymentResourceConfig, ResourceConfig, HerokuReleaseResourceConfig};
 
 /// `Config` implements `Default`
 impl ::std::default::Default for Config {
