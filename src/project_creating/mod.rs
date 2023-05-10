@@ -7,7 +7,6 @@ pub mod create_heroku_release_project_schema;
 pub mod create_heroku_release_project_workflow;
 
 pub mod public_schema;
-pub mod validate_github_personal_token;
 pub mod validate_heroku_api_token;
 pub mod validate_heroku_app_name;
 pub mod validate_working_days_per_week;

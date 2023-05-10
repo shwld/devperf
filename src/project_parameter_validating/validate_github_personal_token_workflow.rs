@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::schema::*;
+use super::validate_github_personal_token_schema::*;
 
 pub fn perform(
     token: UnvalidatedGitHubPersonalToken,

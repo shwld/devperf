@@ -1,7 +1,7 @@
 use inquire::{Password, PasswordDisplayMode};
 
-use crate::project_creating::validate_github_personal_token::{
-    self, schema::ValidatedGitHubPersonalToken,
+use crate::project_parameter_validating::validate_github_personal_token::{
+    self, ValidatedGitHubPersonalToken,
 };
 
 pub fn input() -> ValidatedGitHubPersonalToken {
@@ -10,7 +10,7 @@ pub fn input() -> ValidatedGitHubPersonalToken {
         .without_confirmation()
         .prompt()
         .unwrap();
-    let value = validate_github_personal_token::workflow::perform(Some(value));
+    let value = validate_github_personal_token::perform(Some(value));
 
     if let Ok(value) = value {
         value

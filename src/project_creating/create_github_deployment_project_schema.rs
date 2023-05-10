@@ -1,12 +1,13 @@
 use crate::{
     dependencies::write_new_config::interface::WriteNewConfigError,
     project_creating::{
-        public_schema::GitHubDeploymentProjectConfig, validate_github_personal_token::schema::*,
+        public_schema::GitHubDeploymentProjectConfig,
         validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek,
     },
     project_parameter_validating::{
         validate_developer_count::ValidatedDeveloperCount,
         validate_github_owner_repo::ValidatedGitHubOwnerRepo,
+        validate_github_personal_token::ValidatedGitHubPersonalToken,
     },
 };
 use thiserror::Error;
