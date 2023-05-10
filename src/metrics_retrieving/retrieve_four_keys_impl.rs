@@ -11,10 +11,10 @@ use crate::{
         },
         read_project_config::interface::{ProjectConfig, ReadProjectConfig, ResourceConfig},
     },
-    metrics_retrieving::retrieve_four_keys__schema::FirstCommitOrRepositoryInfo,
+    metrics_retrieving::retrieve_four_keys_schema::FirstCommitOrRepositoryInfo,
 };
 
-use super::retrieve_four_keys__schema::{
+use super::retrieve_four_keys_schema::{
     DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
     DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, FourKeysMetrics, RepositoryInfo,
     RetrieveFourKeysEvent, RetrieveFourKeysEventError, RetrieveFourKeysExecutionContext,
@@ -293,8 +293,6 @@ pub async fn perform<
     });
     let metrics_items = try_join_all(convert_items).await?;
     // .collect::<Result<NonEmptyVec<DeploymentMetricItem>, RetrieveFourKeysEventError>>()?;
-
-    
 
     calculate_four_keys(metrics_items, project_config, context)
 }
