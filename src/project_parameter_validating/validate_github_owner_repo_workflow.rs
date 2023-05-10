@@ -1,6 +1,6 @@
 use regex::Regex;
 
-use super::schema::*;
+use super::validate_github_owner_repo_schema::*;
 
 pub fn perform(
     owner_repo: UnvalidatedGitHubOwnerRepo,

@@ -4,11 +4,13 @@ use crate::{
     dependencies::write_new_config::interface::WriteConfigData,
     persistence::project_config::ProjectConfig,
     project_creating::{
-        validate_github_owner_repo::{self, schema::ValidateGitHubOwnerRepoError},
         validate_github_personal_token::{self, schema::ValidateGitHubPersonalTokenError},
         validate_working_days_per_week::{self, schema::ValidateWorkingDaysPerWeekError},
     },
-    project_parameter_validating::validate_developer_count::{self, ValidateDeveloperCountError},
+    project_parameter_validating::{
+        validate_developer_count::{self, ValidateDeveloperCountError},
+        validate_github_owner_repo::{self, ValidateGitHubOwnerRepoError},
+    },
 };
 
 use super::create_github_deployment_project_schema::GitHubDeploymentProjectCreated;
@@ -30,7 +32,7 @@ impl GitHubDeploymentProjectCreatedDto {
         let github_personal_token = validate_github_personal_token::workflow::perform(Some(
             dto.github_personal_token.to_string(),
         ))?;
-        let github_owner_repo = validate_github_owner_repo::workflow::perform(format!(
+        let github_owner_repo = validate_github_owner_repo::perform(format!(
             "{}/{}",
             dto.project_config.github_owner, dto.project_config.github_repo
         ))?;

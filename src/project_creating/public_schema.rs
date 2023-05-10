@@ -1,11 +1,13 @@
 use super::{
-    validate_github_owner_repo::schema::ValidatedGitHubOwnerRepo,
     validate_github_personal_token::schema::ValidatedGitHubPersonalToken,
     validate_heroku_api_token::schema::ValidatedHerokuApiToken,
     validate_heroku_app_name::schema::ValidatedHerokuAppName,
     validate_working_days_per_week::schema::ValidatedWorkingDaysPerWeek,
 };
-use crate::project_parameter_validating::validate_developer_count::ValidatedDeveloperCount;
+use crate::project_parameter_validating::{
+    validate_developer_count::ValidatedDeveloperCount,
+    validate_github_owner_repo::ValidatedGitHubOwnerRepo,
+};
 
 #[derive(Clone)]
 pub struct GitHubDeploymentProjectConfig {
