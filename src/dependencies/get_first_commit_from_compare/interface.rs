@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use thiserror::Error;
 
+#[derive(Debug)]
 pub struct FirstCommitItem {
     pub sha: String,
     pub message: String,
@@ -10,6 +11,7 @@ pub struct FirstCommitItem {
     pub creator_login: String,
 }
 
+#[derive(Debug)]
 pub struct FirstCommitFromCompareParams {
     pub owner: String,
     pub repo: String,

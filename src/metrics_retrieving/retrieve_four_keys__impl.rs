@@ -59,6 +59,7 @@ pub async fn to_metric_item<F: GetFirstCommitFromCompare>(get_first_commit_from_
                 },
                 _ => unimplemented!(),
             }).await;
+            log::debug!("first_commit: {:?}", commit);
             match commit {
                 Ok(commit) => Some(FirstCommitOrRepositoryInfo::FirstCommit(DeploymentCommitItem {
                     sha: commit.sha,
@@ -159,6 +160,7 @@ fn median(numbers: Vec<i64>) -> f64 {
 fn calculate_four_keys(metrics_items: Vec<DeploymentMetricItem>, project_config: ProjectConfig, context: RetrieveFourKeysExecutionContext) -> Result<FourKeysMetrics, RetrieveFourKeysEventError> {
     let ranged_items = metrics_items.into_iter().filter(|it| it.deployed_at >= context.since && it.deployed_at <= context.until).collect::<Vec<DeploymentMetricItem>>();
     let items_by_day = split_by_day(ranged_items);
+    log::debug!("items_by_day: {:?}", items_by_day);
 
     let total_deployments = items_by_day.iter().fold(0, |total, i| total + i.len() as u32);
     let duration_since = context.until.signed_duration_since(context.since);
@@ -169,6 +171,7 @@ fn calculate_four_keys(metrics_items: Vec<DeploymentMetricItem>, project_config:
         items
             .iter()
     }).flat_map(|item| item.lead_time_for_changes_seconds).collect::<Vec<i64>>();
+    log::debug!("durations: {:?}", durations);
     let median_duration = median(durations);
     let hours = (median_duration / 3600.0) as i64;
     let minutes = ((median_duration.round() as i64 % 3600) / 60) as i64;

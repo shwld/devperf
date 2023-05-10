@@ -15,6 +15,7 @@ fn deployments_query(owner: &str, repo: &str, environment: &str, after: Option<S
                             id
                             commit {{
                                 id
+                                sha: oid
                                 message
                                 commit_resource_path: commitResourcePath
                                 committed_date: committedDate
@@ -110,6 +111,7 @@ pub struct DeploymentsDeploymentsNodeGraphQLResponse {
 #[non_exhaustive]
 pub struct DeploymentsCommitGraphQLResponse {
     pub id: String,
+    pub sha: String,
     pub message: String,
     pub commit_resource_path: String,
     pub committed_date: DateTime<Utc>,
@@ -242,7 +244,7 @@ fn convert_to_items(deployment_nodes: NonEmptyVec<DeploymentNodeGraphQLResponseO
         .scan(first_commit, |previous: &mut CommitOrRepositoryInfo, deployment: &DeploymentsDeploymentsNodeGraphQLResponse| {
             let status = find_status(deployment);
             let commit_item = CommitItem {
-                sha: deployment.clone().commit.id,
+                sha: deployment.clone().commit.sha,
                 message: deployment.clone().commit.message,
                 resource_path: deployment.clone().commit.commit_resource_path,
                 committed_at: deployment.clone().commit.committed_date,

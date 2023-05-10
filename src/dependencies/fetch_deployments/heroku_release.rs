@@ -159,6 +159,10 @@ fn convert_to_items(deployment_nodes: NonEmptyVec<HerokuReleaseOrRepositoryInfo>
         HerokuReleaseOrRepositoryInfo::HerokuRelease(release) => release.release.created_at,
         HerokuReleaseOrRepositoryInfo::RepositoryInfo(info) => info.created_at,
     });
+    log::debug!("sorted: {:#?}", sorted.clone().get_all().iter().map(|x| match x {
+        HerokuReleaseOrRepositoryInfo::HerokuRelease(release) => release.release.created_at,
+        HerokuReleaseOrRepositoryInfo::RepositoryInfo(info) => info.created_at,
+    }).collect::<Vec<_>>());
     let (first_item, rest) = sorted.get();
 
     // TODO: 無理やりすぎる
@@ -197,42 +201,12 @@ fn convert_to_items(deployment_nodes: NonEmptyVec<HerokuReleaseOrRepositoryInfo>
                 creator_login: release.clone().commit.author.map(|x| x.login).unwrap(), // TODO unwrap
                 deployed_at: release.release.created_at,
             };
+            log::debug!("deployment_item: {:#?}", deployment_item);
             *previous = CommitOrRepositoryInfo::Commit(commit_item);
             Some(deployment_item)
         }).collect::<Vec<DeploymentItem>>();
 
     deployment_items
-}
-
-
-// FIXME: remove depends modules::github
-pub async fn list(github_api: GitHubAPI, project_config: ProjectConfig) -> Result<Vec<DeploymentItem>, FetchDeploymentsError> {
-    let resource_config = match project_config.clone().resource {
-        ResourceConfig::HerokuRelease(resource) => Ok(resource),
-        _ => Err(FetchDeploymentsError::CreateAPIClientError(anyhow::anyhow!("Resource is not HerokuRelease"))),
-    }?;
-    let client = create_http_client();
-    let url = format!("https://api.heroku.com/apps/{app_name}/releases", app_name = resource_config.heroku_app_name);
-    let releases: Vec<HerokuReleaseItem> = client.get(url)
-        .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}", token = resource_config.heroku_api_token))
-        .header(reqwest::header::ACCEPT, "application/vnd.heroku+json; version=3")
-        .header(reqwest::header::RANGE, "version ..; order=desc;")
-        .send().await.map_err(|e| anyhow::anyhow!(e)).map_err(FetchDeploymentsError::FetchDeploymentsError)?
-        .json::<Vec<HerokuReleaseItem>>().await.map_err(|e| anyhow::anyhow!(e)).map_err(FetchDeploymentsError::FetchDeploymentsError)?;
-
-    let mut deployments = try_join_all(releases.iter().map(|release| {
-        attach_commit(github_api.clone(), project_config.clone(), release.clone())
-    })).await?;
-    let repo_creatd_at = get_created_at(github_api.clone(), &resource_config.github_owner, &resource_config.github_repo).await.map_err(|e| anyhow::anyhow!(e)).map_err(FetchDeploymentsError::GetRepositoryCreatedAtError)?;
-    log::debug!("repo_creatd_at: {:#?}", repo_creatd_at);
-    deployments.push(HerokuReleaseOrRepositoryInfo::RepositoryInfo(GitHubRepositoryInfo { created_at: repo_creatd_at }));
-    let non_empty_nodes = NonEmptyVec::new(deployments)
-        .map_err(|e| anyhow::anyhow!(e))
-        .map_err(FetchDeploymentsError::FetchDeploymentsResultIsEmptyList)?;
-
-    let deployment_items = convert_to_items(non_empty_nodes);
-
-    Ok(deployment_items)
 }
 
 pub struct FetchDeploymentsWithHerokuRelease {
@@ -256,7 +230,9 @@ impl FetchDeployments for FetchDeploymentsWithHerokuRelease {
             .send().await.map_err(|e| anyhow::anyhow!(e)).map_err(FetchDeploymentsError::FetchDeploymentsError)?
             .json::<Vec<HerokuReleaseItem>>().await.map_err(|e| anyhow::anyhow!(e)).map_err(FetchDeploymentsError::FetchDeploymentsError)?;
 
-        let mut deployments = try_join_all(releases.iter().map(|release| {
+        let succeeded_releases = releases.into_iter().filter(|release| release.status.to_uppercase() == "SUCCEEDED").collect::<Vec<HerokuReleaseItem>>();
+
+        let mut deployments = try_join_all(succeeded_releases.iter().map(|release| {
             attach_commit(self.github_api.clone(), self.project_config.clone(), release.clone())
         })).await?;
         let repo_creatd_at = get_created_at(self.github_api.clone(), &resource_config.github_owner, &resource_config.github_repo).await.map_err(|e| anyhow::anyhow!(e)).map_err(FetchDeploymentsError::GetRepositoryCreatedAtError)?;

@@ -7,6 +7,7 @@ use super::interface::{FirstCommitFromCompareParams, FirstCommitItem, GetFirstCo
 
 pub async fn get_first_commit_from_compare(github_api: GitHubAPI, params: &FirstCommitFromCompareParams) -> Result<FirstCommitItem, GetFirstCommitFromCompareError> {
     let github_api_client = github_api.get_client().map_err(|e| anyhow::anyhow!(e)).map_err(GetFirstCommitFromCompareError::CreateAPIClientError)?;
+    log::debug!("params: {:?}", params);
     if params.base.is_empty() || params.head.is_empty() {
         return Err(GetFirstCommitFromCompareError::EmptyBaseOrHead(format!("base: {:?}, head: {:?}", params.base, params.head)))
     }
@@ -22,13 +23,13 @@ pub async fn get_first_commit_from_compare(github_api: GitHubAPI, params: &First
     let json = result.json::<serde_json::Value>().await.map_err(|e| anyhow::anyhow!(e)).map_err(GetFirstCommitFromCompareError::APIResponseParseError)?;
     // log::debug!("res: {:?}", res);
     log::debug!("base: {:?}, head: {:?}", params.base, params.head);
-    log::debug!("commits: {:?}", json.get("commits"));
     let first_commit = json.get("commits").and_then(|x| x.get(0)).ok_or(GetFirstCommitFromCompareError::CannotGotFromJsonError("commits".to_string()))?;
 
+    log::debug!("first_commit_result: {:#?}", first_commit);
     let sha = first_commit["sha"].as_str().ok_or(GetFirstCommitFromCompareError::CannotGotFromJsonError("sha".to_string()))?;
-    let message = first_commit["message"].as_str().ok_or(GetFirstCommitFromCompareError::CannotGotFromJsonError("message".to_string()))?;
+    let message = first_commit["commit"]["message"].as_str().ok_or(GetFirstCommitFromCompareError::CannotGotFromJsonError("message".to_string()))?;
     let html_url = first_commit["html_url"].as_str().ok_or(GetFirstCommitFromCompareError::CannotGotFromJsonError("html_url".to_string()))?;
-    let committed_at = first_commit["author"]["date"].as_str().ok_or(GetFirstCommitFromCompareError::CannotGotFromJsonError("date".to_string()))
+    let committed_at = first_commit["commit"]["author"]["date"].as_str().ok_or(GetFirstCommitFromCompareError::CannotGotFromJsonError("date".to_string()))
         .and_then(|date_str| DateTime::parse_from_rfc3339(date_str).map_err(|e| anyhow::anyhow!(e)).map_err(GetFirstCommitFromCompareError::APIResponseParseError))?.with_timezone(&Utc);
     let creator_login = first_commit["author"]["login"].as_str().ok_or(GetFirstCommitFromCompareError::CannotGotFromJsonError("login".to_string()))?;
     Ok(FirstCommitItem {
