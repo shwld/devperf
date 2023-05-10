@@ -1,7 +1,7 @@
 use crate::dependencies::write_new_config::interface::WriteNewConfig;
 
-use super::dto::GitHubDeploymentProjectCreatedDto;
-use super::schema::*;
+use super::create_github_deployment_project_dto::GitHubDeploymentProjectCreatedDto;
+use super::create_github_deployment_project_schema::*;
 
 pub async fn perform<T: WriteNewConfig>(
     write_new_config: T,

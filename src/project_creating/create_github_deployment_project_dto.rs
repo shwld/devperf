@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-use super::schema::GitHubDeploymentProjectCreated;
+use super::create_github_deployment_project_schema::GitHubDeploymentProjectCreated;
 
 pub type GitHubDeploymentProjectCreatedDto = WriteConfigData;
 

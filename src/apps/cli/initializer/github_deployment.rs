@@ -3,9 +3,7 @@ use super::input::{
 };
 use crate::{
     dependencies::write_new_config::settings_toml::WriteNewConfigWithSettingsToml,
-    project_creating::create_github_deployment_project::{
-        self, schema::UncreatedGitHubDeploymentProject,
-    },
+    project_creating::create_github_deployment_project::{self, UncreatedGitHubDeploymentProject},
 };
 
 pub async fn init() {
@@ -23,7 +21,7 @@ pub async fn init() {
         github_personal_token: token,
     };
 
-    match create_github_deployment_project::workflow::perform(
+    match create_github_deployment_project::perform(
         WriteNewConfigWithSettingsToml,
         uncreated_project,
     )
