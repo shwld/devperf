@@ -7,6 +7,7 @@ use super::super::settings_toml::{Config, ProjectConfig};
 
 use super::interface::{ProjectConfigIOWriter, ProjectConfigIOWriterError, WriteConfigData};
 
+#[derive(Debug, Clone)]
 pub struct ProjectConfigIOWriterWithSettingsToml;
 #[async_trait]
 impl ProjectConfigIOWriter for ProjectConfigIOWriterWithSettingsToml {

@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use chrono::{DateTime, NaiveDate, Utc};
 use futures::future::try_join_all;
 
@@ -14,8 +15,8 @@ use crate::{
 use super::retrieve_four_keys_public_types::{
     DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
     DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, FourKeysMetrics, RepositoryInfo,
-    RetrieveFourKeysEvent, RetrieveFourKeysEventError, RetrieveFourKeysExecutionContext,
-    RetrieveFourKeysExecutionContextProject,
+    RetrieveFourKeys, RetrieveFourKeysEvent, RetrieveFourKeysEventError,
+    RetrieveFourKeysExecutionContext, RetrieveFourKeysExecutionContextProject,
 };
 
 // ---------------------------
@@ -221,10 +222,7 @@ fn calculate_four_keys(
     Ok(deployment_frequency)
 }
 
-// ---------------------------
-// overall workflow
-// ---------------------------
-pub async fn perform<
+async fn calculate_four_keys_metrics<
     FDeploymentsFetcher: DeploymentsFetcher,
     FFirstCommitGetter: FirstCommitGetter,
 >(
@@ -234,10 +232,51 @@ pub async fn perform<
 ) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError> {
     let deployments = fetch_deployments(&deployments_fetcher, context.since).await?;
     let convert_items = deployments.into_iter().map(|deployment| {
-        to_metric_item(&first_commit_getter, context.project.clone(), deployment)
+        to_metric_item(&first_commit_getter, context.clone().project, deployment)
     });
     let metrics_items = try_join_all(convert_items).await?;
-    // .collect::<Result<NonEmptyVec<DeploymentMetricItem>, RetrieveFourKeysEventError>>()?;
+    let result = calculate_four_keys(metrics_items, context.clone())?;
+    let event = RetrieveFourKeysEvent::FourKeysMetrics(result);
 
-    calculate_four_keys(metrics_items, context)
+    Ok(event)
+}
+
+// ---------------------------
+// create events
+// ---------------------------
+fn create_events(project: RetrieveFourKeysEvent) -> Vec<RetrieveFourKeysEvent> {
+    vec![project]
+}
+
+// ---------------------------
+// overall workflow
+// ---------------------------
+pub struct RetrieveFourKeysWorkflow<
+    FDeploymentsFetcher: DeploymentsFetcher,
+    FFirstCommitGetter: FirstCommitGetter,
+> {
+    deployments_fetcher: FDeploymentsFetcher,
+    first_commit_getter: FFirstCommitGetter,
+}
+#[async_trait]
+impl<
+        FDeploymentsFetcher: DeploymentsFetcher + Sync + Send,
+        FFirstCommitGetter: FirstCommitGetter + Sync + Send,
+    > RetrieveFourKeys for RetrieveFourKeysWorkflow<FDeploymentsFetcher, FFirstCommitGetter>
+{
+    async fn retrieve_four_keys(
+        &self,
+        context: RetrieveFourKeysExecutionContext,
+    ) -> Result<Vec<RetrieveFourKeysEvent>, RetrieveFourKeysEventError> {
+        let four_keys_metrics = calculate_four_keys_metrics(
+            self.deployments_fetcher,
+            self.first_commit_getter,
+            context,
+        )
+        .await?;
+
+        let events = create_events(four_keys_metrics);
+
+        Ok(events)
+    }
 }

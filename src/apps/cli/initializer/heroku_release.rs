@@ -1,10 +1,15 @@
+use crate::{
+    dependencies::project_config_io::writer::settings_toml::ProjectConfigIOWriterWithSettingsToml,
+    project_creating::{
+        create_project_implementation::CreateProjectWorkflow,
+        create_project_public_types::UncreatedHerokuReleaseProject,
+        create_project_public_types::{CreateProject, UncreatedProject},
+    },
+};
+
 use super::input::{
     developer_count, github_owner_repo, github_personal_token, heroku_app_name, heroku_auth_token,
     project_name, working_days_per_week,
-};
-use crate::{
-    dependencies::project_config_io::settings_toml::WriteNewConfigWithSettingsToml,
-    project_creating::create_heroku_release_project::{self, UncreatedHerokuReleaseProject},
 };
 
 pub async fn init() {
@@ -16,7 +21,7 @@ pub async fn init() {
     let developer_count = developer_count::input();
     let working_days_per_week = working_days_per_week::input();
 
-    let uncreated_project = UncreatedHerokuReleaseProject {
+    let uncreated_project = UncreatedProject::HerokuRelease(UncreatedHerokuReleaseProject {
         project_name,
         github_owner_repo: owner_repo,
         heroku_app_name,
@@ -24,11 +29,13 @@ pub async fn init() {
         developer_count,
         working_days_per_week,
         github_personal_token: github_token,
+    });
+
+    let workflow = CreateProjectWorkflow {
+        project_io_writer: ProjectConfigIOWriterWithSettingsToml,
     };
 
-    match create_heroku_release_project::perform(WriteNewConfigWithSettingsToml, uncreated_project)
-        .await
-    {
+    match workflow.create_project(uncreated_project).await {
         Ok(_project) => {
             println!("Complete project creation!");
         }

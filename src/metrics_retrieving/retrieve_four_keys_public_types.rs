@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -103,7 +104,9 @@ pub struct FourKeysMetrics {
 // Events
 /// The possible events resulting from the workflow
 /// Not all events will occur, depending on the logic of the workflow
-pub type RetrieveFourKeysEvent = FourKeysMetrics;
+pub enum RetrieveFourKeysEvent {
+    FourKeysMetrics(FourKeysMetrics),
+}
 
 // Error types
 #[derive(Error, Debug)]
@@ -116,7 +119,10 @@ pub enum RetrieveFourKeysEventError {
 
 // ------------------------------------
 // the workflow itself
-// pub type RetrieveFourKeys = fn(
-//     ProjectConfig,
-//     RetrieveFourKeysExecutionContext,
-// ) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError>;
+#[async_trait]
+pub trait RetrieveFourKeys {
+    async fn retrieve_four_keys(
+        &self,
+        context: RetrieveFourKeysExecutionContext,
+    ) -> Result<Vec<RetrieveFourKeysEvent>, RetrieveFourKeysEventError>;
+}

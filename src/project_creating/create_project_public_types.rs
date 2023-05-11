@@ -81,13 +81,13 @@ pub enum CreateProjectEvent {
 #[derive(Error, Debug)]
 pub enum CreateGithubDeploymentProjectError {
     #[error("Cannot write config")]
-    WriteError(ProjectConfigIOWriterError),
+    WriteError(#[from] ProjectConfigIOWriterError),
 }
 
 // ------------------------------------
 // the workflow itself
 #[async_trait]
-pub trait CreateProjectWorkflow {
+pub trait CreateProject {
     async fn create_project(
         &self,
         uncreated_project: UncreatedProject,

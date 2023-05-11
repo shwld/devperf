@@ -2,8 +2,13 @@ use super::input::{
     developer_count, github_owner_repo, github_personal_token, project_name, working_days_per_week,
 };
 use crate::{
-    dependencies::write_new_config::settings_toml::WriteNewConfigWithSettingsToml,
-    project_creating::create_github_deployment_project::{self, UncreatedGitHubDeploymentProject},
+    dependencies::project_config_io::writer::settings_toml::ProjectConfigIOWriterWithSettingsToml,
+    project_creating::{
+        create_project_implementation::CreateProjectWorkflow,
+        create_project_public_types::{
+            CreateProject, UncreatedGitHubDeploymentProject, UncreatedProject,
+        },
+    },
 };
 
 pub async fn init() {
@@ -13,20 +18,18 @@ pub async fn init() {
     let developer_count = developer_count::input();
     let working_days_per_week = working_days_per_week::input();
 
-    let uncreated_project = UncreatedGitHubDeploymentProject {
+    let uncreated_project = UncreatedProject::GitHubDeployment(UncreatedGitHubDeploymentProject {
         project_name,
         github_owner_repo: owner_repo,
         developer_count,
         working_days_per_week,
         github_personal_token: token,
+    });
+    let workflow = CreateProjectWorkflow {
+        project_io_writer: ProjectConfigIOWriterWithSettingsToml,
     };
 
-    match create_github_deployment_project::perform(
-        WriteNewConfigWithSettingsToml,
-        uncreated_project,
-    )
-    .await
-    {
+    match workflow.create_project(uncreated_project).await {
         Ok(_project) => {
             println!("Complete project creation!");
         }
