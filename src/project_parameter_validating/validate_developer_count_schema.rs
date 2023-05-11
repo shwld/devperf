@@ -3,6 +3,8 @@
 // related to the ValidateDeveloperCount workflow
 // ==================================
 
+use thiserror::Error;
+
 // ------------------------------------
 // inputs to the workflow
 pub type UnvalidatedDeveloperCount = String;
@@ -20,8 +22,13 @@ pub struct ValidatedDeveloperCount(pub(super) u32);
 pub type ValidateDeveloperCountEvent = ValidatedDeveloperCount;
 
 // Error types
-#[derive(Debug, Clone)]
-pub struct ValidateDeveloperCountError(pub(super) String);
+#[derive(Debug, Error)]
+pub enum ValidateDeveloperCountError {
+    #[error("Must be a positive integer")]
+    MustBeAPositiveInteger(String),
+    #[error("Must be a positive integer")]
+    ParseError(#[from] std::num::ParseIntError),
+}
 
 // ------------------------------------
 // the workflow itself

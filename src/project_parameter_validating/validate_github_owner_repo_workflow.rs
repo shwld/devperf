@@ -1,3 +1,5 @@
+use std::fmt;
+
 use regex::Regex;
 
 use super::validate_github_owner_repo_schema::*;
@@ -20,14 +22,28 @@ impl ValidatedGitHubOwnerRepo {
                 github_repo: caps.get(2).map_or("", |m| m.as_str()).to_string(),
             })
         } else {
-            Err(ValidateGitHubOwnerRepoError(
+            Err(ValidateGitHubOwnerRepoError::Invalid(
                 "GitHub owner/repo is invalid".to_string(),
             ))
         }
     }
 
+    pub fn get_owner(&self) -> String {
+        self.github_owner.clone()
+    }
+
+    pub fn get_repo(&self) -> String {
+        self.github_repo.clone()
+    }
+
     pub fn get_values(self) -> (String, String) {
         (self.github_owner, self.github_repo)
+    }
+}
+
+impl fmt::Display for ValidatedGitHubOwnerRepo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}/{}", self.github_owner, self.github_repo)
     }
 }
 

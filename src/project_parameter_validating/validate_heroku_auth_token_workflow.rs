@@ -3,32 +3,32 @@ use std::fmt;
 use super::validate_heroku_auth_token_schema::*;
 
 pub fn perform(
-    token: UnvalidatedHerokuApiToken,
-) -> Result<ValidateHerokuApiTokenEvent, ValidateHerokuApiTokenError> {
-    ValidatedHerokuApiToken::new(token)
+    token: UnvalidatedHerokuAuthToken,
+) -> Result<ValidateHerokuAuthTokenEvent, ValidateHerokuAuthTokenError> {
+    ValidatedHerokuAuthToken::new(token)
 }
 
 // PRIVATE
 
-impl ValidatedHerokuApiToken {
-    pub fn new(token: Option<String>) -> Result<Self, ValidateHerokuApiTokenError> {
+impl ValidatedHerokuAuthToken {
+    pub fn new(token: Option<String>) -> Result<Self, ValidateHerokuAuthTokenError> {
         if let Some(token) = token {
             if token.len() > 20 {
-                Ok(ValidatedHerokuApiToken(token))
+                Ok(ValidatedHerokuAuthToken(token))
             } else {
-                Err(ValidateHerokuApiTokenError::InvalidToken(
+                Err(ValidateHerokuAuthTokenError::InvalidToken(
                     "Heroku authorization token is invalid".to_string(),
                 ))
             }
         } else {
-            Err(ValidateHerokuApiTokenError::Required(
+            Err(ValidateHerokuAuthTokenError::Required(
                 "Heroku authorization token is empty".to_string(),
             ))
         }
     }
 }
 
-impl fmt::Display for ValidatedHerokuApiToken {
+impl fmt::Display for ValidatedHerokuAuthToken {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }
@@ -36,11 +36,11 @@ impl fmt::Display for ValidatedHerokuApiToken {
 
 // #[cfg(test)]
 // mod tests {
-//     use crate::project_creating::validate_heroku_api_token::schema::ValidateHerokuApiToken;
+//     use crate::project_creating::validate_heroku_auth_token::schema::ValidateHerokuAuthToken;
 
 //     #[test]
 //     fn verify_perform_type() {
 //         // 型チェックのために代入する
-//         let _type_check: ValidateHerokuApiToken = super::perform;
+//         let _type_check: ValidateHerokuAuthToken = super::perform;
 //     }
 // }

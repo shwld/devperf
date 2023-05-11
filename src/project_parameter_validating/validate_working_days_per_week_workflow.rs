@@ -10,18 +10,12 @@ pub fn perform(
 
 impl ValidatedWorkingDaysPerWeek {
     pub fn new(count: String) -> Result<Self, ValidateWorkingDaysPerWeekError> {
-        let count = count.parse::<f32>();
-        if let Ok(count) = count {
-            if count > 0.0 && count < 7.0 {
-                Ok(ValidatedWorkingDaysPerWeek(count))
-            } else {
-                Err(ValidateWorkingDaysPerWeekError(
-                    "Developer count is zero".to_string(),
-                ))
-            }
+        let count = count.parse::<f32>()?;
+        if count > 0.0 && count < 7.0 {
+            Ok(ValidatedWorkingDaysPerWeek(count))
         } else {
-            Err(ValidateWorkingDaysPerWeekError(
-                "Developer count is not a number".to_string(),
+            Err(ValidateWorkingDaysPerWeekError::Invalid(
+                "Specify between 0.0 and 7.0".to_string(),
             ))
         }
     }

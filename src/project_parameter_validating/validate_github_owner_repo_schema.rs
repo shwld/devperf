@@ -3,6 +3,8 @@
 // related to the ValidateGitHubOwnerRepo workflow
 // ==================================
 
+use thiserror::Error;
+
 // ------------------------------------
 // inputs to the workflow
 pub type UnvalidatedGitHubOwnerRepo = String;
@@ -23,8 +25,11 @@ pub struct ValidatedGitHubOwnerRepo {
 pub type ValidateGitHubOwnerRepoEvent = ValidatedGitHubOwnerRepo;
 
 // Error types
-#[derive(Debug, Clone)]
-pub struct ValidateGitHubOwnerRepoError(pub(super) String);
+#[derive(Debug, Error)]
+pub enum ValidateGitHubOwnerRepoError {
+    #[error("Owner repo is invalid")]
+    Invalid(String),
+}
 
 // ------------------------------------
 // the workflow itself

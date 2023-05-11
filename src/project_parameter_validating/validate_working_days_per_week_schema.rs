@@ -3,6 +3,8 @@
 // related to the ValidateWorkingDaysPerWeek workflow
 // ==================================
 
+use thiserror::Error;
+
 // ------------------------------------
 // inputs to the workflow
 pub type UnvalidatedWorkingDaysPerWeek = String;
@@ -20,8 +22,13 @@ pub struct ValidatedWorkingDaysPerWeek(pub(super) f32);
 pub type ValidateWorkingDaysPerWeekEvent = ValidatedWorkingDaysPerWeek;
 
 // Error types
-#[derive(Debug, Clone)]
-pub struct ValidateWorkingDaysPerWeekError(pub(super) String);
+#[derive(Debug, Error)]
+pub enum ValidateWorkingDaysPerWeekError {
+    #[error("Must be a positive integer")]
+    Invalid(String),
+    #[error("Must be a positive integer")]
+    ParseError(#[from] std::num::ParseFloatError),
+}
 
 // ------------------------------------
 // the workflow itself
