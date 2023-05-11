@@ -55,7 +55,7 @@ pub async fn get_four_keys(
                 heroku_app_name: config.heroku_app_name,
                 heroku_auth_token: config.heroku_auth_token,
                 github_owner_repo: config.github_owner_repo.clone(),
-                github_api: GitHubAPI::new(config.github_personal_token)?,
+                github_api: GitHubAPI::new(config.github_personal_token.clone())?,
             };
             let first_commit_getter = FirstCommitGetterWithGitHub {
                 github_api: GitHubAPI::new(config.github_personal_token)?,
@@ -72,7 +72,7 @@ pub async fn get_four_keys(
             let deployments_fetcher = DeploymentsFetcherWithGithubDeployment {
                 environment: environment.to_string(),
                 github_owner_repo: config.github_owner_repo.clone(),
-                github_api: GitHubAPI::new(config.github_personal_token)?,
+                github_api: GitHubAPI::new(config.github_personal_token.clone())?,
             };
             let first_commit_getter = FirstCommitGetterWithGitHub {
                 github_api: GitHubAPI::new(config.github_personal_token)?,
