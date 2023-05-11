@@ -3,55 +3,91 @@ use chrono::{DateTime, Utc};
 
 use crate::{
     dependencies::{
-        fetch_deployments::{
-            github_deployment::FetchDeploymentsWithGithubDeployment,
-            heroku_release::FetchDeploymentsWithHerokuRelease,
+        deployments_fetcher::{
+            github_deployment::DeploymentsFetcherWithGithubDeployment,
+            heroku_release::DeploymentsFetcherWithHerokuRelease,
         },
-        get_first_commit_from_compare::github::GetFirstCommitFromCompareWithGitHub,
+        first_commit_getter::github::FirstCommitGetterWithGitHub,
         github_api::GitHubAPI,
-        read_project_config::{
-            interface::ReadProjectConfig, settings_toml::ReadProjectConfigWithSettingsToml,
+        project_config_io::reader::{
+            interface::ProjectConfigIOReader, settings_toml::ProjectConfigIOReaderWithSettingsToml,
         },
     },
-    metrics_retrieving::retrieve_four_keys::{
-        self, FourKeysMetrics, RetrieveFourKeysExecutionContext,
+    metrics_retrieving::{
+        dto::RetrieveFourKeysExecutionContextDto,
+        retrieve_four_keys_implementation::RetrieveFourKeysWorkflow,
+        retrieve_four_keys_public_types::{
+            RetrieveFourKeys, RetrieveFourKeysEvent, RetrieveFourKeysExecutionContext,
+        },
     },
+    project_creating::create_project_public_types::ProjectCreated,
 };
+
+fn write_standard_out_from_events(events: Vec<RetrieveFourKeysEvent>) {
+    for event in events {
+        match event {
+            RetrieveFourKeysEvent::FourKeysMetrics(metrics) => {
+                println!("{:#?}", metrics);
+            }
+        }
+    }
+}
 
 pub async fn get_four_keys(
     project_name: &str,
     since: DateTime<Utc>,
     until: DateTime<Utc>,
     environment: &str,
-) -> Result<FourKeysMetrics> {
-    let read_config = ReadProjectConfigWithSettingsToml;
-    let project_config = read_config.perform(project_name.to_string()).await?;
-    let github_api = GitHubAPI {
-        project_config: project_config.clone(),
+) -> Result<()> {
+    let config_reader = ProjectConfigIOReaderWithSettingsToml {};
+    let project_config_dto = config_reader.read(project_name.to_string()).await?;
+    let context = RetrieveFourKeysExecutionContext {
+        project: RetrieveFourKeysExecutionContextDto::build_context(project_config_dto.clone())?,
+        since,
+        until,
     };
-    let fetch_deployments_with_github_deployment = FetchDeploymentsWithGithubDeployment {
-        github_api: github_api.clone(),
-    };
-    let fetch_deployments_with_heroku_release = FetchDeploymentsWithHerokuRelease {
-        project_config: project_config.clone(),
-        github_api: github_api.clone(),
-    };
-    let get_first_commit_from_compare = GetFirstCommitFromCompareWithGitHub {
-        github_api: github_api.clone(),
-    };
-    let result = retrieve_four_keys::perform(
-        fetch_deployments_with_github_deployment,
-        fetch_deployments_with_heroku_release,
-        get_first_commit_from_compare,
-        project_config,
-        RetrieveFourKeysExecutionContext {
-            project_name: project_name.to_string(),
-            since,
-            until,
-            environment: environment.to_string(),
-        },
-    )
+    let project_config: ProjectCreated = project_config_dto.try_into()?;
+
+    let events = match project_config {
+        ProjectCreated::HerokuRelease(config) => {
+            log::info!("Heroku project detected");
+            let deployments_fetcher = DeploymentsFetcherWithHerokuRelease {
+                heroku_app_name: config.heroku_app_name,
+                heroku_auth_token: config.heroku_auth_token,
+                github_owner_repo: config.github_owner_repo.clone(),
+                github_api: GitHubAPI::new(config.github_personal_token)?,
+            };
+            let first_commit_getter = FirstCommitGetterWithGitHub {
+                github_api: GitHubAPI::new(config.github_personal_token)?,
+                github_owner_repo: config.github_owner_repo,
+            };
+            let workflow = RetrieveFourKeysWorkflow {
+                deployments_fetcher,
+                first_commit_getter,
+            };
+            workflow.retrieve_four_keys(context.clone())
+        }
+        ProjectCreated::GitHubDeployment(config) => {
+            log::info!("GitHub project detected");
+            let deployments_fetcher = DeploymentsFetcherWithGithubDeployment {
+                environment: environment.to_string(),
+                github_owner_repo: config.github_owner_repo.clone(),
+                github_api: GitHubAPI::new(config.github_personal_token)?,
+            };
+            let first_commit_getter = FirstCommitGetterWithGitHub {
+                github_api: GitHubAPI::new(config.github_personal_token)?,
+                github_owner_repo: config.github_owner_repo,
+            };
+            let workflow = RetrieveFourKeysWorkflow {
+                deployments_fetcher,
+                first_commit_getter,
+            };
+            workflow.retrieve_four_keys(context)
+        }
+    }
     .await?;
 
-    Ok(result)
+    write_standard_out_from_events(events);
+
+    Ok(())
 }
