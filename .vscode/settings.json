@@ -8,5 +8,10 @@
   "rust-analyzer.check.command": "clippy",
   "rust-analyzer.check.extraArgs": ["--", "-A", "clippy::needless_return"],
   "editor.defaultFormatter": "rust-lang.rust-analyzer",
-  "cSpell.words": ["chrono", "octocrab", "Unvalidated"]
+  "cSpell.words": [
+    "chrono",
+    "octocrab",
+    "thiserror",
+    "Unvalidated"
+  ]
 }
