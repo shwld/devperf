@@ -1,10 +1,10 @@
 use inquire::{Password, PasswordDisplayMode};
 
 use crate::project_parameter_validating::validate_heroku_auth_token::{
-    self, ValidatedHerokuApiToken,
+    self, ValidatedHerokuAuthToken,
 };
 
-pub fn input() -> ValidatedHerokuApiToken {
+pub fn input() -> ValidatedHerokuAuthToken {
     let value = Password::new("Type a Heroku Authorization token: ")
         .with_display_mode(PasswordDisplayMode::Masked)
         .without_confirmation()

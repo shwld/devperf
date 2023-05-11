@@ -1,5 +1,5 @@
 use super::input::{
-    developer_count, github_owner_repo, github_personal_token, heroku_api_token, heroku_app_name,
+    developer_count, github_owner_repo, github_personal_token, heroku_app_name, heroku_auth_token,
     project_name, working_days_per_week,
 };
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
 pub async fn init() {
     let project_name = project_name::input();
     let heroku_app_name = heroku_app_name::input();
-    let heroku_api_token = heroku_api_token::input();
+    let heroku_auth_token = heroku_auth_token::input();
     let github_token = github_personal_token::input();
     let owner_repo = github_owner_repo::input();
     let developer_count = developer_count::input();
@@ -20,7 +20,7 @@ pub async fn init() {
         project_name,
         github_owner_repo: owner_repo,
         heroku_app_name,
-        heroku_api_token,
+        heroku_auth_token,
         developer_count,
         working_days_per_week,
         github_personal_token: github_token,
