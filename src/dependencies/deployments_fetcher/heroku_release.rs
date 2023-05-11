@@ -2,21 +2,19 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use futures::future::try_join_all;
 use http_cache_reqwest::{CACacheManager, Cache, CacheMode, HttpCache};
-use octocrab::models::repos::RepoCommit;
+use octocrab::{models::repos::RepoCommit, Octocrab};
 use reqwest::Client;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    dependencies::{
-        deployments_fetcher::{
-            interface::{CommitItem, DeploymentItem},
-            shared::get_created_at,
-        },
-        github_api::GitHubAPI,
+    dependencies::deployments_fetcher::{
+        interface::{CommitItem, DeploymentItem},
+        shared::get_created_at,
     },
     project_parameter_validating::{
         validate_github_owner_repo::ValidatedGitHubOwnerRepo,
+        validate_github_personal_token::ValidatedGitHubPersonalToken,
         validate_heroku_app_name::ValidatedHerokuAppName,
         validate_heroku_auth_token::ValidatedHerokuAuthToken,
     },
@@ -140,11 +138,15 @@ async fn get_slug(
 async fn get_commit(
     github_owner_repo: ValidatedGitHubOwnerRepo,
     heroku_auth_token: ValidatedHerokuAuthToken,
-    github_api: GitHubAPI,
+    github_personal_token: ValidatedGitHubPersonalToken,
     sha: &str,
 ) -> Result<RepoCommit, DeploymentsFetcherError> {
-    let commit: RepoCommit = github_api
-        .get_client()
+    let octocrab = Octocrab::builder()
+        .personal_token(github_personal_token.to_string())
+        .build()
+        .map_err(|e| anyhow::anyhow!(e))
+        .map_err(DeploymentsFetcherError::CreateAPIClientError)?;
+    let commit: RepoCommit = octocrab
         .get(
             format!(
                 "/repos/{owner}/{repo}/commits/{ref}",
@@ -220,7 +222,7 @@ async fn fetch_deployments(
 async fn attach_commit(
     heroku_app_name: ValidatedHerokuAppName,
     heroku_auth_token: ValidatedHerokuAuthToken,
-    github_api: GitHubAPI,
+    github_personal_token: ValidatedGitHubPersonalToken,
     github_owner_repo: ValidatedGitHubOwnerRepo,
     release: HerokuReleaseItem,
 ) -> Result<HerokuReleaseOrRepositoryInfo, DeploymentsFetcherError> {
@@ -233,7 +235,7 @@ async fn attach_commit(
     let commit = get_commit(
         github_owner_repo,
         heroku_auth_token,
-        github_api,
+        github_personal_token,
         &slug.commit,
     )
     .await?;
@@ -327,10 +329,10 @@ fn convert_to_items(
 }
 
 pub struct DeploymentsFetcherWithHerokuRelease {
-    heroku_app_name: ValidatedHerokuAppName,
-    heroku_auth_token: ValidatedHerokuAuthToken,
-    github_api: GitHubAPI,
-    github_owner_repo: ValidatedGitHubOwnerRepo,
+    pub heroku_app_name: ValidatedHerokuAppName,
+    pub heroku_auth_token: ValidatedHerokuAuthToken,
+    pub github_personal_token: ValidatedGitHubPersonalToken,
+    pub github_owner_repo: ValidatedGitHubOwnerRepo,
 }
 #[async_trait]
 impl DeploymentsFetcher for DeploymentsFetcherWithHerokuRelease {
@@ -338,22 +340,29 @@ impl DeploymentsFetcher for DeploymentsFetcherWithHerokuRelease {
         &self,
         params: DeploymentsFetcherParams,
     ) -> Result<Vec<DeploymentItem>, DeploymentsFetcherError> {
-        let succeeded_releases =
-            fetch_deployments(self.heroku_app_name, self.heroku_auth_token, params).await?;
+        let succeeded_releases = fetch_deployments(
+            self.heroku_app_name.clone(),
+            self.heroku_auth_token.clone(),
+            params,
+        )
+        .await?;
         let mut deployments = try_join_all(succeeded_releases.iter().map(|release| {
             attach_commit(
-                self.heroku_app_name,
-                self.heroku_auth_token,
-                self.github_api,
-                self.github_owner_repo,
+                self.heroku_app_name.clone(),
+                self.heroku_auth_token.clone(),
+                self.github_personal_token.clone(),
+                self.github_owner_repo.clone(),
                 release.clone(),
             )
         }))
         .await?;
-        let repo_creatd_at = get_created_at(self.github_api.clone(), self.github_owner_repo)
-            .await
-            .map_err(|e| anyhow::anyhow!(e))
-            .map_err(DeploymentsFetcherError::GetRepositoryCreatedAtError)?;
+        let repo_creatd_at = get_created_at(
+            self.github_personal_token.clone(),
+            self.github_owner_repo.clone(),
+        )
+        .await
+        .map_err(|e| anyhow::anyhow!(e))
+        .map_err(DeploymentsFetcherError::GetRepositoryCreatedAtError)?;
         log::debug!("repo_creatd_at: {:#?}", repo_creatd_at);
         deployments.push(HerokuReleaseOrRepositoryInfo::RepositoryInfo(
             GitHubRepositoryInfo {

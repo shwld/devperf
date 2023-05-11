@@ -49,7 +49,7 @@ fn to_github_deployment_project_created(
     dto: &ProjectConfigDto,
 ) -> Result<GitHubDeploymentProjectCreated, CreateProjectDtoError> {
     let github_personal_token =
-        validate_github_personal_token::perform(Some(dto.github_personal_token))?;
+        validate_github_personal_token::perform(Some(dto.github_personal_token.clone()))?;
     let github_owner_repo =
         validate_github_owner_repo::perform(format!("{}/{}", dto.github_owner, dto.github_repo))?;
     let developer_count = validate_developer_count::perform(dto.developer_count.to_string())?;
@@ -84,16 +84,16 @@ fn to_heroku_release_project_created(
     dto: &ProjectConfigDto,
 ) -> Result<HerokuReleaseProjectCreated, CreateProjectDtoError> {
     let github_personal_token =
-        validate_github_personal_token::perform(Some(dto.github_personal_token))?;
-    let heroku_app_name = validate_heroku_app_name::perform(dto.heroku_app_name)?;
-    let heroku_auth_token = validate_heroku_auth_token::perform(dto.heroku_auth_token)?;
+        validate_github_personal_token::perform(Some(dto.github_personal_token.to_string()))?;
+    let heroku_app_name = validate_heroku_app_name::perform(dto.heroku_app_name.clone())?;
+    let heroku_auth_token = validate_heroku_auth_token::perform(dto.heroku_auth_token.clone())?;
     let github_owner_repo =
         validate_github_owner_repo::perform(format!("{}/{}", dto.github_owner, dto.github_repo))?;
     let developer_count = validate_developer_count::perform(dto.developer_count.to_string())?;
     let working_days_per_week =
         validate_working_days_per_week::perform(dto.working_days_per_week.to_string())?;
     Ok(HerokuReleaseProjectCreated {
-        project_name: dto.project_name,
+        project_name: dto.project_name.clone(),
         github_personal_token,
         github_owner_repo,
         heroku_app_name,

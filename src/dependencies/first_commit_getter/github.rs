@@ -1,17 +1,30 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use octocrab::Octocrab;
 
-use crate::{
-    dependencies::github_api::GitHubAPI,
-    project_parameter_validating::validate_github_owner_repo::ValidatedGitHubOwnerRepo,
+use crate::project_parameter_validating::{
+    validate_github_owner_repo::ValidatedGitHubOwnerRepo,
+    validate_github_personal_token::ValidatedGitHubPersonalToken,
 };
 
 use super::interface::{
     FirstCommitGetter, FirstCommitGetterError, FirstCommitGetterParams, FirstCommitItem,
 };
 
+fn get_client(
+    github_personal_token: ValidatedGitHubPersonalToken,
+) -> Result<Octocrab, FirstCommitGetterError> {
+    let client = Octocrab::builder()
+        .personal_token(github_personal_token.to_string())
+        .build()
+        .map_err(|e| anyhow::anyhow!(e))
+        .map_err(FirstCommitGetterError::APIClientError)?;
+
+    Ok(client)
+}
+
 pub async fn get_first_commit_from_compare(
-    github_api: GitHubAPI,
+    github_personal_token: ValidatedGitHubPersonalToken,
     github_owner_repo: ValidatedGitHubOwnerRepo,
     params: &FirstCommitGetterParams,
 ) -> Result<FirstCommitItem, FirstCommitGetterError> {
@@ -35,8 +48,7 @@ pub async fn get_first_commit_from_compare(
         base = params.base,
         head = params.head
     );
-    let result = github_api
-        .get_client()
+    let result = get_client(github_personal_token)?
         ._get(path, None::<&()>)
         .await
         .map_err(|e| anyhow::anyhow!(e))
@@ -99,7 +111,7 @@ pub async fn get_first_commit_from_compare(
 }
 
 pub struct FirstCommitGetterWithGitHub {
-    pub github_api: GitHubAPI,
+    pub github_personal_token: ValidatedGitHubPersonalToken,
     pub github_owner_repo: ValidatedGitHubOwnerRepo,
 }
 #[async_trait]
@@ -108,8 +120,12 @@ impl FirstCommitGetter for FirstCommitGetterWithGitHub {
         &self,
         params: FirstCommitGetterParams,
     ) -> Result<FirstCommitItem, FirstCommitGetterError> {
-        let first_commit =
-            get_first_commit_from_compare(self.github_api, self.github_owner_repo, &params).await?;
+        let first_commit = get_first_commit_from_compare(
+            self.github_personal_token.clone(),
+            self.github_owner_repo.clone(),
+            &params,
+        )
+        .await?;
         Ok(first_commit)
     }
 }

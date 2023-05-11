@@ -255,8 +255,8 @@ pub struct RetrieveFourKeysWorkflow<
     FDeploymentsFetcher: DeploymentsFetcher,
     FFirstCommitGetter: FirstCommitGetter,
 > {
-    deployments_fetcher: FDeploymentsFetcher,
-    first_commit_getter: FFirstCommitGetter,
+    pub deployments_fetcher: FDeploymentsFetcher,
+    pub first_commit_getter: FFirstCommitGetter,
 }
 #[async_trait]
 impl<
@@ -265,7 +265,7 @@ impl<
     > RetrieveFourKeys for RetrieveFourKeysWorkflow<FDeploymentsFetcher, FFirstCommitGetter>
 {
     async fn retrieve_four_keys(
-        &self,
+        self,
         context: RetrieveFourKeysExecutionContext,
     ) -> Result<Vec<RetrieveFourKeysEvent>, RetrieveFourKeysEventError> {
         let four_keys_metrics = calculate_four_keys_metrics(

@@ -8,7 +8,6 @@ use crate::{
             heroku_release::DeploymentsFetcherWithHerokuRelease,
         },
         first_commit_getter::github::FirstCommitGetterWithGitHub,
-        github_api::GitHubAPI,
         project_config_io::reader::{
             interface::ProjectConfigIOReader, settings_toml::ProjectConfigIOReaderWithSettingsToml,
         },
@@ -52,13 +51,13 @@ pub async fn get_four_keys(
         ProjectCreated::HerokuRelease(config) => {
             log::info!("Heroku project detected");
             let deployments_fetcher = DeploymentsFetcherWithHerokuRelease {
-                heroku_app_name: config.heroku_app_name,
-                heroku_auth_token: config.heroku_auth_token,
+                heroku_app_name: config.heroku_app_name.clone(),
+                heroku_auth_token: config.heroku_auth_token.clone(),
                 github_owner_repo: config.github_owner_repo.clone(),
-                github_api: GitHubAPI::new(config.github_personal_token.clone())?,
+                github_personal_token: config.github_personal_token.clone(),
             };
             let first_commit_getter = FirstCommitGetterWithGitHub {
-                github_api: GitHubAPI::new(config.github_personal_token)?,
+                github_personal_token: config.github_personal_token.clone(),
                 github_owner_repo: config.github_owner_repo,
             };
             let workflow = RetrieveFourKeysWorkflow {
@@ -71,11 +70,11 @@ pub async fn get_four_keys(
             log::info!("GitHub project detected");
             let deployments_fetcher = DeploymentsFetcherWithGithubDeployment {
                 environment: environment.to_string(),
+                github_personal_token: config.github_personal_token.clone(),
                 github_owner_repo: config.github_owner_repo.clone(),
-                github_api: GitHubAPI::new(config.github_personal_token.clone())?,
             };
             let first_commit_getter = FirstCommitGetterWithGitHub {
-                github_api: GitHubAPI::new(config.github_personal_token)?,
+                github_personal_token: config.github_personal_token,
                 github_owner_repo: config.github_owner_repo,
             };
             let workflow = RetrieveFourKeysWorkflow {

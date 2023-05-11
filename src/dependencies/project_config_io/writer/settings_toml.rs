@@ -16,13 +16,15 @@ impl ProjectConfigIOWriter for ProjectConfigIOWriterWithSettingsToml {
         let mut config = match config {
             Ok(c) => c,
             Err(_e) => Config {
-                github_personal_token: data.github_personal_token,
+                github_personal_token: data.github_personal_token.clone(),
                 projects: HashMap::new(),
             },
         };
 
         let project_config = ProjectConfig {
-            github_personal_token: if config.github_personal_token == data.github_personal_token {
+            github_personal_token: if config.github_personal_token
+                == data.github_personal_token.clone()
+            {
                 None
             } else {
                 Some(data.github_personal_token)

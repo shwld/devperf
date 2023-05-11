@@ -3,17 +3,20 @@ use super::interface::{
     DeploymentsFetcherError, DeploymentsFetcherParams, RepositoryInfo,
 };
 use crate::{
-    dependencies::{deployments_fetcher::shared::get_created_at, github_api::GitHubAPI},
-    project_parameter_validating::validate_github_owner_repo::ValidatedGitHubOwnerRepo,
+    project_parameter_validating::{
+        validate_github_owner_repo::ValidatedGitHubOwnerRepo,
+        validate_github_personal_token::ValidatedGitHubPersonalToken,
+    },
     shared::non_empty_vec::NonEmptyVec,
 };
 use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use octocrab::Octocrab;
 use serde::{Deserialize, Serialize};
 
 fn deployments_query(
-    owner_repo: &ValidatedGitHubOwnerRepo,
+    owner_repo: ValidatedGitHubOwnerRepo,
     environment: &str,
     after: Option<String>,
 ) -> String {
@@ -168,21 +171,34 @@ pub enum DeploymentNodeGraphQLResponseOrRepositoryInfo {
     RepositoryInfo(RepositoryInfo),
 }
 
+fn get_client(
+    github_personal_token: ValidatedGitHubPersonalToken,
+) -> Result<Octocrab, DeploymentsFetcherError> {
+    let client = Octocrab::builder()
+        .personal_token(github_personal_token.to_string())
+        .build()
+        .map_err(|e| anyhow::anyhow!(e))
+        .map_err(DeploymentsFetcherError::CreateAPIClientError)?;
+
+    Ok(client)
+}
+
 async fn fetch_deployments(
-    github_api: GitHubAPI,
-    github_owner_repo: &ValidatedGitHubOwnerRepo,
+    github_personal_token: ValidatedGitHubPersonalToken,
+    github_owner_repo: ValidatedGitHubOwnerRepo,
     environment: &str,
     params: DeploymentsFetcherParams,
 ) -> Result<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>, DeploymentsFetcherError> {
     let mut after: Option<String> = None;
     let mut has_next_page = true;
     let mut deployment_nodes: Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo> = Vec::new();
+    let github_client = get_client(github_personal_token)?;
 
     // 全ページ取得
     while has_next_page {
-        let query = deployments_query(github_owner_repo, environment, after);
-        let results: DeploymentsGraphQLResponse = github_api
-            .get_client()
+        let query = deployments_query(github_owner_repo.clone(), environment, after);
+
+        let results: DeploymentsGraphQLResponse = github_client
             .graphql(&query)
             .await
             .map_err(|e| anyhow!(e))
@@ -207,14 +223,15 @@ async fn fetch_deployments(
         log::debug!("has_next_page: {:#?}", has_next_page);
         // 初回デプロイとリードタイムを比較するためのリポジトリ作成日を取得
         if !has_next_page {
-            let repo_creatd_at = get_created_at(github_api.clone(), github_owner_repo.clone())
-                .await
-                .map_err(|e| anyhow!(e))
-                .map_err(DeploymentsFetcherError::GetRepositoryCreatedAtError)?;
-            log::debug!("repo_creatd_at: {:#?}", repo_creatd_at);
+            let repo_created_at = Utc::now();
+            // let repo_created_at = get_created_at(github_api.clone(), github_owner_repo.clone())
+            //     .await
+            //     .map_err(|e| anyhow!(e))
+            //     .map_err(DeploymentsFetcherError::GetRepositoryCreatedAtError)?;
+            // log::debug!("repo_created_at: {:#?}", repo_created_at);
             deployment_nodes.push(
                 DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryInfo(RepositoryInfo {
-                    created_at: repo_creatd_at,
+                    created_at: repo_created_at,
                 }),
             );
         }
@@ -310,7 +327,7 @@ fn convert_to_items(
 }
 
 pub struct DeploymentsFetcherWithGithubDeployment {
-    pub github_api: GitHubAPI,
+    pub github_personal_token: ValidatedGitHubPersonalToken,
     pub github_owner_repo: ValidatedGitHubOwnerRepo,
     pub environment: String,
 }
@@ -321,8 +338,8 @@ impl DeploymentsFetcher for DeploymentsFetcherWithGithubDeployment {
         params: DeploymentsFetcherParams,
     ) -> Result<Vec<DeploymentItem>, DeploymentsFetcherError> {
         let deployment_nodes = fetch_deployments(
-            self.github_api,
-            &self.github_owner_repo,
+            self.github_personal_token.clone(),
+            self.github_owner_repo.clone(),
             &self.environment,
             params,
         )

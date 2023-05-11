@@ -34,7 +34,7 @@ fn create_heroku_project(
 }
 
 async fn create_project<T: ProjectConfigIOWriter>(
-    project_io_writer: T,
+    project_io_writer: &T,
     uncreated_project: UncreatedProject,
 ) -> Result<CreateProjectEvent, CreateGithubDeploymentProjectError> {
     let created_project = match uncreated_project {
@@ -73,7 +73,7 @@ impl<T: ProjectConfigIOWriter + Send + Sync> CreateProject for CreateProjectWork
         &self,
         uncreated_project: UncreatedProject,
     ) -> Result<Vec<CreateProjectEvent>, CreateGithubDeploymentProjectError> {
-        let project = create_project(self.project_io_writer, uncreated_project).await?;
+        let project = create_project(&self.project_io_writer, uncreated_project).await?;
         let events = create_events(project);
 
         Ok(events)

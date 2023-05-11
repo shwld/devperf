@@ -122,7 +122,7 @@ pub enum RetrieveFourKeysEventError {
 #[async_trait]
 pub trait RetrieveFourKeys {
     async fn retrieve_four_keys(
-        &self,
+        self,
         context: RetrieveFourKeysExecutionContext,
     ) -> Result<Vec<RetrieveFourKeysEvent>, RetrieveFourKeysEventError>;
 }
