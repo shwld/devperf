@@ -3,7 +3,7 @@ use super::input::{
     project_name, working_days_per_week,
 };
 use crate::{
-    dependencies::write_new_config::settings_toml::WriteNewConfigWithSettingsToml,
+    dependencies::project_config_io::settings_toml::WriteNewConfigWithSettingsToml,
     project_creating::create_heroku_release_project::{self, UncreatedHerokuReleaseProject},
 };
 

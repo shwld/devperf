@@ -2,15 +2,12 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use thiserror::Error;
 
-pub struct FetchDeploymentsParams {
-    pub owner: String,
-    pub repo: String,
-    pub environment: String,
+pub struct DeploymentsFetcherParams {
     pub since: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Error)]
-pub enum FetchDeploymentsError {
+pub enum DeploymentsFetcherError {
     #[error("Create API client error")]
     CreateAPIClientError(#[source] anyhow::Error),
     #[error("Fetch deployments error")]
@@ -22,7 +19,7 @@ pub enum FetchDeploymentsError {
     #[error("Cannot get repository")]
     RepositoryNotFound(String),
     #[error("Fetch deployments result is empty list")]
-    FetchDeploymentsResultIsEmptyList(#[source] anyhow::Error),
+    DeploymentsFetcherResultIsEmptyList(#[source] anyhow::Error),
 }
 
 #[derive(Debug, Clone)]
@@ -55,9 +52,9 @@ pub struct DeploymentItem {
 }
 
 #[async_trait]
-pub trait FetchDeployments {
-    async fn perform(
+pub trait DeploymentsFetcher {
+    async fn fetch(
         &self,
-        params: FetchDeploymentsParams,
-    ) -> Result<Vec<DeploymentItem>, FetchDeploymentsError>;
+        params: DeploymentsFetcherParams,
+    ) -> Result<Vec<DeploymentItem>, DeploymentsFetcherError>;
 }

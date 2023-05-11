@@ -9,15 +9,22 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     dependencies::{
-        fetch_deployments::interface::{CommitItem, DeploymentItem},
+        deployments_fetcher::{
+            interface::{CommitItem, DeploymentItem},
+            shared::get_created_at,
+        },
         github_api::GitHubAPI,
-        read_project_config::interface::{ProjectConfig, ResourceConfig},
+    },
+    project_parameter_validating::{
+        validate_github_owner_repo::ValidatedGitHubOwnerRepo,
+        validate_heroku_app_name::ValidatedHerokuAppName,
+        validate_heroku_auth_token::ValidatedHerokuAuthToken,
     },
     shared::non_empty_vec::NonEmptyVec,
 };
 
 use super::interface::{
-    CommitOrRepositoryInfo, FetchDeployments, FetchDeploymentsError, FetchDeploymentsParams,
+    CommitOrRepositoryInfo, DeploymentsFetcher, DeploymentsFetcherError, DeploymentsFetcherParams,
     RepositoryInfo,
 };
 
@@ -98,26 +105,21 @@ pub fn create_http_client() -> ClientWithMiddleware {
 }
 
 async fn get_slug(
-    project_config: ProjectConfig,
+    heroku_app_name: ValidatedHerokuAppName,
+    heroku_auth_token: ValidatedHerokuAuthToken,
     slug_id: &str,
-) -> Result<HerokuSlugItem, FetchDeploymentsError> {
-    let resource_config = match project_config.resource {
-        ResourceConfig::HerokuRelease(resource) => Ok(resource),
-        _ => Err(FetchDeploymentsError::CreateAPIClientError(
-            anyhow::anyhow!("Resource is not HerokuRelease"),
-        )),
-    }?;
+) -> Result<HerokuSlugItem, DeploymentsFetcherError> {
     let client = create_http_client();
     let url = format!(
         "https://api.heroku.com/apps/{app_name}/slugs/{slug_id}",
-        app_name = resource_config.heroku_app_name,
+        app_name = heroku_app_name,
         slug_id = slug_id
     );
     let slug = client
         .get(url)
         .header(
             reqwest::header::AUTHORIZATION,
-            format!("Bearer {token}", token = resource_config.heroku_api_token),
+            format!("Bearer {token}", token = heroku_auth_token),
         )
         .header(
             reqwest::header::ACCEPT,
@@ -126,32 +128,35 @@ async fn get_slug(
         .send()
         .await
         .map_err(|e| anyhow::anyhow!(e))
-        .map_err(FetchDeploymentsError::CommitIsNotFound)?
+        .map_err(DeploymentsFetcherError::CommitIsNotFound)?
         .json::<HerokuSlugItem>()
         .await
         .map_err(|e| anyhow::anyhow!(e))
-        .map_err(FetchDeploymentsError::CommitIsNotFound)?;
+        .map_err(DeploymentsFetcherError::CommitIsNotFound)?;
 
     Ok(slug)
 }
 
 async fn get_commit(
+    github_owner_repo: ValidatedGitHubOwnerRepo,
+    heroku_auth_token: ValidatedHerokuAuthToken,
     github_api: GitHubAPI,
-    project_config: ProjectConfig,
     sha: &str,
-) -> Result<RepoCommit, FetchDeploymentsError> {
-    let resource_config = match project_config.resource {
-        ResourceConfig::HerokuRelease(resource) => Ok(resource),
-        _ => Err(FetchDeploymentsError::CreateAPIClientError(
-            anyhow::anyhow!("Resource is not HerokuRelease"),
-        )),
-    }?;
-    let github_api_client = github_api
-        .clone()
+) -> Result<RepoCommit, DeploymentsFetcherError> {
+    let commit: RepoCommit = github_api
         .get_client()
+        .get(
+            format!(
+                "/repos/{owner}/{repo}/commits/{ref}",
+                owner = github_owner_repo.get_owner(),
+                repo = github_owner_repo.get_repo(),
+                ref = &sha
+            ),
+            None::<&()>,
+        )
+        .await
         .map_err(|e| anyhow::anyhow!(e))
-        .map_err(FetchDeploymentsError::CreateAPIClientError)?;
-    let commit: RepoCommit = github_api_client.get(format!("/repos/{owner}/{repo}/commits/{ref}", owner = resource_config.github_owner, repo = resource_config.github_repo, ref = &sha), None::<&()>).await.map_err(|e| anyhow::anyhow!(e)).map_err(FetchDeploymentsError::CommitIsNotFound)?;
+        .map_err(DeploymentsFetcherError::CommitIsNotFound)?;
 
     Ok(commit)
 }
@@ -174,43 +179,68 @@ struct HerokuRelease {
     pub commit: RepoCommit,
 }
 
+async fn fetch_deployments(
+    heroku_app_name: ValidatedHerokuAppName,
+    heroku_auth_token: ValidatedHerokuAuthToken,
+    _params: DeploymentsFetcherParams,
+) -> Result<Vec<HerokuReleaseItem>, DeploymentsFetcherError> {
+    let client = create_http_client();
+    let url = format!(
+        "https://api.heroku.com/apps/{app_name}/releases",
+        app_name = heroku_app_name
+    );
+    let releases: Vec<HerokuReleaseItem> = client
+        .get(url)
+        .header(
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {token}", token = heroku_auth_token),
+        )
+        .header(
+            reqwest::header::ACCEPT,
+            "application/vnd.heroku+json; version=3",
+        )
+        .header(reqwest::header::RANGE, "version ..; order=desc;")
+        .send()
+        .await
+        .map_err(|e| anyhow::anyhow!(e))
+        .map_err(DeploymentsFetcherError::FetchError)?
+        .json::<Vec<HerokuReleaseItem>>()
+        .await
+        .map_err(|e| anyhow::anyhow!(e))
+        .map_err(DeploymentsFetcherError::FetchError)?;
+
+    let succeeded_releases = releases
+        .into_iter()
+        .filter(|release| release.status.to_uppercase() == "SUCCEEDED")
+        .collect::<Vec<HerokuReleaseItem>>();
+
+    Ok(succeeded_releases)
+}
+
 async fn attach_commit(
+    heroku_app_name: ValidatedHerokuAppName,
+    heroku_auth_token: ValidatedHerokuAuthToken,
     github_api: GitHubAPI,
-    project_config: ProjectConfig,
+    github_owner_repo: ValidatedGitHubOwnerRepo,
     release: HerokuReleaseItem,
-) -> Result<HerokuReleaseOrRepositoryInfo, FetchDeploymentsError> {
-    let slug = get_slug(project_config.clone(), &release.slug.clone().unwrap().id).await?;
-    let commit = get_commit(github_api.clone(), project_config.clone(), &slug.commit).await?;
+) -> Result<HerokuReleaseOrRepositoryInfo, DeploymentsFetcherError> {
+    let slug = get_slug(
+        heroku_app_name,
+        heroku_auth_token.clone(),
+        &release.slug.clone().unwrap().id,
+    )
+    .await?;
+    let commit = get_commit(
+        github_owner_repo,
+        heroku_auth_token,
+        github_api,
+        &slug.commit,
+    )
+    .await?;
 
     Ok(HerokuReleaseOrRepositoryInfo::HerokuRelease(
         HerokuRelease { release, commit },
     ))
-}
-
-async fn get_created_at(
-    github_api: GitHubAPI,
-    owner: &str,
-    repo: &str,
-) -> Result<chrono::DateTime<chrono::Utc>, FetchDeploymentsError> {
-    let github_api_client = github_api
-        .clone()
-        .get_client()
-        .map_err(|e| anyhow::anyhow!(e))
-        .map_err(FetchDeploymentsError::CreateAPIClientError)?;
-    let result = github_api_client
-        .repos(owner, repo)
-        .get()
-        .await
-        .map(|r| r.created_at)
-        .map_err(|e| anyhow::anyhow!(e))
-        .map_err(FetchDeploymentsError::GetRepositoryCreatedAtError)?;
-    let created_at = result.ok_or(FetchDeploymentsError::RepositoryNotFound(format!(
-        "{}/{}",
-        owner.to_owned(),
-        repo.to_owned()
-    )))?;
-
-    Ok(created_at)
 }
 
 fn convert_to_items(
@@ -296,69 +326,34 @@ fn convert_to_items(
     deployment_items
 }
 
-pub struct FetchDeploymentsWithHerokuRelease {
-    pub github_api: GitHubAPI,
-    pub project_config: ProjectConfig,
+pub struct DeploymentsFetcherWithHerokuRelease {
+    heroku_app_name: ValidatedHerokuAppName,
+    heroku_auth_token: ValidatedHerokuAuthToken,
+    github_api: GitHubAPI,
+    github_owner_repo: ValidatedGitHubOwnerRepo,
 }
 #[async_trait]
-impl FetchDeployments for FetchDeploymentsWithHerokuRelease {
-    // TODO: paramsとproject_configどっちかにしろ
-    async fn perform(
+impl DeploymentsFetcher for DeploymentsFetcherWithHerokuRelease {
+    async fn fetch(
         &self,
-        _params: FetchDeploymentsParams,
-    ) -> Result<Vec<DeploymentItem>, FetchDeploymentsError> {
-        let resource_config = match self.project_config.clone().resource {
-            ResourceConfig::HerokuRelease(resource) => Ok(resource),
-            _ => Err(FetchDeploymentsError::CreateAPIClientError(
-                anyhow::anyhow!("Resource is not HerokuRelease"),
-            )),
-        }?;
-        let client = create_http_client();
-        let url = format!(
-            "https://api.heroku.com/apps/{app_name}/releases",
-            app_name = resource_config.heroku_app_name
-        );
-        let releases: Vec<HerokuReleaseItem> = client
-            .get(url)
-            .header(
-                reqwest::header::AUTHORIZATION,
-                format!("Bearer {token}", token = resource_config.heroku_api_token),
-            )
-            .header(
-                reqwest::header::ACCEPT,
-                "application/vnd.heroku+json; version=3",
-            )
-            .header(reqwest::header::RANGE, "version ..; order=desc;")
-            .send()
-            .await
-            .map_err(|e| anyhow::anyhow!(e))
-            .map_err(FetchDeploymentsError::FetchError)?
-            .json::<Vec<HerokuReleaseItem>>()
-            .await
-            .map_err(|e| anyhow::anyhow!(e))
-            .map_err(FetchDeploymentsError::FetchError)?;
-
-        let succeeded_releases = releases
-            .into_iter()
-            .filter(|release| release.status.to_uppercase() == "SUCCEEDED")
-            .collect::<Vec<HerokuReleaseItem>>();
-
+        params: DeploymentsFetcherParams,
+    ) -> Result<Vec<DeploymentItem>, DeploymentsFetcherError> {
+        let succeeded_releases =
+            fetch_deployments(self.heroku_app_name, self.heroku_auth_token, params).await?;
         let mut deployments = try_join_all(succeeded_releases.iter().map(|release| {
             attach_commit(
-                self.github_api.clone(),
-                self.project_config.clone(),
+                self.heroku_app_name,
+                self.heroku_auth_token,
+                self.github_api,
+                self.github_owner_repo,
                 release.clone(),
             )
         }))
         .await?;
-        let repo_creatd_at = get_created_at(
-            self.github_api.clone(),
-            &resource_config.github_owner,
-            &resource_config.github_repo,
-        )
-        .await
-        .map_err(|e| anyhow::anyhow!(e))
-        .map_err(FetchDeploymentsError::GetRepositoryCreatedAtError)?;
+        let repo_creatd_at = get_created_at(self.github_api.clone(), self.github_owner_repo)
+            .await
+            .map_err(|e| anyhow::anyhow!(e))
+            .map_err(DeploymentsFetcherError::GetRepositoryCreatedAtError)?;
         log::debug!("repo_creatd_at: {:#?}", repo_creatd_at);
         deployments.push(HerokuReleaseOrRepositoryInfo::RepositoryInfo(
             GitHubRepositoryInfo {
@@ -367,7 +362,7 @@ impl FetchDeployments for FetchDeploymentsWithHerokuRelease {
         ));
         let non_empty_nodes = NonEmptyVec::new(deployments)
             .map_err(|e| anyhow::anyhow!(e))
-            .map_err(FetchDeploymentsError::FetchDeploymentsResultIsEmptyList)?;
+            .map_err(DeploymentsFetcherError::DeploymentsFetcherResultIsEmptyList)?;
 
         let deployment_items = convert_to_items(non_empty_nodes);
 

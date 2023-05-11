@@ -12,15 +12,13 @@ pub struct FirstCommitItem {
 }
 
 #[derive(Debug)]
-pub struct FirstCommitFromCompareParams {
-    pub owner: String,
-    pub repo: String,
+pub struct FirstCommitGetterParams {
     pub base: String,
     pub head: String,
 }
 
 #[derive(Debug, Error)]
-pub enum GetFirstCommitFromCompareError {
+pub enum FirstCommitGetterError {
     #[error("Create API client error")]
     CreateAPIClientError(#[source] anyhow::Error),
     #[error("Empty base or head")]
@@ -38,9 +36,9 @@ pub enum GetFirstCommitFromCompareError {
 }
 
 #[async_trait]
-pub trait GetFirstCommitFromCompare {
-    async fn perform(
+pub trait FirstCommitGetter {
+    async fn get(
         &self,
-        params: FirstCommitFromCompareParams,
-    ) -> Result<FirstCommitItem, GetFirstCommitFromCompareError>;
+        params: FirstCommitGetterParams,
+    ) -> Result<FirstCommitItem, FirstCommitGetterError>;
 }

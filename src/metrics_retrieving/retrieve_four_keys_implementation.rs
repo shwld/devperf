@@ -3,56 +3,32 @@ use futures::future::try_join_all;
 
 use crate::{
     dependencies::{
-        fetch_deployments::interface::{
-            CommitOrRepositoryInfo, DeploymentItem, FetchDeployments, FetchDeploymentsParams,
+        deployments_fetcher::interface::{
+            CommitOrRepositoryInfo, DeploymentItem, DeploymentsFetcher, DeploymentsFetcherParams,
         },
-        get_first_commit_from_compare::interface::{
-            FirstCommitFromCompareParams, GetFirstCommitFromCompare,
-        },
-        read_project_config::interface::{ProjectConfig, ResourceConfig},
+        first_commit_getter::interface::{FirstCommitGetter, FirstCommitGetterParams},
     },
-    metrics_retrieving::retrieve_four_keys_schema::FirstCommitOrRepositoryInfo,
+    metrics_retrieving::retrieve_four_keys_public_types::FirstCommitOrRepositoryInfo,
 };
 
-use super::retrieve_four_keys_schema::{
+use super::retrieve_four_keys_public_types::{
     DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
     DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, FourKeysMetrics, RepositoryInfo,
     RetrieveFourKeysEvent, RetrieveFourKeysEventError, RetrieveFourKeysExecutionContext,
+    RetrieveFourKeysExecutionContextProject,
 };
 
 // ---------------------------
 // Fetch deployments step
 // ---------------------------
 
-async fn fetch_deployments<FGD: FetchDeployments, FHR: FetchDeployments>(
-    fetch_deployments_with_github_deployments: &FGD,
-    fetch_deployments_with_heroku_release: &FHR,
-    project_config: ProjectConfig,
+async fn fetch_deployments<F: DeploymentsFetcher>(
+    deployments_fetcher: &F,
     since: DateTime<Utc>,
-    environment: &str,
 ) -> Result<Vec<DeploymentItem>, RetrieveFourKeysEventError> {
-    let deployments = match project_config.resource {
-        ResourceConfig::GitHubDeployment(resource_config) => {
-            fetch_deployments_with_github_deployments
-                .perform(FetchDeploymentsParams {
-                    owner: resource_config.github_owner,
-                    repo: resource_config.github_repo,
-                    environment: environment.to_string(),
-                    since: Some(since),
-                })
-                .await
-                .map_err(RetrieveFourKeysEventError::FetchDeploymentsError)
-        }
-        ResourceConfig::HerokuRelease(resource_config) => fetch_deployments_with_heroku_release
-            .perform(FetchDeploymentsParams {
-                owner: resource_config.github_owner,
-                repo: resource_config.github_repo,
-                environment: environment.to_string(),
-                since: Some(since),
-            })
-            .await
-            .map_err(RetrieveFourKeysEventError::FetchDeploymentsError),
-    }?;
+    let deployments = deployments_fetcher
+        .fetch(DeploymentsFetcherParams { since: Some(since) })
+        .await?;
 
     Ok(deployments)
 }
@@ -61,31 +37,17 @@ async fn fetch_deployments<FGD: FetchDeployments, FHR: FetchDeployments>(
 // Convert to MetricItem step
 // ---------------------------
 
-pub async fn to_metric_item<F: GetFirstCommitFromCompare>(
-    get_first_commit_from_compare: &F,
+pub async fn to_metric_item<F: FirstCommitGetter>(
+    first_commit_getter: &F,
+    project: RetrieveFourKeysExecutionContextProject,
     deployment: DeploymentItem,
-    project_config: ProjectConfig,
 ) -> Result<DeploymentMetricItem, RetrieveFourKeysEventError> {
-    let first_commit: Option<FirstCommitOrRepositoryInfo> = match deployment.base {
+    let first_commit: Option<FirstCommitOrRepositoryInfo> = match deployment.clone().base {
         CommitOrRepositoryInfo::Commit(first_commit) => {
-            let commit = get_first_commit_from_compare
-                .perform(match project_config.resource {
-                    ResourceConfig::GitHubDeployment(resource_config) => {
-                        FirstCommitFromCompareParams {
-                            owner: resource_config.github_owner,
-                            repo: resource_config.github_repo,
-                            base: first_commit.sha,
-                            head: deployment.head_commit.sha.clone(),
-                        }
-                    }
-                    ResourceConfig::HerokuRelease(resource_config) => {
-                        FirstCommitFromCompareParams {
-                            owner: resource_config.github_owner,
-                            repo: resource_config.github_repo,
-                            base: first_commit.sha,
-                            head: deployment.head_commit.sha.clone(),
-                        }
-                    }
+            let commit = first_commit_getter
+                .get(FirstCommitGetterParams {
+                    base: first_commit.sha,
+                    head: deployment.clone().head_commit.sha,
                 })
                 .await;
             log::debug!("first_commit: {:?}", commit);
@@ -190,7 +152,6 @@ fn median(numbers: Vec<i64>) -> f64 {
 
 fn calculate_four_keys(
     metrics_items: Vec<DeploymentMetricItem>,
-    project_config: ProjectConfig,
     context: RetrieveFourKeysExecutionContext,
 ) -> Result<FourKeysMetrics, RetrieveFourKeysEventError> {
     let ranged_items = metrics_items
@@ -206,7 +167,7 @@ fn calculate_four_keys(
     let duration_since = context.until.signed_duration_since(context.since);
     let days = duration_since.num_days();
     let deployment_frequency_per_day =
-        total_deployments as f32 / (days as f32 * (project_config.working_days_per_week / 7.0));
+        total_deployments as f32 / (days as f32 * (context.project.working_days_per_week / 7.0));
 
     let durations = items_by_day
         .iter()
@@ -228,12 +189,12 @@ fn calculate_four_keys(
     let metrics = DeploymentMetric {
         since: context.since,
         until: context.until,
-        developers: project_config.developer_count,
-        working_days_per_week: project_config.working_days_per_week,
+        developers: context.project.developer_count,
+        working_days_per_week: context.project.working_days_per_week,
         deploys: total_deployments,
         deployment_frequency_per_day,
         deploys_per_a_day_per_a_developer: deployment_frequency_per_day
-            / project_config.developer_count as f32,
+            / context.project.developer_count as f32,
         lead_time_for_changes: lead_time,
         environment: "production".to_string(), // TODO: get
     };
@@ -264,33 +225,19 @@ fn calculate_four_keys(
 // overall workflow
 // ---------------------------
 pub async fn perform<
-    FFetchDeploymentsWithGitHubDeployments: FetchDeployments,
-    FFetchDeploymentsWithHerokuRelease: FetchDeployments,
-    FGetFirstCommitFromCompare: GetFirstCommitFromCompare,
+    FDeploymentsFetcher: DeploymentsFetcher,
+    FFirstCommitGetter: FirstCommitGetter,
 >(
-    fetch_deployments_with_github_deployments: FFetchDeploymentsWithGitHubDeployments,
-    fetch_deployments_with_heroku_release: FFetchDeploymentsWithHerokuRelease,
-    get_first_commit_from_compare: FGetFirstCommitFromCompare,
-    project_config: ProjectConfig,
+    deployments_fetcher: FDeploymentsFetcher,
+    first_commit_getter: FFirstCommitGetter,
     context: RetrieveFourKeysExecutionContext,
 ) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError> {
-    let deployments = fetch_deployments(
-        &fetch_deployments_with_github_deployments,
-        &fetch_deployments_with_heroku_release,
-        project_config.clone(),
-        context.since,
-        &context.environment,
-    )
-    .await?;
+    let deployments = fetch_deployments(&deployments_fetcher, context.since).await?;
     let convert_items = deployments.into_iter().map(|deployment| {
-        to_metric_item(
-            &get_first_commit_from_compare,
-            deployment,
-            project_config.clone(),
-        )
+        to_metric_item(&first_commit_getter, context.project.clone(), deployment)
     });
     let metrics_items = try_join_all(convert_items).await?;
     // .collect::<Result<NonEmptyVec<DeploymentMetricItem>, RetrieveFourKeysEventError>>()?;
 
-    calculate_four_keys(metrics_items, project_config, context)
+    calculate_four_keys(metrics_items, context)
 }

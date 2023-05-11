@@ -1,7 +1,5 @@
 pub(super) mod github_api;
-pub(super) mod settings_toml;
 
-pub mod fetch_deployments;
-pub mod get_first_commit_from_compare;
-pub mod read_project_config;
-pub mod write_new_config;
+pub mod deployments_fetcher;
+pub mod first_commit_getter;
+pub mod project_config_io;

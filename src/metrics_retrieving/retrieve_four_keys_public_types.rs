@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::dependencies::{
-    fetch_deployments::interface::FetchDeploymentsError,
-    get_first_commit_from_compare::interface::GetFirstCommitFromCompareError,
+    deployments_fetcher::interface::DeploymentsFetcherError,
+    first_commit_getter::interface::FirstCommitGetterError,
 };
 
 // ==================================
@@ -16,11 +16,17 @@ use crate::dependencies::{
 // inputs to the workflow
 
 #[derive(Clone)]
+pub struct RetrieveFourKeysExecutionContextProject {
+    pub name: String,
+    pub developer_count: u32,
+    pub working_days_per_week: f32,
+}
+
+#[derive(Clone)]
 pub struct RetrieveFourKeysExecutionContext {
-    pub project_name: String,
+    pub project: RetrieveFourKeysExecutionContextProject,
     pub since: DateTime<Utc>,
     pub until: DateTime<Utc>,
-    pub environment: String,
 }
 
 // ------------------------------------
@@ -103,9 +109,9 @@ pub type RetrieveFourKeysEvent = FourKeysMetrics;
 #[derive(Error, Debug)]
 pub enum RetrieveFourKeysEventError {
     #[error("Cannot fetch")]
-    FetchDeploymentsError(#[source] FetchDeploymentsError),
+    FetchDeploymentsError(#[from] DeploymentsFetcherError),
     #[error("GetFirstCommitFromCompareError")]
-    GetFirstCommitFromCompareError(#[from] GetFirstCommitFromCompareError),
+    GetFirstCommitFromCompareError(#[from] FirstCommitGetterError),
 }
 
 // ------------------------------------

@@ -1,11 +1,11 @@
 use octocrab::Octocrab;
 use thiserror::Error;
 
-use super::read_project_config::interface::{ProjectConfig, ResourceConfig};
+use crate::project_parameter_validating::validate_github_personal_token::ValidatedGitHubPersonalToken;
 
 #[derive(Clone)]
 pub struct GitHubAPI {
-    pub project_config: ProjectConfig,
+    pub octocrab: Octocrab,
 }
 #[derive(Error, Debug)]
 pub enum GitHubClientError {
@@ -13,20 +13,19 @@ pub enum GitHubClientError {
     OctocrabError(#[from] octocrab::Error),
 }
 
-// pub type GetGitHubPersonalToken = fn() -> Result<String, GetGitHubPersonalTokenError>;
-
 impl GitHubAPI {
-    pub fn get_client(self) -> Result<Octocrab, GitHubClientError> {
-        let token = match &self.project_config.resource {
-            ResourceConfig::GitHubDeployment(resource_config) => {
-                resource_config.github_personal_token.clone()
-            }
-            ResourceConfig::HerokuRelease(resource_config) => {
-                resource_config.github_personal_token.clone()
-            }
-        };
-        let octocrab = Octocrab::builder().personal_token(token).build()?;
+    pub fn new(
+        self,
+        github_personal_token: ValidatedGitHubPersonalToken,
+    ) -> Result<Self, GitHubClientError> {
+        let octocrab = Octocrab::builder()
+            .personal_token(github_personal_token.to_string())
+            .build()?;
 
-        Ok(octocrab)
+        Ok(Self { octocrab })
+    }
+
+    pub fn get_client(&self) -> Octocrab {
+        self.octocrab
     }
 }

@@ -1,14 +1,22 @@
 use super::interface::{
-    CommitItem, CommitOrRepositoryInfo, DeploymentItem, FetchDeployments, FetchDeploymentsError,
-    FetchDeploymentsParams, RepositoryInfo,
+    CommitItem, CommitOrRepositoryInfo, DeploymentItem, DeploymentsFetcher,
+    DeploymentsFetcherError, DeploymentsFetcherParams, RepositoryInfo,
 };
-use crate::{dependencies::github_api::GitHubAPI, shared::non_empty_vec::NonEmptyVec};
+use crate::{
+    dependencies::{deployments_fetcher::shared::get_created_at, github_api::GitHubAPI},
+    project_parameter_validating::validate_github_owner_repo::ValidatedGitHubOwnerRepo,
+    shared::non_empty_vec::NonEmptyVec,
+};
 use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-fn deployments_query(owner: &str, repo: &str, environment: &str, after: Option<String>) -> String {
+fn deployments_query(
+    owner_repo: &ValidatedGitHubOwnerRepo,
+    environment: &str,
+    after: Option<String>,
+) -> String {
     let query = format!("
         query {{
             repository_owner: repositoryOwner(login: \"{owner}\") {{
@@ -59,7 +67,7 @@ fn deployments_query(owner: &str, repo: &str, environment: &str, after: Option<S
                 }}
             }}
         }}
-    ", owner = owner, repo = repo, after = after.map_or_else(|| "".to_owned(), |cursor| format!(", after: \"{}\"", cursor)));
+    ", owner = owner_repo.get_owner(), repo = owner_repo.get_repo(), after = after.map_or_else(|| "".to_owned(), |cursor| format!(", after: \"{}\"", cursor)));
 
     query
 }
@@ -153,32 +161,6 @@ pub struct DeploymentsCreatorGraphQLResponse {
     pub login: String,
 }
 
-async fn get_created_at(
-    github_api: GitHubAPI,
-    owner: &str,
-    repo: &str,
-) -> Result<chrono::DateTime<chrono::Utc>, FetchDeploymentsError> {
-    let github_api_client = github_api
-        .clone()
-        .get_client()
-        .map_err(|e| anyhow::anyhow!(e))
-        .map_err(FetchDeploymentsError::CreateAPIClientError)?;
-    let result = github_api_client
-        .repos(owner, repo)
-        .get()
-        .await
-        .map(|r| r.created_at)
-        .map_err(|e| anyhow::anyhow!(e))
-        .map_err(FetchDeploymentsError::GetRepositoryCreatedAtError)?;
-    let created_at = result.ok_or(FetchDeploymentsError::RepositoryNotFound(format!(
-        "{}/{}",
-        owner.to_owned(),
-        repo.to_owned()
-    )))?;
-
-    Ok(created_at)
-}
-
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)] // most are HerokuRelease
 pub enum DeploymentNodeGraphQLResponseOrRepositoryInfo {
@@ -188,25 +170,23 @@ pub enum DeploymentNodeGraphQLResponseOrRepositoryInfo {
 
 async fn fetch_deployments(
     github_api: GitHubAPI,
-    params: FetchDeploymentsParams,
-) -> Result<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>, FetchDeploymentsError> {
-    let github_api_client = github_api
-        .clone()
-        .get_client()
-        .map_err(|e| anyhow::anyhow!(e))
-        .map_err(FetchDeploymentsError::CreateAPIClientError)?;
+    github_owner_repo: &ValidatedGitHubOwnerRepo,
+    environment: &str,
+    params: DeploymentsFetcherParams,
+) -> Result<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>, DeploymentsFetcherError> {
     let mut after: Option<String> = None;
     let mut has_next_page = true;
     let mut deployment_nodes: Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo> = Vec::new();
 
     // 全ページ取得
     while has_next_page {
-        let query = deployments_query(&params.owner, &params.repo, &params.environment, after);
-        let results: DeploymentsGraphQLResponse = github_api_client
+        let query = deployments_query(github_owner_repo, environment, after);
+        let results: DeploymentsGraphQLResponse = github_api
+            .get_client()
             .graphql(&query)
             .await
             .map_err(|e| anyhow!(e))
-            .map_err(FetchDeploymentsError::FetchError)?;
+            .map_err(DeploymentsFetcherError::FetchError)?;
         let new_nodes = results.data.repository_owner.repository.deployments.nodes.into_iter().map(DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse).collect::<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>>();
         deployment_nodes = [&deployment_nodes[..], &new_nodes[..]].concat();
         has_next_page = results
@@ -227,10 +207,10 @@ async fn fetch_deployments(
         log::debug!("has_next_page: {:#?}", has_next_page);
         // 初回デプロイとリードタイムを比較するためのリポジトリ作成日を取得
         if !has_next_page {
-            let repo_creatd_at = get_created_at(github_api.clone(), &params.owner, &params.repo)
+            let repo_creatd_at = get_created_at(github_api.clone(), github_owner_repo.clone())
                 .await
                 .map_err(|e| anyhow!(e))
-                .map_err(FetchDeploymentsError::GetRepositoryCreatedAtError)?;
+                .map_err(DeploymentsFetcherError::GetRepositoryCreatedAtError)?;
             log::debug!("repo_creatd_at: {:#?}", repo_creatd_at);
             deployment_nodes.push(
                 DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryInfo(RepositoryInfo {
@@ -329,24 +309,31 @@ fn convert_to_items(
     deployment_items
 }
 
-pub struct FetchDeploymentsWithGithubDeployment {
+pub struct DeploymentsFetcherWithGithubDeployment {
     pub github_api: GitHubAPI,
+    pub github_owner_repo: ValidatedGitHubOwnerRepo,
+    pub environment: String,
 }
 #[async_trait]
-impl FetchDeployments for FetchDeploymentsWithGithubDeployment {
-    async fn perform(
+impl DeploymentsFetcher for DeploymentsFetcherWithGithubDeployment {
+    async fn fetch(
         &self,
-        params: FetchDeploymentsParams,
-    ) -> Result<Vec<DeploymentItem>, FetchDeploymentsError> {
-        let deployment_nodes = fetch_deployments(self.github_api.clone(), params)
-            .await?
-            .into_iter()
-            .filter(has_success_status)
-            .collect::<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>>();
+        params: DeploymentsFetcherParams,
+    ) -> Result<Vec<DeploymentItem>, DeploymentsFetcherError> {
+        let deployment_nodes = fetch_deployments(
+            self.github_api,
+            &self.github_owner_repo,
+            &self.environment,
+            params,
+        )
+        .await?
+        .into_iter()
+        .filter(has_success_status)
+        .collect::<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>>();
         log::debug!("deployment_nodes: {:#?}", deployment_nodes);
         let non_empty_nodes = NonEmptyVec::new(deployment_nodes)
             .map_err(|e| anyhow::anyhow!(e))
-            .map_err(FetchDeploymentsError::FetchDeploymentsResultIsEmptyList)?;
+            .map_err(DeploymentsFetcherError::DeploymentsFetcherResultIsEmptyList)?;
         log::debug!("non_empty_nodes: {:#?}", non_empty_nodes);
         let deployment_items = convert_to_items(non_empty_nodes);
         log::debug!("deployment_items: {:#?}", deployment_items);

@@ -1,7 +1,3 @@
-mod retrieve_four_keys_schema;
-mod retrieve_four_keys_workflow;
-
-pub mod retrieve_four_keys {
-    pub use super::retrieve_four_keys_schema::*;
-    pub use super::retrieve_four_keys_workflow::*;
-}
+pub mod dto;
+pub mod retrieve_four_keys_implementation;
+pub mod retrieve_four_keys_public_types;
