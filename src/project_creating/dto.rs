@@ -41,6 +41,8 @@ pub enum CreateProjectDtoError {
     HerokuAuthToken(#[from] ValidateHerokuAuthTokenError),
     #[error("GitHub owner/repo is invalid")]
     HerokuAppName(#[from] ValidateHerokuAppNameError),
+    #[error("Data source type is invalid")]
+    InvalidDataSource(String),
 }
 
 fn to_github_deployment_project_created(
@@ -127,6 +129,25 @@ impl From<ProjectCreated> for ProjectConfigDto {
             ProjectCreated::HerokuRelease(domain_obj) => {
                 from_heroku_release_project_created(domain_obj)
             }
+        }
+    }
+}
+
+impl TryFrom<ProjectConfigDto> for ProjectCreated {
+    type Error = CreateProjectDtoError;
+    fn try_from(dto: ProjectConfigDto) -> Result<Self, Self::Error> {
+        match dto.deployment_source.as_str() {
+            "github_deployment" => {
+                let domain_obj = to_github_deployment_project_created(&dto)?;
+                Ok(ProjectCreated::GitHubDeployment(domain_obj))
+            }
+            "heroku_release" => {
+                let domain_obj = to_heroku_release_project_created(&dto)?;
+                Ok(ProjectCreated::HerokuRelease(domain_obj))
+            }
+            _ => Err(CreateProjectDtoError::InvalidDataSource(
+                dto.deployment_source,
+            )),
         }
     }
 }

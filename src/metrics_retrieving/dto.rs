@@ -18,9 +18,9 @@ pub enum RetrieveFourKeysExecutionContextDtoError {
     InvalidWorkingDaysPerWeek(#[from] ValidateWorkingDaysPerWeekError),
 }
 
-struct RetrieveFourKeysExecutionContextDto;
+pub struct RetrieveFourKeysExecutionContextDto;
 impl RetrieveFourKeysExecutionContextDto {
-    fn build_context(
+    pub fn build_context(
         dto: ProjectConfigDto,
     ) -> Result<RetrieveFourKeysExecutionContextProject, RetrieveFourKeysExecutionContextDtoError>
     {

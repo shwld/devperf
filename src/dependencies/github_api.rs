@@ -15,7 +15,6 @@ pub enum GitHubClientError {
 
 impl GitHubAPI {
     pub fn new(
-        self,
         github_personal_token: ValidatedGitHubPersonalToken,
     ) -> Result<Self, GitHubClientError> {
         let octocrab = Octocrab::builder()
