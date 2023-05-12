@@ -39,7 +39,7 @@ async fn fetch_deployments<F: DeploymentsFetcher>(
 // Convert to MetricItem step
 // ---------------------------
 
-async fn get_first_commit_or_repository_info<F: FirstCommitGetter>(
+async fn fetch_first_commit_or_repository_info<F: FirstCommitGetter>(
     first_commit_getter: &F,
     deployment_item: DeploymentItem,
 ) -> Result<Option<FirstCommitOrRepositoryInfo>, RetrieveFourKeysEventError> {
@@ -74,21 +74,26 @@ async fn get_first_commit_or_repository_info<F: FirstCommitGetter>(
     Ok(first_commit)
 }
 
+fn lead_time_for_changes_seconds(
+    first_commit: FirstCommitOrRepositoryInfo,
+    deployed_at: DateTime<Utc>,
+) -> i64 {
+    let first_committed_at = match first_commit {
+        FirstCommitOrRepositoryInfo::FirstCommit(commit) => commit.committed_at,
+        FirstCommitOrRepositoryInfo::RepositoryInfo(info) => info.created_at,
+    };
+    (deployed_at - first_committed_at).num_seconds()
+}
+
 async fn to_metric_item<F: FirstCommitGetter>(
     first_commit_getter: &F,
     deployment: DeploymentItem,
 ) -> Result<DeploymentMetricItem, RetrieveFourKeysEventError> {
     let first_commit =
-        get_first_commit_or_repository_info(first_commit_getter, deployment.clone()).await?;
-    let lead_time_for_changes_seconds = if let Some(first_commit) = first_commit.clone() {
-        let first_committed_at = match first_commit {
-            FirstCommitOrRepositoryInfo::FirstCommit(commit) => commit.committed_at,
-            FirstCommitOrRepositoryInfo::RepositoryInfo(info) => info.created_at,
-        };
-        Some((deployment.deployed_at - first_committed_at).num_seconds())
-    } else {
-        None
-    };
+        fetch_first_commit_or_repository_info(first_commit_getter, deployment.clone()).await?;
+    let lead_time_for_changes_seconds = first_commit
+        .clone()
+        .map(|x| lead_time_for_changes_seconds(x, deployment.deployed_at));
 
     let head_commit = deployment.head_commit.clone();
     let first_commit = first_commit.unwrap_or(FirstCommitOrRepositoryInfo::FirstCommit(
