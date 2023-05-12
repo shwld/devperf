@@ -1,19 +1,18 @@
-use chrono::{Utc, Duration};
+use chrono::{Duration, Utc};
 use clap::Parser;
 
-mod cli;
+mod apps;
 mod common_types;
 mod dependencies;
 mod metrics_retrieving;
 mod project_creating;
-mod logger;
 mod shared;
 
-use cli::four_keys::get_four_keys;
-use cli::initializer;
-use cli::sub_commands::{Action};
-use cli::config::{ConfigAction, get_config_path};
-use shared::datetime_utc;
+use apps::cli::config::{get_config_path, ConfigAction};
+use apps::cli::four_keys::get_four_keys;
+use apps::cli::initializer;
+use apps::cli::sub_commands::Action;
+use shared::{datetime_utc, setup_logger};
 
 #[derive(Parser)]
 struct Args {
@@ -27,22 +26,25 @@ struct Args {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    logger::config::init(args.verbose);
+    setup_logger::init(args.verbose);
 
     match args.action {
-        Action::Init {  } => {
-          initializer::init::perform().await?;
-        },
-        Action::Config { sub_action } => {
-             match sub_action {
-                ConfigAction::Get {} => {
-                    let config_path = get_config_path().expect("Could not get config path");
+        Action::Init {} => {
+            initializer::init::perform().await?;
+        }
+        Action::Config { sub_action } => match sub_action {
+            ConfigAction::Get {} => {
+                let config_path = get_config_path().expect("Could not get config path");
 
-                    println!("{:?}", config_path);
-                },
+                println!("{:?}", config_path);
             }
         },
-        Action::FourKeys { project, since, until, environment } => {
+        Action::FourKeys {
+            project,
+            since,
+            until,
+            environment,
+        } => {
             let datetime_since = if let Some(since) = since {
                 datetime_utc::parse(&since)
             } else {
@@ -58,8 +60,7 @@ async fn main() -> anyhow::Result<()> {
             } else {
                 "production".to_string()
             };
-            let result = get_four_keys(&project, datetime_since, datetime_until, &environment).await?;
-            println!("{:#?}", result);
+            get_four_keys(&project, datetime_since, datetime_until, &environment).await?;
         }
     }
     Ok(())

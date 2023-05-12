@@ -1,8 +1,8 @@
-mod retrieve_four_keys__impl;
-mod retrieve_four_keys__schema;
+pub mod dto;
+mod retrieve_four_keys_implementation;
+mod retrieve_four_keys_public_types;
 
-pub mod public_schema;
 pub mod retrieve_four_keys {
-  pub use super::retrieve_four_keys__impl::*;
-  pub use super::retrieve_four_keys__schema::*;
+    pub use super::retrieve_four_keys_implementation::*;
+    pub use super::retrieve_four_keys_public_types::*;
 }
