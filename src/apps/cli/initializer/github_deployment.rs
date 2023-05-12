@@ -3,11 +3,8 @@ use super::input::{
 };
 use crate::{
     dependencies::project_config_io::writer::settings_toml::ProjectConfigIOWriterWithSettingsToml,
-    project_creating::{
-        create_project_implementation::CreateProjectWorkflow,
-        create_project_public_types::{
-            CreateProject, UncreatedGitHubDeploymentProject, UncreatedProject,
-        },
+    project_creating::create_project::{
+        CreateProject, CreateProjectWorkflow, UncreatedGitHubDeploymentProject, UncreatedProject,
     },
 };
 

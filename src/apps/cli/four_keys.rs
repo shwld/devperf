@@ -19,7 +19,7 @@ use crate::{
             RetrieveFourKeys, RetrieveFourKeysEvent, RetrieveFourKeysExecutionContext,
         },
     },
-    project_creating::create_project_public_types::ProjectCreated,
+    project_creating::create_project::ProjectCreated,
 };
 
 fn write_standard_out_from_events(events: Vec<RetrieveFourKeysEvent>) {
