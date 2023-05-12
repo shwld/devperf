@@ -10,6 +10,7 @@ use crate::{
         first_commit_getter::interface::{FirstCommitGetter, FirstCommitGetterParams},
     },
     metrics_retrieving::retrieve_four_keys_public_types::FirstCommitOrRepositoryInfo,
+    shared::median::median,
 };
 
 use super::retrieve_four_keys_public_types::{
@@ -38,16 +39,16 @@ async fn fetch_deployments<F: DeploymentsFetcher>(
 // Convert to MetricItem step
 // ---------------------------
 
-pub async fn to_metric_item<F: FirstCommitGetter>(
+async fn get_first_commit_or_repository_info<F: FirstCommitGetter>(
     first_commit_getter: &F,
-    deployment: DeploymentItem,
-) -> Result<DeploymentMetricItem, RetrieveFourKeysEventError> {
-    let first_commit: Option<FirstCommitOrRepositoryInfo> = match deployment.clone().base {
+    deployment_item: DeploymentItem,
+) -> Result<Option<FirstCommitOrRepositoryInfo>, RetrieveFourKeysEventError> {
+    let first_commit: Option<FirstCommitOrRepositoryInfo> = match deployment_item.base {
         CommitOrRepositoryInfo::Commit(first_commit) => {
             let commit = first_commit_getter
                 .get(FirstCommitGetterParams {
                     base: first_commit.sha,
-                    head: deployment.clone().head_commit.sha,
+                    head: deployment_item.head_commit.sha,
                 })
                 .await;
             log::debug!("first_commit: {:?}", commit);
@@ -70,6 +71,15 @@ pub async fn to_metric_item<F: FirstCommitGetter>(
             }),
         ),
     };
+    Ok(first_commit)
+}
+
+async fn to_metric_item<F: FirstCommitGetter>(
+    first_commit_getter: &F,
+    deployment: DeploymentItem,
+) -> Result<DeploymentMetricItem, RetrieveFourKeysEventError> {
+    let first_commit =
+        get_first_commit_or_repository_info(first_commit_getter, deployment.clone()).await?;
     let lead_time_for_changes_seconds = if let Some(first_commit) = first_commit.clone() {
         let first_committed_at = match first_commit {
             FirstCommitOrRepositoryInfo::FirstCommit(commit) => commit.committed_at,
@@ -132,22 +142,6 @@ fn split_by_day(metrics_items: Vec<DeploymentMetricItem>) -> Vec<Vec<DeploymentM
     }
 
     items_by_day
-}
-
-fn median(numbers: Vec<i64>) -> f64 {
-    let mut sorted = numbers;
-    sorted.sort();
-
-    let n = sorted.len();
-    if n == 0 {
-        0.0
-    } else if n % 2 == 0 {
-        let mid = n / 2;
-        (sorted[mid - 1] as f64 + sorted[mid] as f64) / 2.0
-    } else {
-        let mid = (n - 1) / 2;
-        sorted[mid] as f64
-    }
 }
 
 fn calculate_four_keys(
