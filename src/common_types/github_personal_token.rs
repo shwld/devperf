@@ -1,14 +1,16 @@
 use std::fmt;
+use thiserror::Error;
 
-use super::validate_github_personal_token_schema::*;
+#[derive(Clone)]
+pub struct ValidatedGitHubPersonalToken(pub(super) String);
 
-pub fn perform(
-    token: UnvalidatedGitHubPersonalToken,
-) -> Result<ValidateGitHubPersonalTokenEvent, ValidateGitHubPersonalTokenError> {
-    ValidatedGitHubPersonalToken::new(token)
+#[derive(Debug, Error, Clone)]
+pub enum ValidateGitHubPersonalTokenError {
+    #[error("InvalidToken: {0}")]
+    InvalidToken(String),
+    #[error("InvalidToken: {0}")]
+    Required(String),
 }
-
-// PRIVATE
 
 impl ValidatedGitHubPersonalToken {
     pub fn new(token: Option<String>) -> Result<Self, ValidateGitHubPersonalTokenError> {
@@ -33,14 +35,3 @@ impl fmt::Display for ValidatedGitHubPersonalToken {
         write!(f, "{}", self.0)
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use crate::project_creating::validate_github_personal_token::schema::ValidateGitHubPersonalToken;
-
-//     #[test]
-//     fn verify_perform_type() {
-//         // 型チェックのために代入する
-//         let _type_check: ValidateGitHubPersonalToken = super::perform;
-//     }
-// }

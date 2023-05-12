@@ -1,14 +1,16 @@
 use std::fmt;
+use thiserror::Error;
 
-use super::validate_heroku_app_name_schema::*;
+#[derive(Clone)]
+pub struct ValidatedHerokuAppName(pub(super) String);
 
-pub fn perform(
-    token: UnvalidatedHerokuAppName,
-) -> Result<ValidateHerokuAppNameEvent, ValidateHerokuAppNameError> {
-    ValidatedHerokuAppName::new(token)
+#[derive(Debug, Error, Clone)]
+pub enum ValidateHerokuAppNameError {
+    #[error("InvalidName: {0}")]
+    InvalidName(String),
+    #[error("InvalidName: {0}")]
+    Required(String),
 }
-
-// PRIVATE
 
 impl ValidatedHerokuAppName {
     pub fn new(token: Option<String>) -> Result<Self, ValidateHerokuAppNameError> {
@@ -33,14 +35,3 @@ impl fmt::Display for ValidatedHerokuAppName {
         write!(f, "{}", self.0)
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use crate::project_creating::validate_heroku_app_name::schema::ValidateHerokuAppName;
-
-//     #[test]
-//     fn verify_perform_type() {
-//         // 型チェックのために代入する
-//         let _type_check: ValidateHerokuAppName = super::perform;
-//     }
-// }

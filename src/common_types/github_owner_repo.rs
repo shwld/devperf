@@ -1,16 +1,20 @@
-use std::fmt;
-
 use regex::Regex;
+use std::fmt;
+use thiserror::Error;
 
-use super::validate_github_owner_repo_schema::*;
-
-pub fn perform(
-    owner_repo: UnvalidatedGitHubOwnerRepo,
-) -> Result<ValidateGitHubOwnerRepoEvent, ValidateGitHubOwnerRepoError> {
-    ValidatedGitHubOwnerRepo::new(owner_repo)
+#[derive(Clone)]
+pub struct ValidatedGitHubOwnerRepo {
+    pub(super) github_owner: String,
+    pub(super) github_repo: String,
 }
+pub type ValidateGitHubOwnerRepoEvent = ValidatedGitHubOwnerRepo;
 
-// PRIVATE
+// Error types
+#[derive(Debug, Error)]
+pub enum ValidateGitHubOwnerRepoError {
+    #[error("Owner repo is invalid")]
+    Invalid(String),
+}
 
 impl ValidatedGitHubOwnerRepo {
     pub fn new(owner_repo: String) -> Result<Self, ValidateGitHubOwnerRepoError> {
@@ -46,14 +50,3 @@ impl fmt::Display for ValidatedGitHubOwnerRepo {
         write!(f, "{}/{}", self.github_owner, self.github_repo)
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use crate::project_creating::validate_github_owner_repo::schema::ValidateGitHubOwnerRepo;
-
-//     #[test]
-//     fn verify_perform_type() {
-//         // 型チェックのために代入する
-//         let _type_check: ValidateGitHubOwnerRepo = super::perform;
-//     }
-// }

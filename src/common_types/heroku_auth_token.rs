@@ -1,14 +1,16 @@
 use std::fmt;
+use thiserror::Error;
 
-use super::validate_heroku_auth_token_schema::*;
+#[derive(Clone)]
+pub struct ValidatedHerokuAuthToken(pub(super) String);
 
-pub fn perform(
-    token: UnvalidatedHerokuAuthToken,
-) -> Result<ValidateHerokuAuthTokenEvent, ValidateHerokuAuthTokenError> {
-    ValidatedHerokuAuthToken::new(token)
+#[derive(Debug, Error, Clone)]
+pub enum ValidateHerokuAuthTokenError {
+    #[error("InvalidToken: {0}")]
+    InvalidToken(String),
+    #[error("InvalidToken: {0}")]
+    Required(String),
 }
-
-// PRIVATE
 
 impl ValidatedHerokuAuthToken {
     pub fn new(token: Option<String>) -> Result<Self, ValidateHerokuAuthTokenError> {
@@ -33,14 +35,3 @@ impl fmt::Display for ValidatedHerokuAuthToken {
         write!(f, "{}", self.0)
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use crate::project_creating::validate_heroku_auth_token::schema::ValidateHerokuAuthToken;
-
-//     #[test]
-//     fn verify_perform_type() {
-//         // 型チェックのために代入する
-//         let _type_check: ValidateHerokuAuthToken = super::perform;
-//     }
-// }
