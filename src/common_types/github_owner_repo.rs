@@ -7,7 +7,6 @@ pub struct ValidatedGitHubOwnerRepo {
     pub(super) github_owner: String,
     pub(super) github_repo: String,
 }
-pub type ValidateGitHubOwnerRepoEvent = ValidatedGitHubOwnerRepo;
 
 // Error types
 #[derive(Debug, Error)]

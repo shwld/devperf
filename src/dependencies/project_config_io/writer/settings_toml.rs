@@ -22,9 +22,7 @@ impl ProjectConfigIOWriter for ProjectConfigIOWriterWithSettingsToml {
         };
 
         let project_config = ProjectConfig {
-            github_personal_token: if config.github_personal_token
-                == data.github_personal_token.clone()
-            {
+            github_personal_token: if config.github_personal_token == data.github_personal_token {
                 None
             } else {
                 Some(data.github_personal_token)
@@ -40,7 +38,7 @@ impl ProjectConfigIOWriter for ProjectConfigIOWriterWithSettingsToml {
 
         config
             .projects
-            .entry(data.project_name.clone())
+            .entry(data.project_name)
             .or_insert(project_config);
 
         confy::store("devops-metrics-tools", None, config)

@@ -187,7 +187,6 @@ async fn fetch_deployments(
     github_personal_token: ValidatedGitHubPersonalToken,
     github_owner_repo: ValidatedGitHubOwnerRepo,
     environment: &str,
-    params: DeploymentsFetcherParams,
 ) -> Result<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>, DeploymentsFetcherError> {
     let mut after: Option<String> = None;
     let mut has_next_page = true;
@@ -335,13 +334,12 @@ pub struct DeploymentsFetcherWithGithubDeployment {
 impl DeploymentsFetcher for DeploymentsFetcherWithGithubDeployment {
     async fn fetch(
         &self,
-        params: DeploymentsFetcherParams,
+        _params: DeploymentsFetcherParams,
     ) -> Result<Vec<DeploymentItem>, DeploymentsFetcherError> {
         let deployment_nodes = fetch_deployments(
             self.github_personal_token.clone(),
             self.github_owner_repo.clone(),
             &self.environment,
-            params,
         )
         .await?
         .into_iter()

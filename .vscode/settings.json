@@ -10,6 +10,7 @@
   "editor.defaultFormatter": "rust-lang.rust-analyzer",
   "cSpell.words": [
     "chrono",
+    "confy",
     "octocrab",
     "thiserror",
     "Unvalidated"

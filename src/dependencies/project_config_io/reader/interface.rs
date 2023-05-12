@@ -9,10 +9,6 @@ pub enum ProjectConfigIOReaderError {
     ConfigFileReadError(#[source] anyhow::Error),
     #[error("Cannot find the project")]
     ProjectNotFound(String),
-    #[error("Cannot read heroku app name")]
-    CannotReadHerokuAppName(String),
-    #[error("Cannot read heroku api token")]
-    CannotReadHerokuAuthToken(String),
 }
 
 #[async_trait]

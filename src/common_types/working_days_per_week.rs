@@ -1,7 +1,5 @@
 use thiserror::Error;
 
-pub type UnvalidatedWorkingDaysPerWeek = String;
-
 #[derive(Clone)]
 pub struct ValidatedWorkingDaysPerWeek(pub(super) f32);
 

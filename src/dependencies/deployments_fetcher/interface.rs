@@ -16,8 +16,6 @@ pub enum DeploymentsFetcherError {
     CommitIsNotFound(#[source] anyhow::Error),
     #[error("Cannot get repository created at")]
     GetRepositoryCreatedAtError(#[source] anyhow::Error),
-    #[error("Cannot get repository")]
-    RepositoryNotFound(String),
     #[error("Fetch deployments result is empty list")]
     DeploymentsFetcherResultIsEmptyList(#[source] anyhow::Error),
 }

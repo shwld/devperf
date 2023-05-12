@@ -136,7 +136,6 @@ async fn get_slug(
 
 async fn get_commit(
     github_owner_repo: ValidatedGitHubOwnerRepo,
-    heroku_auth_token: ValidatedHerokuAuthToken,
     github_personal_token: ValidatedGitHubPersonalToken,
     sha: &str,
 ) -> Result<RepoCommit, DeploymentsFetcherError> {
@@ -231,13 +230,7 @@ async fn attach_commit(
         &release.slug.clone().unwrap().id,
     )
     .await?;
-    let commit = get_commit(
-        github_owner_repo,
-        heroku_auth_token,
-        github_personal_token,
-        &slug.commit,
-    )
-    .await?;
+    let commit = get_commit(github_owner_repo, github_personal_token, &slug.commit).await?;
 
     Ok(HerokuReleaseOrRepositoryInfo::HerokuRelease(
         HerokuRelease { release, commit },

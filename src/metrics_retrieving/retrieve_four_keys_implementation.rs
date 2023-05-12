@@ -16,7 +16,7 @@ use super::retrieve_four_keys_public_types::{
     DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
     DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, FourKeysMetrics, RepositoryInfo,
     RetrieveFourKeys, RetrieveFourKeysEvent, RetrieveFourKeysEventError,
-    RetrieveFourKeysExecutionContext, RetrieveFourKeysExecutionContextProject,
+    RetrieveFourKeysExecutionContext,
 };
 
 // ---------------------------
@@ -40,7 +40,6 @@ async fn fetch_deployments<F: DeploymentsFetcher>(
 
 pub async fn to_metric_item<F: FirstCommitGetter>(
     first_commit_getter: &F,
-    project: RetrieveFourKeysExecutionContextProject,
     deployment: DeploymentItem,
 ) -> Result<DeploymentMetricItem, RetrieveFourKeysEventError> {
     let first_commit: Option<FirstCommitOrRepositoryInfo> = match deployment.clone().base {
@@ -231,9 +230,9 @@ async fn calculate_four_keys_metrics<
     context: RetrieveFourKeysExecutionContext,
 ) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError> {
     let deployments = fetch_deployments(&deployments_fetcher, context.since).await?;
-    let convert_items = deployments.into_iter().map(|deployment| {
-        to_metric_item(&first_commit_getter, context.clone().project, deployment)
-    });
+    let convert_items = deployments
+        .into_iter()
+        .map(|deployment| to_metric_item(&first_commit_getter, deployment));
     let metrics_items = try_join_all(convert_items).await?;
     let result = calculate_four_keys(metrics_items, context.clone())?;
     let event = RetrieveFourKeysEvent::FourKeysMetrics(result);

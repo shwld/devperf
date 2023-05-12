@@ -86,5 +86,6 @@ pub async fn get_four_keys(
     }
     .await?;
 
-    Ok(write_standard_out_from_events(events))
+    write_standard_out_from_events(events);
+    Ok(())
 }

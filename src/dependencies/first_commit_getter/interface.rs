@@ -19,8 +19,6 @@ pub struct FirstCommitGetterParams {
 
 #[derive(Debug, Error)]
 pub enum FirstCommitGetterError {
-    #[error("Create API client error")]
-    CreateAPIClientError(#[source] anyhow::Error),
     #[error("Empty base or head")]
     EmptyBaseOrHead(String),
     #[error("Base equals head")]
