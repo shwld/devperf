@@ -14,9 +14,9 @@ use crate::{
     },
     metrics_retrieving::{
         dto::RetrieveFourKeysExecutionContextDto,
-        retrieve_four_keys_implementation::RetrieveFourKeysWorkflow,
-        retrieve_four_keys_public_types::{
+        retrieve_four_keys::{
             RetrieveFourKeys, RetrieveFourKeysEvent, RetrieveFourKeysExecutionContext,
+            RetrieveFourKeysWorkflow,
         },
     },
     project_creating::create_project::ProjectCreated,
