@@ -1,3 +1,4 @@
+pub mod deployment_source;
 pub mod developer_count;
 pub mod github_deployment_environment;
 pub mod github_owner_repo;

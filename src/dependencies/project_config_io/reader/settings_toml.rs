@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 
+use crate::common_types::deployment_source::DeploymentSource;
 use crate::project_creating::dto::ProjectConfigDto;
 
 use super::super::settings_toml::{Config, ProjectName};
@@ -19,8 +20,10 @@ impl ProjectConfigIOReader for ProjectConfigIOReaderWithSettingsToml {
             .and_then(|c| {
                 let project_config = c.projects.get(&project_name);
                 if let Some(project_config) = project_config {
-                    match project_config.clone().deployment_source.as_str() {
-                        "github_deployment" => Ok(ProjectConfigDto {
+                    if project_config.clone().deployment_source.as_str()
+                        == DeploymentSource::GitHubDeployment.value()
+                    {
+                        Ok(ProjectConfigDto {
                             project_name,
                             developer_count: project_config.clone().developer_count,
                             working_days_per_week: project_config.clone().working_days_per_week,
@@ -35,9 +38,12 @@ impl ProjectConfigIOReader for ProjectConfigIOReaderWithSettingsToml {
                                 .clone(),
                             heroku_app_name: None,
                             heroku_auth_token: None,
-                            deployment_source: "github_deployment".to_string(),
-                        }),
-                        "heroku_release" => Ok(ProjectConfigDto {
+                            deployment_source: DeploymentSource::GitHubDeployment.value(),
+                        })
+                    } else if project_config.clone().deployment_source.as_str()
+                        == DeploymentSource::HerokuRelease.value()
+                    {
+                        Ok(ProjectConfigDto {
                             project_name,
                             developer_count: project_config.clone().developer_count,
                             working_days_per_week: project_config.clone().working_days_per_week,
@@ -50,9 +56,10 @@ impl ProjectConfigIOReader for ProjectConfigIOReaderWithSettingsToml {
                             heroku_auth_token: project_config.clone().heroku_auth_token,
                             github_owner: project_config.clone().github_owner,
                             github_repo: project_config.clone().github_repo,
-                            deployment_source: "heroku_release".to_string(),
-                        }),
-                        _ => unimplemented!(),
+                            deployment_source: DeploymentSource::HerokuRelease.value(),
+                        })
+                    } else {
+                        unimplemented!()
                     }
                 } else {
                     Err(ProjectConfigIOReaderError::ProjectNotFound(
