@@ -2,12 +2,12 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::common_types::{
-    validate_developer_count::{self, ValidateDeveloperCountError},
-    validate_github_owner_repo::{self, ValidateGitHubOwnerRepoError},
-    validate_github_personal_token::{self, ValidateGitHubPersonalTokenError},
-    validate_heroku_app_name::{self, ValidateHerokuAppNameError},
-    validate_heroku_auth_token::{self, ValidateHerokuAuthTokenError},
-    validate_working_days_per_week::{self, ValidateWorkingDaysPerWeekError},
+    developer_count::{ValidateDeveloperCountError, ValidatedDeveloperCount},
+    github_owner_repo::{ValidateGitHubOwnerRepoError, ValidatedGitHubOwnerRepo},
+    github_personal_token::{ValidateGitHubPersonalTokenError, ValidatedGitHubPersonalToken},
+    heroku_app_name::{ValidateHerokuAppNameError, ValidatedHerokuAppName},
+    heroku_auth_token::{ValidateHerokuAuthTokenError, ValidatedHerokuAuthToken},
+    working_days_per_week::{ValidateWorkingDaysPerWeekError, ValidatedWorkingDaysPerWeek},
 };
 
 use super::create_project_public_types::{
@@ -49,12 +49,12 @@ fn to_github_deployment_project_created(
     dto: &ProjectConfigDto,
 ) -> Result<GitHubDeploymentProjectCreated, CreateProjectDtoError> {
     let github_personal_token =
-        validate_github_personal_token::perform(Some(dto.github_personal_token.clone()))?;
+        ValidatedGitHubPersonalToken::new(Some(dto.github_personal_token.clone()))?;
     let github_owner_repo =
-        validate_github_owner_repo::perform(format!("{}/{}", dto.github_owner, dto.github_repo))?;
-    let developer_count = validate_developer_count::perform(dto.developer_count.to_string())?;
+        ValidatedGitHubOwnerRepo::new(format!("{}/{}", dto.github_owner, dto.github_repo))?;
+    let developer_count = ValidatedDeveloperCount::new(dto.developer_count.to_string())?;
     let working_days_per_week =
-        validate_working_days_per_week::perform(dto.working_days_per_week.to_string())?;
+        ValidatedWorkingDaysPerWeek::new(dto.working_days_per_week.to_string())?;
     Ok(GitHubDeploymentProjectCreated {
         project_name: dto.project_name.to_string(),
         github_personal_token,
@@ -84,14 +84,14 @@ fn to_heroku_release_project_created(
     dto: &ProjectConfigDto,
 ) -> Result<HerokuReleaseProjectCreated, CreateProjectDtoError> {
     let github_personal_token =
-        validate_github_personal_token::perform(Some(dto.github_personal_token.to_string()))?;
-    let heroku_app_name = validate_heroku_app_name::perform(dto.heroku_app_name.clone())?;
-    let heroku_auth_token = validate_heroku_auth_token::perform(dto.heroku_auth_token.clone())?;
+        ValidatedGitHubPersonalToken::new(Some(dto.github_personal_token.to_string()))?;
+    let heroku_app_name = ValidatedHerokuAppName::new(dto.heroku_app_name.clone())?;
+    let heroku_auth_token = ValidatedHerokuAuthToken::new(dto.heroku_auth_token.clone())?;
     let github_owner_repo =
-        validate_github_owner_repo::perform(format!("{}/{}", dto.github_owner, dto.github_repo))?;
-    let developer_count = validate_developer_count::perform(dto.developer_count.to_string())?;
+        ValidatedGitHubOwnerRepo::new(format!("{}/{}", dto.github_owner, dto.github_repo))?;
+    let developer_count = ValidatedDeveloperCount::new(dto.developer_count.to_string())?;
     let working_days_per_week =
-        validate_working_days_per_week::perform(dto.working_days_per_week.to_string())?;
+        ValidatedWorkingDaysPerWeek::new(dto.working_days_per_week.to_string())?;
     Ok(HerokuReleaseProjectCreated {
         project_name: dto.project_name.clone(),
         github_personal_token,

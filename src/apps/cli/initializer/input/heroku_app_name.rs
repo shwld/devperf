@@ -1,6 +1,6 @@
 use inquire::{Password, PasswordDisplayMode};
 
-use crate::common_types::validate_heroku_app_name::{self, ValidatedHerokuAppName};
+use crate::common_types::heroku_app_name::ValidatedHerokuAppName;
 
 pub fn input() -> ValidatedHerokuAppName {
     let value = Password::new("Type a Heroku app name: ")
@@ -8,7 +8,7 @@ pub fn input() -> ValidatedHerokuAppName {
         .without_confirmation()
         .prompt()
         .unwrap();
-    let value = validate_heroku_app_name::perform(Some(value));
+    let value = ValidatedHerokuAppName::new(Some(value));
 
     if let Ok(value) = value {
         value

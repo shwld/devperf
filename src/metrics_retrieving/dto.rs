@@ -2,8 +2,8 @@ use thiserror::Error;
 
 use crate::{
     common_types::{
-        validate_developer_count::{self, ValidateDeveloperCountError},
-        validate_working_days_per_week::{self, ValidateWorkingDaysPerWeekError},
+        developer_count::{ValidateDeveloperCountError, ValidatedDeveloperCount},
+        working_days_per_week::{ValidateWorkingDaysPerWeekError, ValidatedWorkingDaysPerWeek},
     },
     project_creating::dto::ProjectConfigDto,
 };
@@ -24,9 +24,9 @@ impl RetrieveFourKeysExecutionContextDto {
         dto: ProjectConfigDto,
     ) -> Result<RetrieveFourKeysExecutionContextProject, RetrieveFourKeysExecutionContextDtoError>
     {
-        let developer_count = validate_developer_count::perform(dto.developer_count.to_string())?;
+        let developer_count = ValidatedDeveloperCount::new(dto.developer_count.to_string())?;
         let working_days_per_week =
-            validate_working_days_per_week::perform(dto.working_days_per_week.to_string())?;
+            ValidatedWorkingDaysPerWeek::new(dto.working_days_per_week.to_string())?;
         Ok(RetrieveFourKeysExecutionContextProject {
             name: dto.project_name,
             developer_count: developer_count.to_u32(),

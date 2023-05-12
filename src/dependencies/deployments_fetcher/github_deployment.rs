@@ -4,8 +4,8 @@ use super::interface::{
 };
 use crate::{
     common_types::{
-        validate_github_owner_repo::ValidatedGitHubOwnerRepo,
-        validate_github_personal_token::ValidatedGitHubPersonalToken,
+        github_owner_repo::ValidatedGitHubOwnerRepo,
+        github_personal_token::ValidatedGitHubPersonalToken,
     },
     shared::non_empty_vec::NonEmptyVec,
 };

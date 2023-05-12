@@ -12,7 +12,7 @@ pub enum ValidateDeveloperCountError {
 }
 
 impl ValidatedDeveloperCount {
-    fn new(count: String) -> Result<ValidatedDeveloperCount, ValidateDeveloperCountError> {
+    pub fn new(count: String) -> Result<ValidatedDeveloperCount, ValidateDeveloperCountError> {
         let count = count.parse::<u32>()?;
         if count > 0 {
             Ok(ValidatedDeveloperCount(count))
@@ -23,7 +23,7 @@ impl ValidatedDeveloperCount {
         }
     }
 
-    fn to_u32(&self) -> u32 {
+    pub fn to_u32(&self) -> u32 {
         self.0
     }
 }

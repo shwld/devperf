@@ -1,6 +1,6 @@
 use inquire::{Password, PasswordDisplayMode};
 
-use crate::common_types::validate_github_personal_token::{self, ValidatedGitHubPersonalToken};
+use crate::common_types::github_personal_token::ValidatedGitHubPersonalToken;
 
 pub fn input() -> ValidatedGitHubPersonalToken {
     let value = Password::new("Type a GitHub Personal access token: ")
@@ -8,7 +8,7 @@ pub fn input() -> ValidatedGitHubPersonalToken {
         .without_confirmation()
         .prompt()
         .unwrap();
-    let value = validate_github_personal_token::perform(Some(value));
+    let value = ValidatedGitHubPersonalToken::new(Some(value));
 
     if let Ok(value) = value {
         value

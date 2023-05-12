@@ -7,12 +7,10 @@ use thiserror::Error;
 
 use crate::{
     common_types::{
-        validate_developer_count::ValidatedDeveloperCount,
-        validate_github_owner_repo::ValidatedGitHubOwnerRepo,
-        validate_github_personal_token::ValidatedGitHubPersonalToken,
-        validate_heroku_app_name::ValidatedHerokuAppName,
-        validate_heroku_auth_token::ValidatedHerokuAuthToken,
-        validate_working_days_per_week::ValidatedWorkingDaysPerWeek,
+        developer_count::ValidatedDeveloperCount, github_owner_repo::ValidatedGitHubOwnerRepo,
+        github_personal_token::ValidatedGitHubPersonalToken,
+        heroku_app_name::ValidatedHerokuAppName, heroku_auth_token::ValidatedHerokuAuthToken,
+        working_days_per_week::ValidatedWorkingDaysPerWeek,
     },
     dependencies::project_config_io::writer::interface::ProjectConfigIOWriterError,
 };

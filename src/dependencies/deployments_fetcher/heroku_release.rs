@@ -9,10 +9,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     common_types::{
-        validate_github_owner_repo::ValidatedGitHubOwnerRepo,
-        validate_github_personal_token::ValidatedGitHubPersonalToken,
-        validate_heroku_app_name::ValidatedHerokuAppName,
-        validate_heroku_auth_token::ValidatedHerokuAuthToken,
+        github_owner_repo::ValidatedGitHubOwnerRepo,
+        github_personal_token::ValidatedGitHubPersonalToken,
+        heroku_app_name::ValidatedHerokuAppName, heroku_auth_token::ValidatedHerokuAuthToken,
     },
     dependencies::deployments_fetcher::{
         interface::{CommitItem, DeploymentItem},
