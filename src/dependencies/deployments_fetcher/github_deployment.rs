@@ -3,7 +3,7 @@ use super::interface::{
     DeploymentsFetcherError, DeploymentsFetcherParams, RepositoryInfo,
 };
 use crate::{
-    project_parameter_validating::{
+    common_types::{
         validate_github_owner_repo::ValidatedGitHubOwnerRepo,
         validate_github_personal_token::ValidatedGitHubPersonalToken,
     },

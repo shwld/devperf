@@ -2,10 +2,10 @@ use chrono::{Duration, Utc};
 use clap::Parser;
 
 mod apps;
+mod common_types;
 mod dependencies;
 mod metrics_retrieving;
 mod project_creating;
-mod project_parameter_validating;
 mod shared;
 
 use apps::cli::config::{get_config_path, ConfigAction};

@@ -8,15 +8,15 @@ use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    dependencies::deployments_fetcher::{
-        interface::{CommitItem, DeploymentItem},
-        shared::get_created_at,
-    },
-    project_parameter_validating::{
+    common_types::{
         validate_github_owner_repo::ValidatedGitHubOwnerRepo,
         validate_github_personal_token::ValidatedGitHubPersonalToken,
         validate_heroku_app_name::ValidatedHerokuAppName,
         validate_heroku_auth_token::ValidatedHerokuAuthToken,
+    },
+    dependencies::deployments_fetcher::{
+        interface::{CommitItem, DeploymentItem},
+        shared::get_created_at,
     },
     shared::non_empty_vec::NonEmptyVec,
 };

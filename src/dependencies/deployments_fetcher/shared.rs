@@ -1,7 +1,7 @@
 use octocrab::Octocrab;
 use thiserror::Error;
 
-use crate::project_parameter_validating::{
+use crate::common_types::{
     validate_github_owner_repo::ValidatedGitHubOwnerRepo,
     validate_github_personal_token::ValidatedGitHubPersonalToken,
 };

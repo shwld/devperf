@@ -1,8 +1,6 @@
 use inquire::Text;
 
-use crate::project_parameter_validating::validate_working_days_per_week::{
-    self, ValidatedWorkingDaysPerWeek,
-};
+use crate::common_types::validate_working_days_per_week::{self, ValidatedWorkingDaysPerWeek};
 
 pub fn input() -> ValidatedWorkingDaysPerWeek {
     let value = Text::new("Type a Working days per weed: ")

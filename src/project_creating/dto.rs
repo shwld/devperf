@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::project_parameter_validating::{
+use crate::common_types::{
     validate_developer_count::{self, ValidateDeveloperCountError},
     validate_github_owner_repo::{self, ValidateGitHubOwnerRepoError},
     validate_github_personal_token::{self, ValidateGitHubPersonalTokenError},

@@ -6,8 +6,7 @@ use async_trait::async_trait;
 use thiserror::Error;
 
 use crate::{
-    dependencies::project_config_io::writer::interface::ProjectConfigIOWriterError,
-    project_parameter_validating::{
+    common_types::{
         validate_developer_count::ValidatedDeveloperCount,
         validate_github_owner_repo::ValidatedGitHubOwnerRepo,
         validate_github_personal_token::ValidatedGitHubPersonalToken,
@@ -15,6 +14,7 @@ use crate::{
         validate_heroku_auth_token::ValidatedHerokuAuthToken,
         validate_working_days_per_week::ValidatedWorkingDaysPerWeek,
     },
+    dependencies::project_config_io::writer::interface::ProjectConfigIOWriterError,
 };
 
 // ------------------------------------

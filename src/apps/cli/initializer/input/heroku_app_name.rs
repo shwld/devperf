@@ -1,6 +1,6 @@
 use inquire::{Password, PasswordDisplayMode};
 
-use crate::project_parameter_validating::validate_heroku_app_name::{self, ValidatedHerokuAppName};
+use crate::common_types::validate_heroku_app_name::{self, ValidatedHerokuAppName};
 
 pub fn input() -> ValidatedHerokuAppName {
     let value = Password::new("Type a Heroku app name: ")

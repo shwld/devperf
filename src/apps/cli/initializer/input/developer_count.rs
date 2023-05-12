@@ -1,8 +1,6 @@
 use inquire::Text;
 
-use crate::project_parameter_validating::validate_developer_count::{
-    self, ValidatedDeveloperCount,
-};
+use crate::common_types::validate_developer_count::{self, ValidatedDeveloperCount};
 
 pub fn input() -> ValidatedDeveloperCount {
     let value = Text::new("Type a Developer count: ")

@@ -1,8 +1,6 @@
 use inquire::Text;
 
-use crate::project_parameter_validating::validate_github_owner_repo::{
-    self, ValidatedGitHubOwnerRepo,
-};
+use crate::common_types::validate_github_owner_repo::{self, ValidatedGitHubOwnerRepo};
 
 pub fn input() -> ValidatedGitHubOwnerRepo {
     let value = Text::new("Type a GitHub owner/repo: ")
