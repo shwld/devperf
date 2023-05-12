@@ -7,8 +7,8 @@ pub async fn perform() -> Result<()> {
     println!("Initialize CLI");
     let options: Vec<&str> = vec![
         "GitHub deployments",
-        "GitHub releases",
-        "GitHub PullRequests",
+        // "GitHub releases",
+        // "GitHub pull requests",
         "Heroku releases",
     ];
     let answer = Select::new("Select Deployment Frequency Source: ", options).prompt()?;

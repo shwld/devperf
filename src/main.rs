@@ -10,8 +10,8 @@ mod shared;
 
 use apps::cli::config::{get_config_path, ConfigAction};
 use apps::cli::four_keys::get_four_keys;
-use apps::cli::initializer;
 use apps::cli::sub_commands::Action;
+use apps::cli::{initializer, project};
 use shared::{datetime_utc, setup_logger};
 
 #[derive(Parser)]
@@ -56,6 +56,11 @@ async fn main() -> anyhow::Result<()> {
             }?;
             get_four_keys(&project, datetime_since, datetime_until).await?;
         }
+        Action::Project { sub_action } => match sub_action {
+            project::ProjectAction::Add {} => {
+                project::add().await?;
+            }
+        },
     }
     Ok(())
 }
