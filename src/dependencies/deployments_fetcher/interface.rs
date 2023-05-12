@@ -18,6 +18,8 @@ pub enum DeploymentsFetcherError {
     GetRepositoryCreatedAtError(#[source] anyhow::Error),
     #[error("Fetch deployments result is empty list")]
     DeploymentsFetcherResultIsEmptyList(#[source] anyhow::Error),
+    #[error("Invalid response: {0}")]
+    InvalidResponse(String),
 }
 
 #[derive(Debug, Clone)]

@@ -211,7 +211,7 @@ async fn fetch_deployments(
 
     let succeeded_releases = releases
         .into_iter()
-        .filter(|release| release.status.to_uppercase() == "SUCCEEDED")
+        .filter(|release| release.status.to_uppercase() == "SUCCEEDED" && release.slug.is_some())
         .collect::<Vec<HerokuReleaseItem>>();
 
     Ok(succeeded_releases)
@@ -224,12 +224,15 @@ async fn attach_commit(
     github_owner_repo: ValidatedGitHubOwnerRepo,
     release: HerokuReleaseItem,
 ) -> Result<HerokuReleaseOrRepositoryInfo, DeploymentsFetcherError> {
-    let slug = get_slug(
-        heroku_app_name,
-        heroku_auth_token.clone(),
-        &release.slug.clone().unwrap().id,
-    )
-    .await?;
+    let slug_id =
+        release
+            .slug
+            .clone()
+            .map(|x| x.id)
+            .ok_or(DeploymentsFetcherError::InvalidResponse(
+                "slug is None".to_string(),
+            ))?;
+    let slug = get_slug(heroku_app_name, heroku_auth_token.clone(), &slug_id).await?;
     let commit = get_commit(github_owner_repo, github_personal_token, &slug.commit).await?;
 
     Ok(HerokuReleaseOrRepositoryInfo::HerokuRelease(
@@ -239,7 +242,7 @@ async fn attach_commit(
 
 fn convert_to_items(
     deployment_nodes: NonEmptyVec<HerokuReleaseOrRepositoryInfo>,
-) -> Vec<DeploymentItem> {
+) -> Result<Vec<DeploymentItem>, DeploymentsFetcherError> {
     let mut sorted: NonEmptyVec<HerokuReleaseOrRepositoryInfo> = deployment_nodes;
     sorted.sort_by_key(|a| match a {
         HerokuReleaseOrRepositoryInfo::HerokuRelease(release) => release.release.created_at,
@@ -274,8 +277,12 @@ fn convert_to_items(
                 sha: item.release.id.clone(),
                 message: item.commit.commit.message.clone(),
                 resource_path: item.commit.html_url.clone(),
-                committed_at: item.commit.commit.author.map(|x| x.date.unwrap()).unwrap(), // TODO unwrap
-                creator_login: item.commit.author.map(|x| x.login).unwrap(), // TODO unwrap
+                committed_at: item.commit.commit.author.and_then(|x| x.date).ok_or(
+                    DeploymentsFetcherError::InvalidResponse("author is not found".to_string()),
+                )?,
+                creator_login: item.commit.author.map(|x| x.login).ok_or(
+                    DeploymentsFetcherError::InvalidResponse("login is not found".to_string()),
+                )?,
             })
         }
         HerokuReleaseOrRepositoryInfo::RepositoryInfo(info) => {
@@ -290,6 +297,11 @@ fn convert_to_items(
         .scan(
             first_commit,
             |previous: &mut CommitOrRepositoryInfo, release: &HerokuRelease| {
+                let author_date = release.clone().commit.commit.author.and_then(|x| x.date);
+                let author_login = release.clone().commit.author.map(|x| x.login);
+                if author_date.is_none() || author_login.is_none() {
+                    return None;
+                }
                 let commit_item = CommitItem {
                     sha: release.clone().commit.sha,
                     message: release.clone().commit.commit.message,
@@ -300,14 +312,14 @@ fn convert_to_items(
                         .commit
                         .author
                         .map(|x| x.date.unwrap())
-                        .unwrap(), // TODO unwrap
-                    creator_login: release.clone().commit.author.map(|x| x.login).unwrap(), // TODO unwrap
+                        .unwrap(),
+                    creator_login: release.clone().commit.author.map(|x| x.login).unwrap(),
                 };
                 let deployment_item = DeploymentItem {
                     id: release.clone().release.id,
                     head_commit: commit_item.clone(),
                     base: previous.clone(),
-                    creator_login: release.clone().commit.author.map(|x| x.login).unwrap(), // TODO unwrap
+                    creator_login: release.clone().commit.author.map(|x| x.login).unwrap(),
                     deployed_at: release.release.created_at,
                 };
                 log::debug!("deployment_item: {:#?}", deployment_item);
@@ -317,7 +329,7 @@ fn convert_to_items(
         )
         .collect::<Vec<DeploymentItem>>();
 
-    deployment_items
+    Ok(deployment_items)
 }
 
 pub struct DeploymentsFetcherWithHerokuRelease {
@@ -339,6 +351,7 @@ impl DeploymentsFetcher for DeploymentsFetcherWithHerokuRelease {
         )
         .await?;
         let mut deployments = try_join_all(succeeded_releases.iter().map(|release| {
+            log::debug!("release: {:#?}", release);
             attach_commit(
                 self.heroku_app_name.clone(),
                 self.heroku_auth_token.clone(),
@@ -365,7 +378,7 @@ impl DeploymentsFetcher for DeploymentsFetcherWithHerokuRelease {
             .map_err(|e| anyhow::anyhow!(e))
             .map_err(DeploymentsFetcherError::DeploymentsFetcherResultIsEmptyList)?;
 
-        let deployment_items = convert_to_items(non_empty_nodes);
+        let deployment_items = convert_to_items(non_empty_nodes)?;
 
         Ok(deployment_items)
     }
