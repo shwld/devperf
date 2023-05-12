@@ -3,7 +3,7 @@ use inquire::Text;
 use crate::common_types::working_days_per_week::ValidatedWorkingDaysPerWeek;
 
 pub fn input() -> ValidatedWorkingDaysPerWeek {
-    let value = Text::new("Type a Working days per weed: ")
+    let value = Text::new("Type a Working days per week: ")
         .with_placeholder("5.0")
         .prompt()
         .unwrap();
