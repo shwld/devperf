@@ -475,17 +475,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cranenum"
-version = "0.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79623545372e2a7425ac6c4d5e9659bb757830cbdaf21b07cab4889f104eba87"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.15",
-]
-
-[[package]]
 name = "crossbeam-utils"
 version = "0.8.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -593,7 +582,6 @@ dependencies = [
  "chrono",
  "clap",
  "confy",
- "cranenum",
  "env_logger",
  "futures",
  "http-cache-reqwest",
