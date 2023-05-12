@@ -43,7 +43,7 @@ pub enum CreateProjectDtoError {
     DeveloperCount(#[from] ValidateDeveloperCountError),
     #[error("GitHub working days per week is invalid")]
     WorkingDaysPerWeek(#[from] ValidateWorkingDaysPerWeekError),
-    #[error("GitHub personal token is invalid")]
+    #[error("Heroku authorization token is invalid")]
     HerokuAuthToken(#[from] ValidateHerokuAuthTokenError),
     #[error("GitHub owner/repo is invalid")]
     HerokuAppName(#[from] ValidateHerokuAppNameError),
