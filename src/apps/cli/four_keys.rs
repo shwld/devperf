@@ -36,7 +36,6 @@ pub async fn get_four_keys(
     project_name: &str,
     since: DateTime<Utc>,
     until: DateTime<Utc>,
-    environment: &str,
 ) -> Result<()> {
     let config_reader = ProjectConfigIOReaderWithSettingsToml {};
     let project_config_dto = config_reader.read(project_name.to_string()).await?;
@@ -69,9 +68,9 @@ pub async fn get_four_keys(
         ProjectCreated::GitHubDeployment(config) => {
             log::info!("GitHub project detected");
             let deployments_fetcher = DeploymentsFetcherWithGithubDeployment {
-                environment: environment.to_string(),
                 github_personal_token: config.github_personal_token.clone(),
                 github_owner_repo: config.github_owner_repo.clone(),
+                environment: config.github_deployment_environment.clone(),
             };
             let first_commit_getter = FirstCommitGetterWithGitHub {
                 github_personal_token: config.github_personal_token,

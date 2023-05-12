@@ -91,7 +91,6 @@ pub struct DeploymentMetric {
     pub deploys_per_a_day_per_a_developer: f32,
     pub deployment_frequency_per_day: f32,
     pub lead_time_for_changes: DeploymentMetricLeadTimeForChanges,
-    pub environment: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

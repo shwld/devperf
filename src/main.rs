@@ -43,7 +43,6 @@ async fn main() -> anyhow::Result<()> {
             project,
             since,
             until,
-            environment,
         } => {
             let datetime_since = if let Some(since) = since {
                 datetime_utc::parse(&since)
@@ -55,12 +54,7 @@ async fn main() -> anyhow::Result<()> {
             } else {
                 Ok(Utc::now())
             }?;
-            let environment = if let Some(environment) = environment {
-                environment
-            } else {
-                "production".to_string()
-            };
-            get_four_keys(&project, datetime_since, datetime_until, &environment).await?;
+            get_four_keys(&project, datetime_since, datetime_until).await?;
         }
     }
     Ok(())

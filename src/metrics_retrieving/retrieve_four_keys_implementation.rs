@@ -196,7 +196,6 @@ fn calculate_four_keys(
         deploys_per_a_day_per_a_developer: deployment_frequency_per_day
             / context.project.developer_count as f32,
         lead_time_for_changes: lead_time,
-        environment: "production".to_string(), // TODO: get
     };
 
     let deployment_frequencies_by_day = items_by_day

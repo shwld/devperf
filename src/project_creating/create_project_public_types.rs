@@ -7,7 +7,9 @@ use thiserror::Error;
 
 use crate::{
     common_types::{
-        developer_count::ValidatedDeveloperCount, github_owner_repo::ValidatedGitHubOwnerRepo,
+        developer_count::ValidatedDeveloperCount,
+        github_deployment_environment::ValidatedGitHubDeploymentEnvironment,
+        github_owner_repo::ValidatedGitHubOwnerRepo,
         github_personal_token::ValidatedGitHubPersonalToken,
         heroku_app_name::ValidatedHerokuAppName, heroku_auth_token::ValidatedHerokuAuthToken,
         working_days_per_week::ValidatedWorkingDaysPerWeek,
@@ -23,6 +25,7 @@ pub struct UncreatedGitHubDeploymentProject {
     pub project_name: String,
     pub github_personal_token: ValidatedGitHubPersonalToken,
     pub github_owner_repo: ValidatedGitHubOwnerRepo,
+    pub github_deployment_environment: ValidatedGitHubDeploymentEnvironment,
     pub developer_count: ValidatedDeveloperCount,
     pub working_days_per_week: ValidatedWorkingDaysPerWeek,
 }
@@ -47,6 +50,7 @@ pub struct GitHubDeploymentProjectCreated {
     pub project_name: String,
     pub github_personal_token: ValidatedGitHubPersonalToken,
     pub github_owner_repo: ValidatedGitHubOwnerRepo,
+    pub github_deployment_environment: ValidatedGitHubDeploymentEnvironment,
     pub developer_count: ValidatedDeveloperCount,
     pub working_days_per_week: ValidatedWorkingDaysPerWeek,
 }
