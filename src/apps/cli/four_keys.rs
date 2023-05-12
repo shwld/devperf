@@ -26,7 +26,7 @@ fn write_standard_out_from_events(events: Vec<RetrieveFourKeysEvent>) {
     for event in events {
         match event {
             RetrieveFourKeysEvent::FourKeysMetrics(metrics) => {
-                println!("{:#?}", metrics);
+                println!("{}", serde_json::to_string_pretty(&metrics).unwrap());
             }
         }
     }
@@ -86,7 +86,5 @@ pub async fn get_four_keys(
     }
     .await?;
 
-    write_standard_out_from_events(events);
-
-    Ok(())
+    Ok(write_standard_out_from_events(events))
 }
