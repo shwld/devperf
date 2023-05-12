@@ -16,9 +16,6 @@ pub enum Action {
         #[clap(short, long, global = true, required = false)]
         until: Option<String>,
 
-        #[clap(short, long, global = true, required = false)]
-        environment: Option<String>,
-
         #[clap(short, long, global = false, required = true)]
         project: String,
     },

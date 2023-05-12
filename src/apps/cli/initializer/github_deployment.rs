@@ -1,5 +1,6 @@
 use super::input::{
-    developer_count, github_owner_repo, github_personal_token, project_name, working_days_per_week,
+    developer_count, github_deployment_environment, github_owner_repo, github_personal_token,
+    project_name, working_days_per_week,
 };
 use crate::{
     dependencies::project_config_io::writer::settings_toml::ProjectConfigIOWriterWithSettingsToml,
@@ -10,6 +11,7 @@ use crate::{
 
 pub async fn init() {
     let project_name = project_name::input();
+    let environment = github_deployment_environment::input();
     let token = github_personal_token::input();
     let owner_repo = github_owner_repo::input();
     let developer_count = developer_count::input();
@@ -18,6 +20,7 @@ pub async fn init() {
     let uncreated_project = UncreatedProject::GitHubDeployment(UncreatedGitHubDeploymentProject {
         project_name,
         github_owner_repo: owner_repo,
+        github_deployment_environment: environment,
         developer_count,
         working_days_per_week,
         github_personal_token: token,

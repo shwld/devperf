@@ -14,6 +14,7 @@ fn create_github_project(
         project_name: uncreated_project.project_name,
         github_personal_token: uncreated_project.github_personal_token,
         github_owner_repo: uncreated_project.github_owner_repo,
+        github_deployment_environment: uncreated_project.github_deployment_environment,
         developer_count: uncreated_project.developer_count,
         working_days_per_week: uncreated_project.working_days_per_week,
     }

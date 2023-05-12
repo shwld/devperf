@@ -4,9 +4,11 @@ use super::interface::{
 };
 use crate::{
     common_types::{
+        github_deployment_environment::ValidatedGitHubDeploymentEnvironment,
         github_owner_repo::ValidatedGitHubOwnerRepo,
         github_personal_token::ValidatedGitHubPersonalToken,
     },
+    dependencies::deployments_fetcher::shared::get_created_at,
     shared::non_empty_vec::NonEmptyVec,
 };
 use anyhow::anyhow;
@@ -17,7 +19,7 @@ use serde::{Deserialize, Serialize};
 
 fn deployments_query(
     owner_repo: ValidatedGitHubOwnerRepo,
-    environment: &str,
+    environment: ValidatedGitHubDeploymentEnvironment,
     after: Option<String>,
 ) -> String {
     let query = format!("
@@ -186,16 +188,16 @@ fn get_client(
 async fn fetch_deployments(
     github_personal_token: ValidatedGitHubPersonalToken,
     github_owner_repo: ValidatedGitHubOwnerRepo,
-    environment: &str,
+    environment: ValidatedGitHubDeploymentEnvironment,
 ) -> Result<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>, DeploymentsFetcherError> {
     let mut after: Option<String> = None;
     let mut has_next_page = true;
     let mut deployment_nodes: Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo> = Vec::new();
-    let github_client = get_client(github_personal_token)?;
+    let github_client = get_client(github_personal_token.clone())?;
 
     // 全ページ取得
     while has_next_page {
-        let query = deployments_query(github_owner_repo.clone(), environment, after);
+        let query = deployments_query(github_owner_repo.clone(), environment.clone(), after);
 
         let results: DeploymentsGraphQLResponse = github_client
             .graphql(&query)
@@ -222,12 +224,12 @@ async fn fetch_deployments(
         log::debug!("has_next_page: {:#?}", has_next_page);
         // 初回デプロイとリードタイムを比較するためのリポジトリ作成日を取得
         if !has_next_page {
-            let repo_created_at = Utc::now();
-            // let repo_created_at = get_created_at(github_api.clone(), github_owner_repo.clone())
-            //     .await
-            //     .map_err(|e| anyhow!(e))
-            //     .map_err(DeploymentsFetcherError::GetRepositoryCreatedAtError)?;
-            // log::debug!("repo_created_at: {:#?}", repo_created_at);
+            let repo_created_at =
+                get_created_at(github_personal_token.clone(), github_owner_repo.clone())
+                    .await
+                    .map_err(|e| anyhow!(e))
+                    .map_err(DeploymentsFetcherError::GetRepositoryCreatedAtError)?;
+            log::debug!("repo_created_at: {:#?}", repo_created_at);
             deployment_nodes.push(
                 DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryInfo(RepositoryInfo {
                     created_at: repo_created_at,
@@ -328,7 +330,7 @@ fn convert_to_items(
 pub struct DeploymentsFetcherWithGithubDeployment {
     pub github_personal_token: ValidatedGitHubPersonalToken,
     pub github_owner_repo: ValidatedGitHubOwnerRepo,
-    pub environment: String,
+    pub environment: ValidatedGitHubDeploymentEnvironment,
 }
 #[async_trait]
 impl DeploymentsFetcher for DeploymentsFetcherWithGithubDeployment {
@@ -339,7 +341,7 @@ impl DeploymentsFetcher for DeploymentsFetcherWithGithubDeployment {
         let deployment_nodes = fetch_deployments(
             self.github_personal_token.clone(),
             self.github_owner_repo.clone(),
-            &self.environment,
+            self.environment.clone(),
         )
         .await?
         .into_iter()

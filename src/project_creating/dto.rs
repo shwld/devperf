@@ -3,6 +3,9 @@ use thiserror::Error;
 
 use crate::common_types::{
     developer_count::{ValidateDeveloperCountError, ValidatedDeveloperCount},
+    github_deployment_environment::{
+        ValidateGitHubDeploymentEnvironmentError, ValidatedGitHubDeploymentEnvironment,
+    },
     github_owner_repo::{ValidateGitHubOwnerRepoError, ValidatedGitHubOwnerRepo},
     github_personal_token::{ValidateGitHubPersonalTokenError, ValidatedGitHubPersonalToken},
     heroku_app_name::{ValidateHerokuAppNameError, ValidatedHerokuAppName},
@@ -20,6 +23,7 @@ pub struct ProjectConfigDto {
     pub github_personal_token: String,
     pub github_owner: String,
     pub github_repo: String,
+    pub github_deployment_environment: Option<String>,
     pub heroku_app_name: Option<String>,
     pub heroku_auth_token: Option<String>,
     pub developer_count: u32,
@@ -33,6 +37,8 @@ pub enum CreateProjectDtoError {
     GitHubPersonalToken(#[from] ValidateGitHubPersonalTokenError),
     #[error("GitHub owner/repo is invalid")]
     GitHubOwnerRepo(#[from] ValidateGitHubOwnerRepoError),
+    #[error("GitHub deployment environment is invalid")]
+    GitHubDeploymentEnvironment(#[from] ValidateGitHubDeploymentEnvironmentError),
     #[error("GitHub developer count is invalid")]
     DeveloperCount(#[from] ValidateDeveloperCountError),
     #[error("GitHub working days per week is invalid")]
@@ -52,6 +58,8 @@ fn to_github_deployment_project_created(
         ValidatedGitHubPersonalToken::new(Some(dto.github_personal_token.clone()))?;
     let github_owner_repo =
         ValidatedGitHubOwnerRepo::new(format!("{}/{}", dto.github_owner, dto.github_repo))?;
+    let github_deployment_environment =
+        ValidatedGitHubDeploymentEnvironment::new(dto.github_deployment_environment.clone())?;
     let developer_count = ValidatedDeveloperCount::new(dto.developer_count.to_string())?;
     let working_days_per_week =
         ValidatedWorkingDaysPerWeek::new(dto.working_days_per_week.to_string())?;
@@ -59,6 +67,7 @@ fn to_github_deployment_project_created(
         project_name: dto.project_name.to_string(),
         github_personal_token,
         github_owner_repo,
+        github_deployment_environment,
         developer_count,
         working_days_per_week,
     })
@@ -76,6 +85,7 @@ fn from_github_deployment_project_created(
         deployment_source: "github_deployment".to_string(),
         github_owner: owner,
         github_repo: repo,
+        github_deployment_environment: Some(domain_obj.github_deployment_environment.to_string()),
         developer_count: domain_obj.developer_count.to_u32(),
         working_days_per_week: domain_obj.working_days_per_week.to_f32(),
     }
@@ -110,11 +120,12 @@ fn from_heroku_release_project_created(
     ProjectConfigDto {
         project_name: domain_obj.project_name,
         github_personal_token: domain_obj.github_personal_token.to_string(),
+        github_owner: owner,
+        github_repo: repo,
+        github_deployment_environment: None,
         heroku_app_name: Some(domain_obj.heroku_app_name.to_string()),
         heroku_auth_token: Some(domain_obj.heroku_auth_token.to_string()),
         deployment_source: "github_deployment".to_string(),
-        github_owner: owner,
-        github_repo: repo,
         developer_count: domain_obj.developer_count.to_u32(),
         working_days_per_week: domain_obj.working_days_per_week.to_f32(),
     }
