@@ -11,18 +11,43 @@ pub struct FirstCommitItem {
     pub creator_login: String,
 }
 
-#[derive(Debug)]
-pub struct FirstCommitGetterParams {
-    pub base: String,
-    pub head: String,
-}
-
 #[derive(Debug, Error)]
-pub enum FirstCommitGetterError {
+pub enum ValidatedFirstCommitGetterParamsError {
     #[error("Empty base or head")]
     EmptyBaseOrHead(String),
     #[error("Base equals head")]
     BaseEqualsHead(String),
+}
+
+#[derive(Debug)]
+pub struct ValidatedFirstCommitGetterParams {
+    base: String,
+    head: String,
+}
+impl ValidatedFirstCommitGetterParams {
+    pub fn new(base: String, head: String) -> Result<Self, ValidatedFirstCommitGetterParamsError> {
+        if base.is_empty() || head.is_empty() {
+            return Err(ValidatedFirstCommitGetterParamsError::EmptyBaseOrHead(
+                format!("base: {:?}, head: {:?}", base, head),
+            ));
+        }
+        if base == head {
+            return Err(ValidatedFirstCommitGetterParamsError::BaseEqualsHead(
+                format!("base: {:?}, head: {:?}", base, head),
+            ));
+        }
+        Ok(Self { base, head })
+    }
+    pub fn get_base(&self) -> String {
+        self.base.clone()
+    }
+    pub fn get_head(&self) -> String {
+        self.head.clone()
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum FirstCommitGetterError {
     #[error("Api client error")]
     APIClientError(#[source] anyhow::Error),
     #[error("API response is not normal")]
@@ -37,6 +62,6 @@ pub enum FirstCommitGetterError {
 pub trait FirstCommitGetter {
     async fn get(
         &self,
-        params: FirstCommitGetterParams,
+        params: ValidatedFirstCommitGetterParams,
     ) -> Result<FirstCommitItem, FirstCommitGetterError>;
 }

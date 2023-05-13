@@ -8,7 +8,7 @@ use crate::common_types::{
 };
 
 use super::interface::{
-    FirstCommitGetter, FirstCommitGetterError, FirstCommitGetterParams, FirstCommitItem,
+    FirstCommitGetter, FirstCommitGetterError, FirstCommitItem, ValidatedFirstCommitGetterParams,
 };
 
 fn get_client(
@@ -23,30 +23,17 @@ fn get_client(
     Ok(client)
 }
 
-pub async fn get_first_commit_from_compare(
+async fn fetch_first_commit_from_compare(
     github_personal_token: ValidatedGitHubPersonalToken,
     github_owner_repo: ValidatedGitHubOwnerRepo,
-    params: &FirstCommitGetterParams,
+    params: ValidatedFirstCommitGetterParams,
 ) -> Result<FirstCommitItem, FirstCommitGetterError> {
-    log::debug!("params: {:?}", params);
-    if params.base.is_empty() || params.head.is_empty() {
-        return Err(FirstCommitGetterError::EmptyBaseOrHead(format!(
-            "base: {:?}, head: {:?}",
-            params.base, params.head
-        )));
-    }
-    if params.base == params.head {
-        return Err(FirstCommitGetterError::BaseEqualsHead(format!(
-            "base: {:?}, head: {:?}",
-            params.base, params.head
-        )));
-    }
     let path = format!(
         "https://api.github.com/repos/{owner}/{repo}/compare/{base}...{head}",
         owner = github_owner_repo.get_owner(),
         repo = github_owner_repo.get_repo(),
-        base = params.base,
-        head = params.head
+        base = params.get_base(),
+        head = params.get_head()
     );
     let result = get_client(github_personal_token)?
         ._get(path, None::<&()>)
@@ -66,7 +53,11 @@ pub async fn get_first_commit_from_compare(
         .map_err(|e| anyhow::anyhow!(e))
         .map_err(FirstCommitGetterError::APIResponseParseError)?;
     // log::debug!("res: {:?}", res);
-    log::debug!("base: {:?}, head: {:?}", params.base, params.head);
+    log::debug!(
+        "base: {:?}, head: {:?}",
+        params.get_base(),
+        params.get_head()
+    );
     let first_commit = json.get("commits").and_then(|x| x.get(0)).ok_or(
         FirstCommitGetterError::CannotGotFromJsonError("commits".to_string()),
     )?;
@@ -94,8 +85,7 @@ pub async fn get_first_commit_from_compare(
         ))
         .and_then(|date_str| {
             DateTime::parse_from_rfc3339(date_str)
-                .map_err(|e| anyhow::anyhow!(e))
-                .map_err(FirstCommitGetterError::APIResponseParseError)
+                .map_err(|_e| FirstCommitGetterError::CannotGotFromJsonError("date".to_string()))
         })?
         .with_timezone(&Utc);
     let creator_login = first_commit["author"]["login"].as_str().ok_or(
@@ -118,14 +108,15 @@ pub struct FirstCommitGetterWithGitHub {
 impl FirstCommitGetter for FirstCommitGetterWithGitHub {
     async fn get(
         &self,
-        params: FirstCommitGetterParams,
+        params: ValidatedFirstCommitGetterParams,
     ) -> Result<FirstCommitItem, FirstCommitGetterError> {
-        let first_commit = get_first_commit_from_compare(
+        let first_commit = fetch_first_commit_from_compare(
             self.github_personal_token.clone(),
             self.github_owner_repo.clone(),
-            &params,
+            params,
         )
         .await?;
+
         Ok(first_commit)
     }
 }

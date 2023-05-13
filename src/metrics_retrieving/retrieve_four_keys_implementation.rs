@@ -7,7 +7,7 @@ use crate::{
         deployments_fetcher::interface::{
             CommitOrRepositoryInfo, DeploymentItem, DeploymentsFetcher, DeploymentsFetcherParams,
         },
-        first_commit_getter::interface::{FirstCommitGetter, FirstCommitGetterParams},
+        first_commit_getter::interface::{FirstCommitGetter, ValidatedFirstCommitGetterParams},
     },
     metrics_retrieving::retrieve_four_keys_public_types::FirstCommitOrRepositoryInfo,
     shared::median::median,
@@ -45,15 +45,14 @@ async fn fetch_first_commit_or_repository_info<F: FirstCommitGetter>(
 ) -> Result<Option<FirstCommitOrRepositoryInfo>, RetrieveFourKeysEventError> {
     let first_commit: Option<FirstCommitOrRepositoryInfo> = match deployment_item.base {
         CommitOrRepositoryInfo::Commit(first_commit) => {
-            let commit = first_commit_getter
-                .get(FirstCommitGetterParams {
-                    base: first_commit.sha,
-                    head: deployment_item.head_commit.sha,
-                })
-                .await;
-            log::debug!("first_commit: {:?}", commit);
-            match commit {
-                Ok(commit) => Some(FirstCommitOrRepositoryInfo::FirstCommit(
+            let params = ValidatedFirstCommitGetterParams::new(
+                first_commit.sha.clone(),
+                deployment_item.head_commit.sha.clone(),
+            );
+            let commit = if let Ok(params) = params {
+                let commit = first_commit_getter.get(params).await?;
+                log::debug!("first_commit: {:?}", commit);
+                Some(FirstCommitOrRepositoryInfo::FirstCommit(
                     DeploymentCommitItem {
                         sha: commit.sha,
                         message: commit.message,
@@ -61,9 +60,11 @@ async fn fetch_first_commit_or_repository_info<F: FirstCommitGetter>(
                         committed_at: commit.committed_at,
                         creator_login: commit.creator_login,
                     },
-                )),
-                Err(_) => None,
-            }
+                ))
+            } else {
+                None
+            };
+            commit
         }
         CommitOrRepositoryInfo::RepositoryInfo(info) => Some(
             FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo {
