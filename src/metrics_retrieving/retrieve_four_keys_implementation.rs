@@ -230,7 +230,7 @@ async fn retrieve_four_keys<
     deployments_fetcher: FDeploymentsFetcher,
     first_commit_getter: FFirstCommitGetter,
     context: RetrieveFourKeysExecutionContext,
-) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError> {
+) -> Result<FourKeysResult, RetrieveFourKeysEventError> {
     let deployments = fetch_deployments(&deployments_fetcher, context.since).await?;
     let metrics_items = try_join_all(
         deployments
@@ -238,8 +238,7 @@ async fn retrieve_four_keys<
             .map(|deployment| to_metric_item(&first_commit_getter, deployment)),
     )
     .await?;
-    let event = calculate_four_keys(metrics_items, context.clone())
-        .map(RetrieveFourKeysEvent::RetrieveFourKeys)?;
+    let event = calculate_four_keys(metrics_items, context.clone())?;
 
     Ok(event)
 }
@@ -247,8 +246,8 @@ async fn retrieve_four_keys<
 // ---------------------------
 // create events
 // ---------------------------
-fn create_events(project: RetrieveFourKeysEvent) -> Vec<RetrieveFourKeysEvent> {
-    vec![project]
+fn create_events(project: FourKeysResult) -> Vec<RetrieveFourKeysEvent> {
+    vec![RetrieveFourKeysEvent::RetrieveFourKeys(project)]
 }
 
 // ---------------------------
