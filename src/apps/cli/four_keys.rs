@@ -25,7 +25,7 @@ use crate::{
 fn write_standard_out_from_events(events: Vec<RetrieveFourKeysEvent>) {
     for event in events {
         match event {
-            RetrieveFourKeysEvent::FourKeysMetrics(metrics) => {
+            RetrieveFourKeysEvent::RetrieveFourKeys(metrics) => {
                 println!("{}", serde_json::to_string_pretty(&metrics).unwrap());
             }
         }
