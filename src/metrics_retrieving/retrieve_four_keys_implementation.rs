@@ -238,9 +238,9 @@ async fn retrieve_four_keys<
             .map(|deployment| to_metric_item(&first_commit_getter, deployment)),
     )
     .await?;
-    let event = calculate_four_keys(metrics_items, context.clone())?;
+    let result = calculate_four_keys(metrics_items, context.clone())?;
 
-    Ok(event)
+    Ok(result)
 }
 
 // ---------------------------
