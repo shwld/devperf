@@ -271,10 +271,9 @@ impl<
         self,
         context: RetrieveFourKeysExecutionContext,
     ) -> Result<Vec<RetrieveFourKeysEvent>, RetrieveFourKeysEventError> {
-        let calculate =
-            retrieve_four_keys(self.deployments_fetcher, self.first_commit_getter, context).await?;
-
-        let events = create_events(calculate);
+        let events = create_events(
+            retrieve_four_keys(self.deployments_fetcher, self.first_commit_getter, context).await?,
+        );
 
         Ok(events)
     }
