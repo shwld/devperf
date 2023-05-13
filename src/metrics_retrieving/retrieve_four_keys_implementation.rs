@@ -15,7 +15,7 @@ use crate::{
 
 use super::retrieve_four_keys_public_types::{
     DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
-    DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, FourKeysMetrics, RepositoryInfo,
+    DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, FourKeysResult, RepositoryInfo,
     RetrieveFourKeys, RetrieveFourKeysEvent, RetrieveFourKeysEventError,
     RetrieveFourKeysExecutionContext,
 };
@@ -153,7 +153,7 @@ fn split_by_day(metrics_items: Vec<DeploymentMetricItem>) -> Vec<Vec<DeploymentM
 fn calculate_four_keys(
     metrics_items: Vec<DeploymentMetricItem>,
     context: RetrieveFourKeysExecutionContext,
-) -> Result<FourKeysMetrics, RetrieveFourKeysEventError> {
+) -> Result<FourKeysResult, RetrieveFourKeysEventError> {
     let ranged_items = metrics_items
         .into_iter()
         .filter(|it| it.deployed_at >= context.since && it.deployed_at <= context.until)
@@ -212,7 +212,7 @@ fn calculate_four_keys(
         })
         .collect::<Vec<DeploymentMetricSummary>>();
 
-    let deployment_frequency = FourKeysMetrics {
+    let deployment_frequency = FourKeysResult {
         metrics,
         deployments: deployment_frequencies_by_day,
     };
@@ -220,7 +220,10 @@ fn calculate_four_keys(
     Ok(deployment_frequency)
 }
 
-async fn calculate_four_keys_metrics<
+// ---------------------------
+// Retrieve FourKeys event
+// ---------------------------
+async fn retrieve_four_keys<
     FDeploymentsFetcher: DeploymentsFetcher,
     FFirstCommitGetter: FirstCommitGetter,
 >(
@@ -229,12 +232,14 @@ async fn calculate_four_keys_metrics<
     context: RetrieveFourKeysExecutionContext,
 ) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError> {
     let deployments = fetch_deployments(&deployments_fetcher, context.since).await?;
-    let convert_items = deployments
-        .into_iter()
-        .map(|deployment| to_metric_item(&first_commit_getter, deployment));
-    let metrics_items = try_join_all(convert_items).await?;
-    let result = calculate_four_keys(metrics_items, context.clone())?;
-    let event = RetrieveFourKeysEvent::FourKeysMetrics(result);
+    let metrics_items = try_join_all(
+        deployments
+            .into_iter()
+            .map(|deployment| to_metric_item(&first_commit_getter, deployment)),
+    )
+    .await?;
+    let event = calculate_four_keys(metrics_items, context.clone())
+        .map(RetrieveFourKeysEvent::RetrieveFourKeys)?;
 
     Ok(event)
 }
@@ -266,14 +271,10 @@ impl<
         self,
         context: RetrieveFourKeysExecutionContext,
     ) -> Result<Vec<RetrieveFourKeysEvent>, RetrieveFourKeysEventError> {
-        let four_keys_metrics = calculate_four_keys_metrics(
-            self.deployments_fetcher,
-            self.first_commit_getter,
-            context,
-        )
-        .await?;
+        let calculate =
+            retrieve_four_keys(self.deployments_fetcher, self.first_commit_getter, context).await?;
 
-        let events = create_events(four_keys_metrics);
+        let events = create_events(calculate);
 
         Ok(events)
     }

@@ -95,7 +95,7 @@ pub struct DeploymentMetric {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct FourKeysMetrics {
+pub struct FourKeysResult {
     pub deployments: Vec<DeploymentMetricSummary>,
     pub metrics: DeploymentMetric,
 }
@@ -104,7 +104,7 @@ pub struct FourKeysMetrics {
 /// The possible events resulting from the workflow
 /// Not all events will occur, depending on the logic of the workflow
 pub enum RetrieveFourKeysEvent {
-    FourKeysMetrics(FourKeysMetrics),
+    RetrieveFourKeys(FourKeysResult),
 }
 
 // Error types
