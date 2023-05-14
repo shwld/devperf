@@ -19,3 +19,22 @@ pub(super) trait FetchDeploymentsStep {
     ) -> Result<Vec<DeploymentItem>, RetrieveFourKeysEventError>;
 }
 
+// ---------------------------
+// Fetch deployments step
+// ---------------------------
+#[derive(Debug, Clone)]
+pub(super) struct DeploymentItemWithFirstOperation {
+    pub(super) deployment: DeploymentItem,
+    pub(super) first_operation: Option<FirstCommitOrRepositoryInfo>,
+}
+#[async_trait]
+pub(super) trait AttachFirstOperationToDeploymentItemStep {
+    async fn attach_first_operation_to_deployment_item(
+        &self,
+        deployment_item: DeploymentItem,
+    ) -> Result<DeploymentItemWithFirstOperation, RetrieveFourKeysEventError>;
+    async fn attach_first_operation_to_deployment_items(
+        &self,
+        deployment_items: Vec<DeploymentItem>,
+    ) -> Result<Vec<DeploymentItemWithFirstOperation>, RetrieveFourKeysEventError>;
+}

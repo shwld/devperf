@@ -14,7 +14,10 @@ use crate::{
 };
 
 use super::{
-    retrieve_four_keys_internal_types::{FetchDeploymentsParams, FetchDeploymentsStep},
+    retrieve_four_keys_internal_types::{
+        AttachFirstOperationToDeploymentItemStep, DeploymentItemWithFirstOperation,
+        FetchDeploymentsParams, FetchDeploymentsStep,
+    },
     retrieve_four_keys_public_types::{
         DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
         DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, FourKeysResult,
@@ -24,10 +27,9 @@ use super::{
 };
 
 // ---------------------------
-// Fetch deployments step
+// FetchDeploymentsStep
 // ---------------------------
-
-pub struct FetchDeploymentsStepImpl<F: DeploymentsFetcher> {
+struct FetchDeploymentsStepImpl<F: DeploymentsFetcher> {
     deployments_fetcher: F,
 }
 #[async_trait]
@@ -48,43 +50,66 @@ impl<F: DeploymentsFetcher + Sync + Send> FetchDeploymentsStep for FetchDeployme
 }
 
 // ---------------------------
-// Convert to MetricItem step
+// AttachFirstOperationToDeploymentItemStep
 // ---------------------------
-
-async fn fetch_first_commit_or_repository_info<F: FirstCommitGetter>(
-    first_commit_getter: &F,
-    deployment_item: DeploymentItem,
-) -> Result<Option<FirstCommitOrRepositoryInfo>, RetrieveFourKeysEventError> {
-    let first_commit: Option<FirstCommitOrRepositoryInfo> = match deployment_item.base {
-        CommitOrRepositoryInfo::Commit(first_commit) => {
-            let params = ValidatedFirstCommitGetterParams::new(
-                first_commit.sha.clone(),
-                deployment_item.head_commit.sha.clone(),
-            );
-            let commit = if let Ok(params) = params {
-                let commit = first_commit_getter.get(params).await?;
-                log::debug!("first_commit: {:?}", commit);
-                Some(FirstCommitOrRepositoryInfo::FirstCommit(
-                    DeploymentCommitItem {
-                        sha: commit.sha,
-                        message: commit.message,
-                        resource_path: commit.resource_path,
-                        committed_at: commit.committed_at,
-                        creator_login: commit.creator_login,
-                    },
-                ))
-            } else {
-                None
+struct AttachFirstOperationToDeploymentItemStepImpl<F: FirstCommitGetter> {
+    first_commit_getter: F,
+}
+#[async_trait]
+impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemStep
+    for AttachFirstOperationToDeploymentItemStepImpl<F>
+{
+    async fn attach_first_operation_to_deployment_item(
+        &self,
+        deployment_item: DeploymentItem,
+    ) -> Result<DeploymentItemWithFirstOperation, RetrieveFourKeysEventError> {
+        let first_operation: Option<FirstCommitOrRepositoryInfo> =
+            match deployment_item.clone().base {
+                CommitOrRepositoryInfo::Commit(first_commit) => {
+                    let params = ValidatedFirstCommitGetterParams::new(
+                        first_commit.sha.clone(),
+                        deployment_item.clone().head_commit.sha.clone(),
+                    );
+                    let commit = if let Ok(params) = params {
+                        let commit = self.first_commit_getter.get(params).await?;
+                        log::debug!("first_commit: {:?}", commit);
+                        Some(FirstCommitOrRepositoryInfo::FirstCommit(
+                            DeploymentCommitItem {
+                                sha: commit.sha,
+                                message: commit.message,
+                                resource_path: commit.resource_path,
+                                committed_at: commit.committed_at,
+                                creator_login: commit.creator_login,
+                            },
+                        ))
+                    } else {
+                        None
+                    };
+                    commit
+                }
+                CommitOrRepositoryInfo::RepositoryInfo(info) => Some(
+                    FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo {
+                        created_at: info.created_at,
+                    }),
+                ),
             };
-            commit
-        }
-        CommitOrRepositoryInfo::RepositoryInfo(info) => Some(
-            FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo {
-                created_at: info.created_at,
-            }),
-        ),
-    };
-    Ok(first_commit)
+        Ok(DeploymentItemWithFirstOperation {
+            deployment: deployment_item,
+            first_operation,
+        })
+    }
+
+    async fn attach_first_operation_to_deployment_items(
+        &self,
+        deployment_items: Vec<DeploymentItem>,
+    ) -> Result<Vec<DeploymentItemWithFirstOperation>, RetrieveFourKeysEventError> {
+        let futures = deployment_items
+            .into_iter()
+            .map(|it| self.attach_first_operation_to_deployment_item(it))
+            .collect::<Vec<_>>();
+        let results = try_join_all(futures).await?;
+        Ok(results)
+    }
 }
 
 fn lead_time_for_changes_seconds(
@@ -98,28 +123,26 @@ fn lead_time_for_changes_seconds(
     (deployed_at - first_committed_at).num_seconds()
 }
 
-async fn to_metric_item<F: FirstCommitGetter>(
-    first_commit_getter: &F,
-    deployment: DeploymentItem,
-) -> Result<DeploymentMetricItem, RetrieveFourKeysEventError> {
-    let first_commit =
-        fetch_first_commit_or_repository_info(first_commit_getter, deployment.clone()).await?;
-    let lead_time_for_changes_seconds = first_commit
+fn to_metric_item(item: DeploymentItemWithFirstOperation) -> DeploymentMetricItem {
+    let lead_time_for_changes_seconds = item
+        .first_operation
         .clone()
-        .map(|x| lead_time_for_changes_seconds(x, deployment.deployed_at));
+        .map(|x| lead_time_for_changes_seconds(x, item.deployment.deployed_at));
 
-    let head_commit = deployment.head_commit.clone();
-    let first_commit = first_commit.unwrap_or(FirstCommitOrRepositoryInfo::FirstCommit(
-        DeploymentCommitItem {
-            sha: deployment.head_commit.sha,
-            message: deployment.head_commit.message,
-            resource_path: deployment.head_commit.resource_path,
-            committed_at: deployment.head_commit.committed_at,
-            creator_login: deployment.head_commit.creator_login,
-        },
-    ));
+    let head_commit = item.deployment.head_commit.clone();
+    let first_commit = item
+        .first_operation
+        .unwrap_or(FirstCommitOrRepositoryInfo::FirstCommit(
+            DeploymentCommitItem {
+                sha: item.deployment.head_commit.sha,
+                message: item.deployment.head_commit.message,
+                resource_path: item.deployment.head_commit.resource_path,
+                committed_at: item.deployment.head_commit.committed_at,
+                creator_login: item.deployment.head_commit.creator_login,
+            },
+        ));
     let deployment_metric = DeploymentMetricItem {
-        id: deployment.id,
+        id: item.deployment.id,
         head_commit: DeploymentCommitItem {
             sha: head_commit.sha,
             message: head_commit.message,
@@ -128,11 +151,11 @@ async fn to_metric_item<F: FirstCommitGetter>(
             creator_login: head_commit.creator_login,
         },
         first_commit,
-        deployed_at: deployment.deployed_at,
+        deployed_at: item.deployment.deployed_at,
         lead_time_for_changes_seconds,
     };
 
-    Ok(deployment_metric)
+    deployment_metric
 }
 
 // ---------------------------
@@ -253,12 +276,15 @@ async fn retrieve_four_keys<
             until: context.until,
         })
         .await?;
-    let metrics_items = try_join_all(
-        deployments
-            .into_iter()
-            .map(|deployment| to_metric_item(&first_commit_getter, deployment)),
-    )
+    let deployments_with_first_operation = AttachFirstOperationToDeploymentItemStepImpl {
+        first_commit_getter,
+    }
+    .attach_first_operation_to_deployment_items(deployments)
     .await?;
+    let metrics_items = deployments_with_first_operation
+        .into_iter()
+        .map(to_metric_item)
+        .collect::<Vec<DeploymentMetricItem>>();
     let result = calculate_four_keys(metrics_items, context.clone())?;
 
     Ok(result)
