@@ -1,11 +1,13 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 
-use super::retrieve_four_keys::{FirstCommitOrRepositoryInfo, RetrieveFourKeysEventError};
+use super::retrieve_four_keys::{
+    DeploymentMetricItem, FirstCommitOrRepositoryInfo, RetrieveFourKeysEventError,
+};
 use crate::dependencies::deployments_fetcher::interface::DeploymentItem;
 
 // ---------------------------
-// Fetch deployments step
+// FetchDeploymentsStep
 // ---------------------------
 pub(super) struct FetchDeploymentsParams {
     pub(super) since: DateTime<Utc>,
@@ -20,7 +22,7 @@ pub(super) trait FetchDeploymentsStep {
 }
 
 // ---------------------------
-// Fetch deployments step
+// AttachFirstOperationToDeploymentItemStep
 // ---------------------------
 #[derive(Debug, Clone)]
 pub(super) struct DeploymentItemWithFirstOperation {
@@ -37,4 +39,19 @@ pub(super) trait AttachFirstOperationToDeploymentItemStep {
         &self,
         deployment_items: Vec<DeploymentItem>,
     ) -> Result<Vec<DeploymentItemWithFirstOperation>, RetrieveFourKeysEventError>;
+}
+
+// ---------------------------
+// ConvertToMetricItemStep
+// ---------------------------
+#[async_trait]
+pub(super) trait ConvertToMetricItemStep {
+    fn calculate_lead_time_for_changes_seconds(
+        &self,
+        item: DeploymentItemWithFirstOperation,
+    ) -> Option<i64>;
+    fn to_metric_item(
+        &self,
+        deployment_item: DeploymentItemWithFirstOperation,
+    ) -> DeploymentMetricItem;
 }
