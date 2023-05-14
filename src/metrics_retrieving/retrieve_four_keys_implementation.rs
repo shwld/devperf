@@ -13,26 +13,38 @@ use crate::{
     shared::median::median,
 };
 
-use super::retrieve_four_keys_public_types::{
-    DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
-    DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, FourKeysResult, RepositoryInfo,
-    RetrieveFourKeys, RetrieveFourKeysEvent, RetrieveFourKeysEventError,
-    RetrieveFourKeysExecutionContext,
+use super::{
+    retrieve_four_keys_internal_types::{FetchDeploymentsParams, FetchDeploymentsStep},
+    retrieve_four_keys_public_types::{
+        DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
+        DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, FourKeysResult,
+        RepositoryInfo, RetrieveFourKeys, RetrieveFourKeysEvent, RetrieveFourKeysEventError,
+        RetrieveFourKeysExecutionContext,
+    },
 };
 
 // ---------------------------
 // Fetch deployments step
 // ---------------------------
 
-async fn fetch_deployments<F: DeploymentsFetcher>(
-    deployments_fetcher: &F,
-    since: DateTime<Utc>,
-) -> Result<Vec<DeploymentItem>, RetrieveFourKeysEventError> {
-    let deployments = deployments_fetcher
-        .fetch(DeploymentsFetcherParams { since: Some(since) })
-        .await?;
+pub struct FetchDeploymentsStepImpl<F: DeploymentsFetcher> {
+    deployments_fetcher: F,
+}
+#[async_trait]
+impl<F: DeploymentsFetcher + Sync + Send> FetchDeploymentsStep for FetchDeploymentsStepImpl<F> {
+    async fn fetch_deployments(
+        self,
+        params: FetchDeploymentsParams,
+    ) -> Result<Vec<DeploymentItem>, RetrieveFourKeysEventError> {
+        let deployments = self
+            .deployments_fetcher
+            .fetch(DeploymentsFetcherParams {
+                since: Some(params.since),
+            })
+            .await?;
 
-    Ok(deployments)
+        Ok(deployments)
+    }
 }
 
 // ---------------------------
@@ -224,14 +236,23 @@ fn calculate_four_keys(
 // Retrieve FourKeys event
 // ---------------------------
 async fn retrieve_four_keys<
-    FDeploymentsFetcher: DeploymentsFetcher,
-    FFirstCommitGetter: FirstCommitGetter,
+    FDeploymentsFetcher: DeploymentsFetcher + Sync + Send,
+    FFirstCommitGetter: FirstCommitGetter + Sync + Send,
 >(
     deployments_fetcher: FDeploymentsFetcher,
     first_commit_getter: FFirstCommitGetter,
     context: RetrieveFourKeysExecutionContext,
 ) -> Result<FourKeysResult, RetrieveFourKeysEventError> {
-    let deployments = fetch_deployments(&deployments_fetcher, context.since).await?;
+    let fetch_deployments_step = FetchDeploymentsStepImpl {
+        deployments_fetcher,
+    };
+
+    let deployments = fetch_deployments_step
+        .fetch_deployments(FetchDeploymentsParams {
+            since: context.since,
+            until: context.until,
+        })
+        .await?;
     let metrics_items = try_join_all(
         deployments
             .into_iter()
