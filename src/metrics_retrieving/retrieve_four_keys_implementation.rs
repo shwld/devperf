@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     retrieve_four_keys_internal_types::{
-        AttachFirstOperationToDeploymentItemStep, ConvertToMetricItemStep,
+        AttachFirstOperationToDeploymentItemStep, CalculationEachDeploymentsStep,
         DeploymentItemWithFirstOperation, FetchDeploymentsParams, FetchDeploymentsStep,
     },
     retrieve_four_keys_public_types::{
@@ -113,10 +113,10 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
 }
 
 // ---------------------------
-// ConvertToMetricItemStep
+// CalculationEachDeploymentsStep
 // ---------------------------
-struct ConvertToMetricItemStepImpl {}
-impl ConvertToMetricItemStep for ConvertToMetricItemStepImpl {
+struct CalculationEachDeploymentsStepImpl {}
+impl CalculationEachDeploymentsStep for CalculationEachDeploymentsStepImpl {
     fn calculate_lead_time_for_changes_seconds(
         &self,
         item: DeploymentItemWithFirstOperation,
@@ -291,7 +291,7 @@ async fn retrieve_four_keys<
     .await?;
     let metrics_items = deployments_with_first_operation
         .into_iter()
-        .map(|it| ConvertToMetricItemStepImpl {}.to_metric_item(it))
+        .map(|it| CalculationEachDeploymentsStepImpl {}.to_metric_item(it))
         .collect::<Vec<DeploymentMetricItem>>();
     let result = calculate_four_keys(metrics_items, context.clone())?;
 

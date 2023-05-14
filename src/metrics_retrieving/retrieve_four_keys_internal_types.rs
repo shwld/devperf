@@ -42,10 +42,10 @@ pub(super) trait AttachFirstOperationToDeploymentItemStep {
 }
 
 // ---------------------------
-// ConvertToMetricItemStep
+// CalculationEachDeploymentsStep
 // ---------------------------
 #[async_trait]
-pub(super) trait ConvertToMetricItemStep {
+pub(super) trait CalculationEachDeploymentsStep {
     fn calculate_lead_time_for_changes_seconds(
         &self,
         item: DeploymentItemWithFirstOperation,
