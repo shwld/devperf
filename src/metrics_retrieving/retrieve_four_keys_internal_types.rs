@@ -3,7 +3,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 
 use super::retrieve_four_keys::{
     DeploymentMetricItem, DeploymentMetricLeadTimeForChanges, FirstCommitOrRepositoryInfo,
-    RetrieveFourKeysEventError,
+    FourKeysResult, RetrieveFourKeysEventError, RetrieveFourKeysExecutionContext,
 };
 use crate::dependencies::deployments_fetcher::interface::DeploymentItem;
 
@@ -77,3 +77,14 @@ pub(super) type CalculateDeploymentFrequencyPerDay = fn(
 ) -> f32;
 
 pub(super) type CalculateLeadTime = fn(Vec<DailyItems>) -> DeploymentMetricLeadTimeForChanges;
+
+// ---------------------------
+// RetrieveFourKeysStep
+// ---------------------------
+#[async_trait]
+pub(super) trait RetrieveFourKeysStep {
+    async fn retrieve_four_keys(
+        self,
+        context: RetrieveFourKeysExecutionContext,
+    ) -> Result<FourKeysResult, RetrieveFourKeysEventError>;
+}

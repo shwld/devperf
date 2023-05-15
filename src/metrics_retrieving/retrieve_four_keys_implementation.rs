@@ -18,7 +18,7 @@ use super::{
         AttachFirstOperationToDeploymentItemStep, CalculateDeploymentFrequencyPerDay,
         CalculateLeadTime, CalculateLeadTimeForChangesSeconds, CalculateTotalDeployments,
         DailyItems, DeploymentItemWithFirstOperation, ExtractItemsInPeriod, FetchDeploymentsParams,
-        FetchDeploymentsStep, GroupByDate, ToMetricItem,
+        FetchDeploymentsStep, GroupByDate, RetrieveFourKeysStep, ToMetricItem,
     },
     retrieve_four_keys_public_types::{
         DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
@@ -240,75 +240,85 @@ const calculate_lead_time: CalculateLeadTime =
 // ---------------------------
 // Retrieve FourKeys event
 // ---------------------------
-async fn retrieve_four_keys<
-    FDeploymentsFetcher: DeploymentsFetcher + Sync + Send,
-    FFirstCommitGetter: FirstCommitGetter + Sync + Send,
->(
-    deployments_fetcher: FDeploymentsFetcher,
-    first_commit_getter: FFirstCommitGetter,
-    context: RetrieveFourKeysExecutionContext,
-) -> Result<FourKeysResult, RetrieveFourKeysEventError> {
-    let fetch_deployments_step = FetchDeploymentsStepImpl {
-        deployments_fetcher,
-    };
-    let deployments = fetch_deployments_step
-        .fetch_deployments(FetchDeploymentsParams {
+struct RetrieveFourKeysStepImpl<
+    FDeploymentsFetcher: DeploymentsFetcher,
+    FFirstCommitGetter: FirstCommitGetter,
+> {
+    pub deployments_fetcher: FDeploymentsFetcher,
+    pub first_commit_getter: FFirstCommitGetter,
+}
+#[async_trait]
+impl<
+        FDeploymentsFetcher: DeploymentsFetcher + Sync + Send,
+        FFirstCommitGetter: FirstCommitGetter + Sync + Send,
+    > RetrieveFourKeysStep for RetrieveFourKeysStepImpl<FDeploymentsFetcher, FFirstCommitGetter>
+{
+    async fn retrieve_four_keys(
+        self,
+        context: RetrieveFourKeysExecutionContext,
+    ) -> Result<FourKeysResult, RetrieveFourKeysEventError> {
+        let fetch_deployments_step = FetchDeploymentsStepImpl {
+            deployments_fetcher: self.deployments_fetcher,
+        };
+        let deployments = fetch_deployments_step
+            .fetch_deployments(FetchDeploymentsParams {
+                since: context.since,
+                until: context.until,
+            })
+            .await?;
+        let deployments_with_first_operation = AttachFirstOperationToDeploymentItemStepImpl {
+            first_commit_getter: self.first_commit_getter,
+        }
+        .attach_first_operation_to_deployment_items(deployments)
+        .await?;
+        let metrics_items = deployments_with_first_operation
+            .into_iter()
+            .map(to_metric_item)
+            .collect();
+        let daily_items = group_by_date(extract_items_for_period(
+            metrics_items,
+            context.since,
+            context.until,
+        ));
+        log::debug!("daily_items: {:?}", daily_items);
+
+        let total_deployments = calculate_total_deployments(daily_items.clone());
+        let deployment_frequency_per_day = calculate_deployment_frequency_per_day(
+            total_deployments,
+            context.since,
+            context.until,
+            context.project.working_days_per_week,
+        );
+        let lead_time = calculate_lead_time(daily_items.clone());
+
+        let metrics = DeploymentMetric {
             since: context.since,
             until: context.until,
-        })
-        .await?;
-    let deployments_with_first_operation = AttachFirstOperationToDeploymentItemStepImpl {
-        first_commit_getter,
+            developers: context.project.developer_count,
+            working_days_per_week: context.project.working_days_per_week,
+            deploys: total_deployments,
+            deployment_frequency_per_day,
+            deploys_per_a_day_per_a_developer: deployment_frequency_per_day
+                / context.project.developer_count as f32,
+            lead_time_for_changes: lead_time,
+        };
+
+        let deployment_frequencies_by_date = daily_items
+            .into_iter()
+            .map(|daily| DeploymentMetricSummary {
+                date: daily.date,
+                deploys: daily.items.len() as u32,
+                items: daily.items,
+            })
+            .collect::<Vec<DeploymentMetricSummary>>();
+
+        let deployment_frequency = FourKeysResult {
+            metrics,
+            deployments: deployment_frequencies_by_date,
+        };
+
+        Ok(deployment_frequency)
     }
-    .attach_first_operation_to_deployment_items(deployments)
-    .await?;
-    let metrics_items = deployments_with_first_operation
-        .into_iter()
-        .map(to_metric_item)
-        .collect();
-    let daily_items = group_by_date(extract_items_for_period(
-        metrics_items,
-        context.since,
-        context.until,
-    ));
-    log::debug!("daily_items: {:?}", daily_items);
-
-    let total_deployments = calculate_total_deployments(daily_items.clone());
-    let deployment_frequency_per_day = calculate_deployment_frequency_per_day(
-        total_deployments,
-        context.since,
-        context.until,
-        context.project.working_days_per_week,
-    );
-    let lead_time = calculate_lead_time(daily_items.clone());
-
-    let metrics = DeploymentMetric {
-        since: context.since,
-        until: context.until,
-        developers: context.project.developer_count,
-        working_days_per_week: context.project.working_days_per_week,
-        deploys: total_deployments,
-        deployment_frequency_per_day,
-        deploys_per_a_day_per_a_developer: deployment_frequency_per_day
-            / context.project.developer_count as f32,
-        lead_time_for_changes: lead_time,
-    };
-
-    let deployment_frequencies_by_date = daily_items
-        .into_iter()
-        .map(|daily| DeploymentMetricSummary {
-            date: daily.date,
-            deploys: daily.items.len() as u32,
-            items: daily.items,
-        })
-        .collect::<Vec<DeploymentMetricSummary>>();
-
-    let deployment_frequency = FourKeysResult {
-        metrics,
-        deployments: deployment_frequencies_by_date,
-    };
-
-    Ok(deployment_frequency)
 }
 
 // ---------------------------
@@ -339,7 +349,12 @@ impl<
         context: RetrieveFourKeysExecutionContext,
     ) -> Result<Vec<RetrieveFourKeysEvent>, RetrieveFourKeysEventError> {
         let events = create_events(
-            retrieve_four_keys(self.deployments_fetcher, self.first_commit_getter, context).await?,
+            RetrieveFourKeysStepImpl {
+                deployments_fetcher: self.deployments_fetcher,
+                first_commit_getter: self.first_commit_getter,
+            }
+            .retrieve_four_keys(context)
+            .await?,
         );
 
         Ok(events)
