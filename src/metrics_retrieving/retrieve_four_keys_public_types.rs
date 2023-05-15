@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::dependencies::{
-    deployments_fetcher::interface::DeploymentsFetcherError,
+    deployments_fetcher::interface::{DeploymentInfo, DeploymentsFetcherError},
     first_commit_getter::interface::FirstCommitGetterError,
 };
 
@@ -56,7 +56,7 @@ pub enum FirstCommitOrRepositoryInfo {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct DeploymentMetricItem {
-    pub id: String,
+    pub info: DeploymentInfo,
     pub head_commit: DeploymentCommitItem,
     pub first_commit: FirstCommitOrRepositoryInfo,
     pub deployed_at: chrono::DateTime<chrono::Utc>,

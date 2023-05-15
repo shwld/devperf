@@ -1,3 +1,4 @@
+use async_std::stream::StreamExt;
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveDate, Utc};
 use futures::future::try_join_all;
@@ -76,7 +77,6 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
                     );
                     if let Ok(params) = params {
                         let commit = self.first_commit_getter.get(params).await?;
-                        log::debug!("first_commit: {:?}", commit);
                         Some(FirstCommitOrRepositoryInfo::FirstCommit(
                             DeploymentCommitItem {
                                 sha: commit.sha,
@@ -111,6 +111,15 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
             .map(|it| self.attach_first_operation_to_deployment_item(it))
             .collect::<Vec<_>>();
         let results = try_join_all(futures).await?;
+        let stream = futures::stream::iter(results);
+        let results = stream
+            .filter_map(|it| match it.first_operation {
+                Some(_) => Some(it),
+                None => None,
+            })
+            .collect::<Vec<_>>()
+            .await;
+
         Ok(results)
     }
 }
@@ -151,7 +160,7 @@ const to_metric_item: ToMetricItem =
                     head_commit.clone(),
                 ));
         DeploymentMetricItem {
-            id: item.deployment.id,
+            info: item.deployment.info,
             head_commit,
             first_commit,
             deployed_at: item.deployment.deployed_at,
@@ -278,13 +287,11 @@ impl<
             .into_iter()
             .map(to_metric_item)
             .collect();
-        log::debug!("metrics_items: {:?}", metrics_items);
         let daily_items = group_by_date(extract_items_for_period(
             metrics_items,
             context.since,
             context.until,
         ));
-        log::debug!("daily_items: {:?}", daily_items);
 
         let total_deployments = calculate_total_deployments(daily_items.clone());
         let deployment_frequency_per_day = calculate_deployment_frequency_per_day(

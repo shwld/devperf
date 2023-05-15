@@ -89,19 +89,22 @@ async fn fetch_first_commit_from_compare(
             )
         })
         .map_err(FirstCommitGetterError::CannotParseResponse)?;
-    // log::debug!("res: {:?}", res);
-    log::debug!(
-        "base: {:?}, head: {:?}, results: {:#?}",
-        params.get_base(),
-        params.get_head(),
-        json
-    );
     let first_commit = json
         .commits
         .first()
         .ok_or(FirstCommitGetterError::CannotGotFromJson(
             "commits".to_string(),
         ))?;
+    log::debug!(
+        "path: https://github.com/{owner}/{repo}/compare/{base}...{head}, first_commit: {sha}: {date:?}, {message}",
+        owner = github_owner_repo.get_owner(),
+        repo = github_owner_repo.get_repo(),
+        base = params.get_base(),
+        head = params.get_head(),
+        sha = first_commit.sha,
+        date = first_commit.clone().commit.author.and_then(|x| x.date),
+        message = first_commit.commit.message
+    );
     let committed_at = first_commit
         .clone()
         .commit

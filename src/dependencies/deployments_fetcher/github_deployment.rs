@@ -1,5 +1,5 @@
 use super::interface::{
-    CommitItem, CommitOrRepositoryInfo, DeploymentItem, DeploymentsFetcher,
+    CommitItem, CommitOrRepositoryInfo, DeploymentInfo, DeploymentItem, DeploymentsFetcher,
     DeploymentsFetcherError, DeploymentsFetcherParams, RepositoryInfo,
 };
 use crate::{
@@ -237,7 +237,6 @@ async fn fetch_deployments(
             );
         }
     }
-    log::debug!("deployment_nodes: {:#?}", deployment_nodes);
 
     Ok(deployment_nodes)
 }
@@ -312,7 +311,9 @@ fn convert_to_items(
                     creator_login: deployment.clone().creator.login,
                 };
                 let deployment_item = DeploymentItem {
-                    id: deployment.clone().id,
+                    info: DeploymentInfo::GithubDeployment {
+                        id: deployment.clone().id,
+                    },
                     head_commit: commit_item.clone(),
                     base: previous.clone(),
                     creator_login: deployment.clone().creator.login,
@@ -347,13 +348,10 @@ impl DeploymentsFetcher for DeploymentsFetcherWithGithubDeployment {
         .into_iter()
         .filter(has_success_status)
         .collect::<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>>();
-        log::debug!("deployment_nodes: {:#?}", deployment_nodes);
         let non_empty_nodes = NonEmptyVec::new(deployment_nodes)
             .map_err(|e| anyhow::anyhow!(e))
             .map_err(DeploymentsFetcherError::DeploymentsFetcherResultIsEmptyList)?;
-        log::debug!("non_empty_nodes: {:#?}", non_empty_nodes);
         let deployment_items = convert_to_items(non_empty_nodes);
-        log::debug!("deployment_items: {:#?}", deployment_items);
 
         Ok(deployment_items)
     }
