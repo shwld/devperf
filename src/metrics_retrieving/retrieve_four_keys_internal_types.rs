@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 
 use super::retrieve_four_keys::{
     DeploymentMetricItem, FirstCommitOrRepositoryInfo, RetrieveFourKeysEventError,
@@ -48,14 +48,12 @@ pub(super) type CalculateLeadTimeForChangesSeconds =
     fn(DeploymentItemWithFirstOperation) -> Option<i64>;
 pub(super) type ToMetricItem = fn(DeploymentItemWithFirstOperation) -> DeploymentMetricItem;
 
-#[async_trait]
-pub(super) trait CalculationEachDeploymentsStep {
-    fn calculate_lead_time_for_changes_seconds(
-        &self,
-        item: DeploymentItemWithFirstOperation,
-    ) -> Option<i64>;
-    fn to_metric_item(
-        &self,
-        deployment_item: DeploymentItemWithFirstOperation,
-    ) -> DeploymentMetricItem;
+// ---------------------------
+// AggregationStep
+// ---------------------------
+#[derive(Debug, Clone)]
+pub(super) struct DailyItems {
+    pub(super) date: NaiveDate,
+    pub(super) items: Vec<DeploymentMetricItem>,
 }
+pub(super) type GroupByDate = fn(Vec<DeploymentMetricItem>) -> Vec<DailyItems>;

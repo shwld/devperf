@@ -15,9 +15,9 @@ use crate::{
 
 use super::{
     retrieve_four_keys_internal_types::{
-        AttachFirstOperationToDeploymentItemStep, CalculateLeadTimeForChangesSeconds,
+        AttachFirstOperationToDeploymentItemStep, CalculateLeadTimeForChangesSeconds, DailyItems,
         DeploymentItemWithFirstOperation, FetchDeploymentsParams, FetchDeploymentsStep,
-        ToMetricItem,
+        GroupByDate, ToMetricItem,
     },
     retrieve_four_keys_public_types::{
         DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
@@ -162,17 +162,20 @@ const to_metric_item: ToMetricItem =
 // ---------------------------
 // Calculation step
 // ---------------------------
-fn split_by_day(metrics_items: Vec<DeploymentMetricItem>) -> Vec<Vec<DeploymentMetricItem>> {
-    let mut items_by_day: Vec<Vec<DeploymentMetricItem>> = Vec::new();
-    let mut inner_items: Vec<DeploymentMetricItem> = Vec::new();
+const group_by_date: GroupByDate = |metrics_items: Vec<DeploymentMetricItem>| -> Vec<DailyItems> {
+    let mut items_by_date: Vec<DailyItems> = Vec::new();
+    let mut inner_items = Vec::new();
     let mut current_date: Option<NaiveDate> = None;
 
     for item in metrics_items {
-        let target_time = item.deployed_at.date_naive();
+        let target_date = item.deployed_at.date_naive();
         if let Some(current_time) = current_date {
-            if target_time != current_time {
-                current_date = Some(target_time);
-                items_by_day.push(inner_items);
+            if target_date != current_time {
+                current_date = Some(target_date);
+                items_by_date.push(DailyItems {
+                    date: target_date,
+                    items: inner_items,
+                });
                 inner_items = Vec::new();
             }
         }
@@ -180,11 +183,16 @@ fn split_by_day(metrics_items: Vec<DeploymentMetricItem>) -> Vec<Vec<DeploymentM
         inner_items.push(item);
     }
     if !inner_items.is_empty() {
-        items_by_day.push(inner_items);
+        if let Some(current_date) = current_date {
+            items_by_date.push(DailyItems {
+                date: current_date,
+                items: inner_items,
+            });
+        }
     }
 
-    items_by_day
-}
+    items_by_date
+};
 
 fn calculate_four_keys(
     metrics_items: Vec<DeploymentMetricItem>,
@@ -194,20 +202,20 @@ fn calculate_four_keys(
         .into_iter()
         .filter(|it| it.deployed_at >= context.since && it.deployed_at <= context.until)
         .collect::<Vec<DeploymentMetricItem>>();
-    let items_by_day = split_by_day(ranged_items);
-    log::debug!("items_by_day: {:?}", items_by_day);
+    let daily_items = group_by_date(ranged_items);
+    log::debug!("daily_items: {:?}", daily_items);
 
-    let total_deployments = items_by_day
+    let total_deployments = daily_items
         .iter()
-        .fold(0, |total, i| total + i.len() as u32);
+        .fold(0, |total, i| total + i.items.len() as u32);
     let duration_since = context.until.signed_duration_since(context.since);
     let days = duration_since.num_days();
     let deployment_frequency_per_day =
         total_deployments as f32 / (days as f32 * (context.project.working_days_per_week / 7.0));
 
-    let durations = items_by_day
+    let durations = daily_items
         .iter()
-        .flat_map(|items| items.iter())
+        .flat_map(|daily| daily.items.iter())
         .flat_map(|item| item.lead_time_for_changes_seconds)
         .collect::<Vec<i64>>();
     log::debug!("durations: {:?}", durations);
@@ -234,16 +242,16 @@ fn calculate_four_keys(
         lead_time_for_changes: lead_time,
     };
 
-    let deployment_frequencies_by_day = items_by_day
+    let deployment_frequencies_by_day = daily_items
         .into_iter()
-        .map(|items| {
+        .map(|daily| {
             // TODO: 型定義でTotalityを確保したい
-            let date = items[0].deployed_at.date_naive();
-            let deployments = items.len() as u32;
+            let date = daily.items[0].deployed_at.date_naive();
+            let deployments = daily.items.len() as u32;
             DeploymentMetricSummary {
                 date,
                 deploys: deployments,
-                items,
+                items: daily.items,
             }
         })
         .collect::<Vec<DeploymentMetricSummary>>();
@@ -270,7 +278,6 @@ async fn retrieve_four_keys<
     let fetch_deployments_step = FetchDeploymentsStepImpl {
         deployments_fetcher,
     };
-
     let deployments = fetch_deployments_step
         .fetch_deployments(FetchDeploymentsParams {
             since: context.since,
