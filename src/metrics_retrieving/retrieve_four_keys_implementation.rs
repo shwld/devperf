@@ -1,3 +1,4 @@
+use async_std::stream::StreamExt;
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveDate, Utc};
 use futures::future::try_join_all;
@@ -110,6 +111,15 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
             .map(|it| self.attach_first_operation_to_deployment_item(it))
             .collect::<Vec<_>>();
         let results = try_join_all(futures).await?;
+        let stream = futures::stream::iter(results);
+        let results = stream
+            .filter_map(|it| match it.first_operation {
+                Some(_) => Some(it),
+                None => None,
+            })
+            .collect::<Vec<_>>()
+            .await;
+
         Ok(results)
     }
 }
