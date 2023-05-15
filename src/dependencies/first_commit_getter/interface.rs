@@ -49,13 +49,13 @@ impl ValidatedFirstCommitGetterParams {
 #[derive(Debug, Error)]
 pub enum FirstCommitGetterError {
     #[error("Api client error")]
-    APIClientError(#[source] anyhow::Error),
+    CannotBuildAPIClient(#[source] anyhow::Error),
     #[error("API response is not normal")]
-    APIResponseError(String),
+    InvalidAPIResponse(String),
     #[error("Cannot parse response json")]
-    APIResponseParseError(#[source] anyhow::Error),
+    CannotParseResponse(#[source] anyhow::Error),
     #[error("Cannot got from json")]
-    CannotGotFromJsonError(String),
+    CannotGotFromJson(String),
 }
 
 #[async_trait]

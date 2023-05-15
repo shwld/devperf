@@ -47,7 +47,7 @@ fn get_client(
         .personal_token(github_personal_token.to_string())
         .build()
         .map_err(|e| anyhow::anyhow!(e))
-        .map_err(FirstCommitGetterError::APIClientError)?;
+        .map_err(FirstCommitGetterError::CannotBuildAPIClient)?;
 
     Ok(client)
 }
@@ -68,10 +68,10 @@ async fn fetch_first_commit_from_compare(
         ._get(path, None::<&()>)
         .await
         .map_err(|e| anyhow::anyhow!(e))
-        .map_err(FirstCommitGetterError::APIClientError)?;
+        .map_err(FirstCommitGetterError::CannotBuildAPIClient)?;
     let status = result.status();
     if !result.status().is_success() {
-        return Err(FirstCommitGetterError::APIResponseError(format!(
+        return Err(FirstCommitGetterError::InvalidAPIResponse(format!(
             "status: {:?}",
             status
         )));
@@ -88,7 +88,7 @@ async fn fetch_first_commit_from_compare(
                 e.to_string()
             )
         })
-        .map_err(FirstCommitGetterError::APIResponseParseError)?;
+        .map_err(FirstCommitGetterError::CannotParseResponse)?;
     // log::debug!("res: {:?}", res);
     log::debug!(
         "base: {:?}, head: {:?}, results: {:#?}",
@@ -96,22 +96,22 @@ async fn fetch_first_commit_from_compare(
         params.get_head(),
         json
     );
-    let first_commit =
-        json.commits
-            .first()
-            .ok_or(FirstCommitGetterError::CannotGotFromJsonError(
-                "commits".to_string(),
-            ))?;
+    let first_commit = json
+        .commits
+        .first()
+        .ok_or(FirstCommitGetterError::CannotGotFromJson(
+            "commits".to_string(),
+        ))?;
     let committed_at = first_commit
         .clone()
         .commit
         .author
         .and_then(|x| x.date)
-        .ok_or(FirstCommitGetterError::CannotGotFromJsonError(
+        .ok_or(FirstCommitGetterError::CannotGotFromJson(
             "date".to_string(),
         ))?;
     let creator_login = first_commit.clone().author.map(|x| x.login).ok_or(
-        FirstCommitGetterError::CannotGotFromJsonError("login".to_string()),
+        FirstCommitGetterError::CannotGotFromJson("login".to_string()),
     )?;
     Ok(FirstCommitItem {
         sha: first_commit.clone().sha,

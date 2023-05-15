@@ -44,6 +44,7 @@ impl<F: DeploymentsFetcher + Sync + Send> FetchDeploymentsStep for FetchDeployme
             .deployments_fetcher
             .fetch(DeploymentsFetcherParams {
                 since: Some(params.since),
+                until: Some(params.until),
             })
             .await?;
 
@@ -70,9 +71,9 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
                 CommitOrRepositoryInfo::Commit(first_commit) => {
                     let params = ValidatedFirstCommitGetterParams::new(
                         first_commit.sha.clone(),
-                        deployment_item.clone().head_commit.sha.clone(),
+                        deployment_item.clone().head_commit.sha,
                     );
-                    let commit = if let Ok(params) = params {
+                    if let Ok(params) = params {
                         let commit = self.first_commit_getter.get(params).await?;
                         log::debug!("first_commit: {:?}", commit);
                         Some(FirstCommitOrRepositoryInfo::FirstCommit(
@@ -86,8 +87,7 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
                         ))
                     } else {
                         None
-                    };
-                    commit
+                    }
                 }
                 CommitOrRepositoryInfo::RepositoryInfo(info) => Some(
                     FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo {
@@ -149,15 +149,13 @@ const to_metric_item: ToMetricItem =
                 .unwrap_or(FirstCommitOrRepositoryInfo::FirstCommit(
                     head_commit.clone(),
                 ));
-        let deployment_metric = DeploymentMetricItem {
+        DeploymentMetricItem {
             id: item.deployment.id,
             head_commit,
             first_commit,
             deployed_at: item.deployment.deployed_at,
             lead_time_for_changes_seconds,
-        };
-
-        deployment_metric
+        }
     };
 
 // ---------------------------
