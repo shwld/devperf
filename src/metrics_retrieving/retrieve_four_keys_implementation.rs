@@ -76,7 +76,6 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
                     );
                     if let Ok(params) = params {
                         let commit = self.first_commit_getter.get(params).await?;
-                        log::debug!("first_commit: {:?}", commit);
                         Some(FirstCommitOrRepositoryInfo::FirstCommit(
                             DeploymentCommitItem {
                                 sha: commit.sha,
@@ -278,13 +277,11 @@ impl<
             .into_iter()
             .map(to_metric_item)
             .collect();
-        log::debug!("metrics_items: {:?}", metrics_items);
         let daily_items = group_by_date(extract_items_for_period(
             metrics_items,
             context.since,
             context.until,
         ));
-        log::debug!("daily_items: {:?}", daily_items);
 
         let total_deployments = calculate_total_deployments(daily_items.clone());
         let deployment_frequency_per_day = calculate_deployment_frequency_per_day(

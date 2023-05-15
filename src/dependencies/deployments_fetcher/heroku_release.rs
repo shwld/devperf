@@ -249,14 +249,21 @@ fn convert_to_items(
         HerokuReleaseOrRepositoryInfo::RepositoryInfo(info) => info.created_at,
     });
     log::debug!(
-        "sorted: {:#?}",
+        "heroku releases: {:#?}",
         sorted
             .clone()
             .get_all()
             .iter()
             .map(|x| match x {
-                HerokuReleaseOrRepositoryInfo::HerokuRelease(release) => release.release.created_at,
-                HerokuReleaseOrRepositoryInfo::RepositoryInfo(info) => info.created_at,
+                HerokuReleaseOrRepositoryInfo::HerokuRelease(release) => format!(
+                    "release: v{:?}, sha:{:?}, message:{:?}, created_at:{:?}",
+                    release.release.version,
+                    release.commit.sha,
+                    release.commit.commit.message,
+                    release.release.created_at
+                ),
+                HerokuReleaseOrRepositoryInfo::RepositoryInfo(info) =>
+                    format!("repository {:?}", info.created_at),
             })
             .collect::<Vec<_>>()
     );
@@ -322,7 +329,6 @@ fn convert_to_items(
                     creator_login: release.clone().commit.author.map(|x| x.login).unwrap(),
                     deployed_at: release.release.created_at,
                 };
-                log::debug!("deployment_item: {:#?}", deployment_item);
                 *previous = CommitOrRepositoryInfo::Commit(commit_item);
                 Some(deployment_item)
             },
@@ -351,7 +357,6 @@ impl DeploymentsFetcher for DeploymentsFetcherWithHerokuRelease {
         )
         .await?;
         let mut deployments = try_join_all(succeeded_releases.iter().map(|release| {
-            log::debug!("release: {:#?}", release);
             attach_commit(
                 self.heroku_app_name.clone(),
                 self.heroku_auth_token.clone(),
@@ -368,7 +373,7 @@ impl DeploymentsFetcher for DeploymentsFetcherWithHerokuRelease {
         .await
         .map_err(|e| anyhow::anyhow!(e))
         .map_err(DeploymentsFetcherError::GetRepositoryCreatedAtError)?;
-        log::debug!("repo_creatd_at: {:#?}", repo_creatd_at);
+        log::debug!("repo_created_at: {:#?}", repo_creatd_at);
         deployments.push(HerokuReleaseOrRepositoryInfo::RepositoryInfo(
             GitHubRepositoryInfo {
                 created_at: repo_creatd_at,
