@@ -8,10 +8,3 @@ pub fn parse(s: &str) -> Result<DateTime<Utc>, anyhow::Error> {
         .unwrap();
     Ok(datetime)
 }
-
-pub fn time_within_range(
-    start_at: DateTime<Utc>,
-    end_at: DateTime<Utc>,
-) -> Box<dyn Fn(DateTime<Utc>) -> bool> {
-    Box::new(move |time: DateTime<Utc>| start_at <= time && time <= end_at)
-}
