@@ -4,6 +4,7 @@ use thiserror::Error;
 
 pub struct DeploymentsFetcherParams {
     pub since: Option<DateTime<Utc>>,
+    pub until: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Error)]

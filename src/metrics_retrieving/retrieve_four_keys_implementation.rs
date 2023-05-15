@@ -7,244 +7,330 @@ use crate::{
         deployments_fetcher::interface::{
             CommitOrRepositoryInfo, DeploymentItem, DeploymentsFetcher, DeploymentsFetcherParams,
         },
-        first_commit_getter::interface::{FirstCommitGetter, FirstCommitGetterParams},
+        first_commit_getter::interface::{FirstCommitGetter, ValidatedFirstCommitGetterParams},
     },
     metrics_retrieving::retrieve_four_keys_public_types::FirstCommitOrRepositoryInfo,
+    shared::median::median,
 };
 
-use super::retrieve_four_keys_public_types::{
-    DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
-    DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, FourKeysMetrics, RepositoryInfo,
-    RetrieveFourKeys, RetrieveFourKeysEvent, RetrieveFourKeysEventError,
-    RetrieveFourKeysExecutionContext,
+use super::{
+    retrieve_four_keys_internal_types::{
+        AttachFirstOperationToDeploymentItemStep, CalculateDeploymentFrequencyPerDay,
+        CalculateLeadTime, CalculateLeadTimeForChangesSeconds, CalculateTotalDeployments,
+        CreateEvents, DailyItems, DeploymentItemWithFirstOperation, ExtractItemsInPeriod,
+        FetchDeploymentsParams, FetchDeploymentsStep, GroupByDate, RetrieveFourKeysStep,
+        ToMetricItem,
+    },
+    retrieve_four_keys_public_types::{
+        DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
+        DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, FourKeysResult,
+        RepositoryInfo, RetrieveFourKeys, RetrieveFourKeysEvent, RetrieveFourKeysEventError,
+        RetrieveFourKeysExecutionContext,
+    },
 };
 
 // ---------------------------
-// Fetch deployments step
+// FetchDeploymentsStep
 // ---------------------------
+struct FetchDeploymentsStepImpl<F: DeploymentsFetcher> {
+    deployments_fetcher: F,
+}
+#[async_trait]
+impl<F: DeploymentsFetcher + Sync + Send> FetchDeploymentsStep for FetchDeploymentsStepImpl<F> {
+    async fn fetch_deployments(
+        self,
+        params: FetchDeploymentsParams,
+    ) -> Result<Vec<DeploymentItem>, RetrieveFourKeysEventError> {
+        let deployments = self
+            .deployments_fetcher
+            .fetch(DeploymentsFetcherParams {
+                since: Some(params.since),
+                until: Some(params.until),
+            })
+            .await?;
 
-async fn fetch_deployments<F: DeploymentsFetcher>(
-    deployments_fetcher: &F,
-    since: DateTime<Utc>,
-) -> Result<Vec<DeploymentItem>, RetrieveFourKeysEventError> {
-    let deployments = deployments_fetcher
-        .fetch(DeploymentsFetcherParams { since: Some(since) })
-        .await?;
-
-    Ok(deployments)
+        Ok(deployments)
+    }
 }
 
 // ---------------------------
-// Convert to MetricItem step
+// AttachFirstOperationToDeploymentItemStep
 // ---------------------------
+struct AttachFirstOperationToDeploymentItemStepImpl<F: FirstCommitGetter> {
+    first_commit_getter: F,
+}
+#[async_trait]
+impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemStep
+    for AttachFirstOperationToDeploymentItemStepImpl<F>
+{
+    async fn attach_first_operation_to_deployment_item(
+        &self,
+        deployment_item: DeploymentItem,
+    ) -> Result<DeploymentItemWithFirstOperation, RetrieveFourKeysEventError> {
+        let first_operation: Option<FirstCommitOrRepositoryInfo> =
+            match deployment_item.clone().base {
+                CommitOrRepositoryInfo::Commit(first_commit) => {
+                    let params = ValidatedFirstCommitGetterParams::new(
+                        first_commit.sha.clone(),
+                        deployment_item.clone().head_commit.sha,
+                    );
+                    if let Ok(params) = params {
+                        let commit = self.first_commit_getter.get(params).await?;
+                        log::debug!("first_commit: {:?}", commit);
+                        Some(FirstCommitOrRepositoryInfo::FirstCommit(
+                            DeploymentCommitItem {
+                                sha: commit.sha,
+                                message: commit.message,
+                                resource_path: commit.resource_path,
+                                committed_at: commit.committed_at,
+                                creator_login: commit.creator_login,
+                            },
+                        ))
+                    } else {
+                        None
+                    }
+                }
+                CommitOrRepositoryInfo::RepositoryInfo(info) => Some(
+                    FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo {
+                        created_at: info.created_at,
+                    }),
+                ),
+            };
+        Ok(DeploymentItemWithFirstOperation {
+            deployment: deployment_item,
+            first_operation,
+        })
+    }
 
-pub async fn to_metric_item<F: FirstCommitGetter>(
-    first_commit_getter: &F,
-    deployment: DeploymentItem,
-) -> Result<DeploymentMetricItem, RetrieveFourKeysEventError> {
-    let first_commit: Option<FirstCommitOrRepositoryInfo> = match deployment.clone().base {
-        CommitOrRepositoryInfo::Commit(first_commit) => {
-            let commit = first_commit_getter
-                .get(FirstCommitGetterParams {
-                    base: first_commit.sha,
-                    head: deployment.clone().head_commit.sha,
-                })
-                .await;
-            log::debug!("first_commit: {:?}", commit);
-            match commit {
-                Ok(commit) => Some(FirstCommitOrRepositoryInfo::FirstCommit(
-                    DeploymentCommitItem {
-                        sha: commit.sha,
-                        message: commit.message,
-                        resource_path: commit.resource_path,
-                        committed_at: commit.committed_at,
-                        creator_login: commit.creator_login,
-                    },
-                )),
-                Err(_) => None,
-            }
+    async fn attach_first_operation_to_deployment_items(
+        &self,
+        deployment_items: Vec<DeploymentItem>,
+    ) -> Result<Vec<DeploymentItemWithFirstOperation>, RetrieveFourKeysEventError> {
+        let futures = deployment_items
+            .into_iter()
+            .map(|it| self.attach_first_operation_to_deployment_item(it))
+            .collect::<Vec<_>>();
+        let results = try_join_all(futures).await?;
+        Ok(results)
+    }
+}
+
+// ---------------------------
+// CalculationEachDeploymentsStep
+// ---------------------------
+const calculate_lead_time_for_changes_seconds: CalculateLeadTimeForChangesSeconds =
+    |item: DeploymentItemWithFirstOperation| -> Option<i64> {
+        if let Some(operation) = item.first_operation {
+            let first_committed_at = match operation {
+                FirstCommitOrRepositoryInfo::FirstCommit(commit) => commit.committed_at,
+                FirstCommitOrRepositoryInfo::RepositoryInfo(info) => info.created_at,
+            };
+            let deployed_at = item.deployment.deployed_at;
+            let lead_time_for_changes_seconds = (deployed_at - first_committed_at).num_seconds();
+            Some(lead_time_for_changes_seconds)
+        } else {
+            None
         }
-        CommitOrRepositoryInfo::RepositoryInfo(info) => Some(
-            FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo {
-                created_at: info.created_at,
-            }),
-        ),
     };
-    let lead_time_for_changes_seconds = if let Some(first_commit) = first_commit.clone() {
-        let first_committed_at = match first_commit {
-            FirstCommitOrRepositoryInfo::FirstCommit(commit) => commit.committed_at,
-            FirstCommitOrRepositoryInfo::RepositoryInfo(info) => info.created_at,
+
+// NOTE: Should I write using "From"?
+const to_metric_item: ToMetricItem =
+    |item: DeploymentItemWithFirstOperation| -> DeploymentMetricItem {
+        let lead_time_for_changes_seconds = calculate_lead_time_for_changes_seconds(item.clone());
+
+        let head_commit = DeploymentCommitItem {
+            sha: item.deployment.head_commit.sha,
+            message: item.deployment.head_commit.message,
+            resource_path: item.deployment.head_commit.resource_path,
+            committed_at: item.deployment.head_commit.committed_at,
+            creator_login: item.deployment.head_commit.creator_login,
         };
-        Some((deployment.deployed_at - first_committed_at).num_seconds())
-    } else {
-        None
+        let first_commit =
+            item.first_operation
+                .unwrap_or(FirstCommitOrRepositoryInfo::FirstCommit(
+                    head_commit.clone(),
+                ));
+        DeploymentMetricItem {
+            id: item.deployment.id,
+            head_commit,
+            first_commit,
+            deployed_at: item.deployment.deployed_at,
+            lead_time_for_changes_seconds,
+        }
     };
-
-    let head_commit = deployment.head_commit.clone();
-    let first_commit = first_commit.unwrap_or(FirstCommitOrRepositoryInfo::FirstCommit(
-        DeploymentCommitItem {
-            sha: deployment.head_commit.sha,
-            message: deployment.head_commit.message,
-            resource_path: deployment.head_commit.resource_path,
-            committed_at: deployment.head_commit.committed_at,
-            creator_login: deployment.head_commit.creator_login,
-        },
-    ));
-    let deployment_metric = DeploymentMetricItem {
-        id: deployment.id,
-        head_commit: DeploymentCommitItem {
-            sha: head_commit.sha,
-            message: head_commit.message,
-            resource_path: head_commit.resource_path,
-            committed_at: head_commit.committed_at,
-            creator_login: head_commit.creator_login,
-        },
-        first_commit,
-        deployed_at: deployment.deployed_at,
-        lead_time_for_changes_seconds,
-    };
-
-    Ok(deployment_metric)
-}
 
 // ---------------------------
 // Calculation step
 // ---------------------------
-fn split_by_day(metrics_items: Vec<DeploymentMetricItem>) -> Vec<Vec<DeploymentMetricItem>> {
-    let mut items_by_day: Vec<Vec<DeploymentMetricItem>> = Vec::new();
-    let mut inner_items: Vec<DeploymentMetricItem> = Vec::new();
+const group_by_date: GroupByDate = |metrics_items: Vec<DeploymentMetricItem>| -> Vec<DailyItems> {
+    let mut items_by_date: Vec<DailyItems> = Vec::new();
+    let mut inner_items = Vec::new();
     let mut current_date: Option<NaiveDate> = None;
 
     for item in metrics_items {
-        let target_time = item.deployed_at.date_naive();
+        let target_date = item.deployed_at.date_naive();
         if let Some(current_time) = current_date {
-            if target_time != current_time {
-                current_date = Some(target_time);
-                items_by_day.push(inner_items);
+            if target_date != current_time {
+                current_date = Some(target_date);
+                items_by_date.push(DailyItems {
+                    date: target_date,
+                    items: inner_items,
+                });
                 inner_items = Vec::new();
             }
+        } else {
+            current_date = Some(target_date);
         }
 
         inner_items.push(item);
     }
     if !inner_items.is_empty() {
-        items_by_day.push(inner_items);
+        if let Some(current_date) = current_date {
+            items_by_date.push(DailyItems {
+                date: current_date,
+                items: inner_items,
+            });
+        }
     }
 
-    items_by_day
-}
+    items_by_date
+};
 
-fn median(numbers: Vec<i64>) -> f64 {
-    let mut sorted = numbers;
-    sorted.sort();
+const extract_items_for_period: ExtractItemsInPeriod =
+    |metric_items: Vec<DeploymentMetricItem>, since: DateTime<Utc>, until: DateTime<Utc>| {
+        metric_items
+            .into_iter()
+            .filter(|it| it.deployed_at >= since && it.deployed_at <= until)
+            .collect::<Vec<DeploymentMetricItem>>()
+    };
 
-    let n = sorted.len();
-    if n == 0 {
-        0.0
-    } else if n % 2 == 0 {
-        let mid = n / 2;
-        (sorted[mid - 1] as f64 + sorted[mid] as f64) / 2.0
-    } else {
-        let mid = (n - 1) / 2;
-        sorted[mid] as f64
-    }
-}
-
-fn calculate_four_keys(
-    metrics_items: Vec<DeploymentMetricItem>,
-    context: RetrieveFourKeysExecutionContext,
-) -> Result<FourKeysMetrics, RetrieveFourKeysEventError> {
-    let ranged_items = metrics_items
-        .into_iter()
-        .filter(|it| it.deployed_at >= context.since && it.deployed_at <= context.until)
-        .collect::<Vec<DeploymentMetricItem>>();
-    let items_by_day = split_by_day(ranged_items);
-    log::debug!("items_by_day: {:?}", items_by_day);
-
-    let total_deployments = items_by_day
+const calculate_total_deployments: CalculateTotalDeployments = |items: Vec<DailyItems>| -> u32 {
+    items
         .iter()
-        .fold(0, |total, i| total + i.len() as u32);
-    let duration_since = context.until.signed_duration_since(context.since);
-    let days = duration_since.num_days();
-    let deployment_frequency_per_day =
-        total_deployments as f32 / (days as f32 * (context.project.working_days_per_week / 7.0));
+        .fold(0, |total, i| total + i.items.len() as u32)
+};
 
-    let durations = items_by_day
-        .iter()
-        .flat_map(|items| items.iter())
-        .flat_map(|item| item.lead_time_for_changes_seconds)
-        .collect::<Vec<i64>>();
-    log::debug!("durations: {:?}", durations);
-    let median_duration = median(durations);
-    let hours = (median_duration / 3600.0) as i64;
-    let minutes = (median_duration.round() as i64 % 3600) / 60;
-    let seconds = (median_duration.round() as i64) - (hours * 3600) - (minutes * 60);
-    let lead_time = DeploymentMetricLeadTimeForChanges {
-        hours,
-        minutes,
-        seconds,
-        total_seconds: median_duration,
+const calculate_deployment_frequency_per_day: CalculateDeploymentFrequencyPerDay =
+    |total_deployments: u32,
+     since: DateTime<Utc>,
+     until: DateTime<Utc>,
+     working_days_per_week: f32| {
+        let duration_since = until.signed_duration_since(since);
+        let days = duration_since.num_days();
+        total_deployments as f32 / (days as f32 * (working_days_per_week / 7.0))
     };
 
-    let metrics = DeploymentMetric {
-        since: context.since,
-        until: context.until,
-        developers: context.project.developer_count,
-        working_days_per_week: context.project.working_days_per_week,
-        deploys: total_deployments,
-        deployment_frequency_per_day,
-        deploys_per_a_day_per_a_developer: deployment_frequency_per_day
-            / context.project.developer_count as f32,
-        lead_time_for_changes: lead_time,
+const calculate_lead_time: CalculateLeadTime =
+    |items: Vec<DailyItems>| -> DeploymentMetricLeadTimeForChanges {
+        let durations = items
+            .iter()
+            .flat_map(|daily| daily.items.iter())
+            .flat_map(|item| item.lead_time_for_changes_seconds)
+            .collect::<Vec<i64>>();
+        log::debug!("durations: {:?}", durations);
+        let median_duration = median(durations);
+        let hours = (median_duration / 3600.0) as i64;
+        let minutes = (median_duration.round() as i64 % 3600) / 60;
+        let seconds = (median_duration.round() as i64) - (hours * 3600) - (minutes * 60);
+        DeploymentMetricLeadTimeForChanges {
+            hours,
+            minutes,
+            seconds,
+            total_seconds: median_duration,
+        }
     };
 
-    let deployment_frequencies_by_day = items_by_day
-        .into_iter()
-        .map(|items| {
-            // TODO: 型定義でTotalityを確保したい
-            let date = items[0].deployed_at.date_naive();
-            let deployments = items.len() as u32;
-            DeploymentMetricSummary {
-                date,
-                deploys: deployments,
-                items,
-            }
-        })
-        .collect::<Vec<DeploymentMetricSummary>>();
-
-    let deployment_frequency = FourKeysMetrics {
-        metrics,
-        deployments: deployment_frequencies_by_day,
-    };
-
-    Ok(deployment_frequency)
-}
-
-async fn calculate_four_keys_metrics<
+// ---------------------------
+// Retrieve FourKeys event
+// ---------------------------
+struct RetrieveFourKeysStepImpl<
     FDeploymentsFetcher: DeploymentsFetcher,
     FFirstCommitGetter: FirstCommitGetter,
->(
-    deployments_fetcher: FDeploymentsFetcher,
-    first_commit_getter: FFirstCommitGetter,
-    context: RetrieveFourKeysExecutionContext,
-) -> Result<RetrieveFourKeysEvent, RetrieveFourKeysEventError> {
-    let deployments = fetch_deployments(&deployments_fetcher, context.since).await?;
-    let convert_items = deployments
-        .into_iter()
-        .map(|deployment| to_metric_item(&first_commit_getter, deployment));
-    let metrics_items = try_join_all(convert_items).await?;
-    let result = calculate_four_keys(metrics_items, context.clone())?;
-    let event = RetrieveFourKeysEvent::FourKeysMetrics(result);
+> {
+    pub deployments_fetcher: FDeploymentsFetcher,
+    pub first_commit_getter: FFirstCommitGetter,
+}
+#[async_trait]
+impl<
+        FDeploymentsFetcher: DeploymentsFetcher + Sync + Send,
+        FFirstCommitGetter: FirstCommitGetter + Sync + Send,
+    > RetrieveFourKeysStep for RetrieveFourKeysStepImpl<FDeploymentsFetcher, FFirstCommitGetter>
+{
+    async fn retrieve_four_keys(
+        self,
+        context: RetrieveFourKeysExecutionContext,
+    ) -> Result<FourKeysResult, RetrieveFourKeysEventError> {
+        let fetch_deployments_step = FetchDeploymentsStepImpl {
+            deployments_fetcher: self.deployments_fetcher,
+        };
+        let deployments = fetch_deployments_step
+            .fetch_deployments(FetchDeploymentsParams {
+                since: context.since,
+                until: context.until,
+            })
+            .await?;
+        let deployments_with_first_operation = AttachFirstOperationToDeploymentItemStepImpl {
+            first_commit_getter: self.first_commit_getter,
+        }
+        .attach_first_operation_to_deployment_items(deployments)
+        .await?;
+        let metrics_items = deployments_with_first_operation
+            .into_iter()
+            .map(to_metric_item)
+            .collect();
+        log::debug!("metrics_items: {:?}", metrics_items);
+        let daily_items = group_by_date(extract_items_for_period(
+            metrics_items,
+            context.since,
+            context.until,
+        ));
+        log::debug!("daily_items: {:?}", daily_items);
 
-    Ok(event)
+        let total_deployments = calculate_total_deployments(daily_items.clone());
+        let deployment_frequency_per_day = calculate_deployment_frequency_per_day(
+            total_deployments,
+            context.since,
+            context.until,
+            context.project.working_days_per_week,
+        );
+        let lead_time = calculate_lead_time(daily_items.clone());
+
+        let metrics = DeploymentMetric {
+            since: context.since,
+            until: context.until,
+            developers: context.project.developer_count,
+            working_days_per_week: context.project.working_days_per_week,
+            deploys: total_deployments,
+            deployment_frequency_per_day,
+            deploys_per_a_day_per_a_developer: deployment_frequency_per_day
+                / context.project.developer_count as f32,
+            lead_time_for_changes: lead_time,
+        };
+
+        let deployment_frequencies_by_date = daily_items
+            .into_iter()
+            .map(|daily| DeploymentMetricSummary {
+                date: daily.date,
+                deploys: daily.items.len() as u32,
+                items: daily.items,
+            })
+            .collect::<Vec<DeploymentMetricSummary>>();
+
+        let deployment_frequency = FourKeysResult {
+            metrics,
+            deployments: deployment_frequencies_by_date,
+        };
+
+        Ok(deployment_frequency)
+    }
 }
 
 // ---------------------------
 // create events
 // ---------------------------
-fn create_events(project: RetrieveFourKeysEvent) -> Vec<RetrieveFourKeysEvent> {
-    vec![project]
-}
+const create_events: CreateEvents = |project: FourKeysResult| -> Vec<RetrieveFourKeysEvent> {
+    vec![RetrieveFourKeysEvent::RetrieveFourKeys(project)]
+};
 
 // ---------------------------
 // overall workflow
@@ -266,14 +352,14 @@ impl<
         self,
         context: RetrieveFourKeysExecutionContext,
     ) -> Result<Vec<RetrieveFourKeysEvent>, RetrieveFourKeysEventError> {
-        let four_keys_metrics = calculate_four_keys_metrics(
-            self.deployments_fetcher,
-            self.first_commit_getter,
-            context,
-        )
-        .await?;
-
-        let events = create_events(four_keys_metrics);
+        let events = create_events(
+            RetrieveFourKeysStepImpl {
+                deployments_fetcher: self.deployments_fetcher,
+                first_commit_getter: self.first_commit_getter,
+            }
+            .retrieve_four_keys(context)
+            .await?,
+        );
 
         Ok(events)
     }

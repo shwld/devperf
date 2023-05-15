@@ -91,7 +91,7 @@ pub enum CreateGithubDeploymentProjectError {
 #[async_trait]
 pub trait CreateProject {
     async fn create_project(
-        &self,
+        self,
         uncreated_project: UncreatedProject,
     ) -> Result<Vec<CreateProjectEvent>, CreateGithubDeploymentProjectError>;
 }
