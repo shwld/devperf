@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::NaiveDate;
 use futures::future::try_join_all;
 
 use crate::{
@@ -15,8 +15,9 @@ use crate::{
 
 use super::{
     retrieve_four_keys_internal_types::{
-        AttachFirstOperationToDeploymentItemStep, CalculationEachDeploymentsStep,
+        AttachFirstOperationToDeploymentItemStep, CalculateLeadTimeForChangesSeconds,
         DeploymentItemWithFirstOperation, FetchDeploymentsParams, FetchDeploymentsStep,
+        ToMetricItem,
     },
     retrieve_four_keys_public_types::{
         DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
@@ -115,56 +116,48 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
 // ---------------------------
 // CalculationEachDeploymentsStep
 // ---------------------------
-struct CalculationEachDeploymentsStepImpl {}
-impl CalculationEachDeploymentsStep for CalculationEachDeploymentsStepImpl {
-    fn calculate_lead_time_for_changes_seconds(
-        &self,
-        item: DeploymentItemWithFirstOperation,
-    ) -> Option<i64> {
+const calculate_lead_time_for_changes_seconds: CalculateLeadTimeForChangesSeconds =
+    |item: DeploymentItemWithFirstOperation| -> Option<i64> {
         if let Some(operation) = item.first_operation {
             let first_committed_at = match operation {
                 FirstCommitOrRepositoryInfo::FirstCommit(commit) => commit.committed_at,
                 FirstCommitOrRepositoryInfo::RepositoryInfo(info) => info.created_at,
             };
-            Some((item.deployment.deployed_at - first_committed_at).num_seconds())
+            let deployed_at = item.deployment.deployed_at;
+            let lead_time_for_changes_seconds = (deployed_at - first_committed_at).num_seconds();
+            Some(lead_time_for_changes_seconds)
         } else {
             None
         }
-    }
+    };
 
-    fn to_metric_item(&self, item: DeploymentItemWithFirstOperation) -> DeploymentMetricItem {
-        let lead_time_for_changes_seconds =
-            self.calculate_lead_time_for_changes_seconds(item.clone());
+// NOTE: Should I write using "From"?
+const to_metric_item: ToMetricItem =
+    |item: DeploymentItemWithFirstOperation| -> DeploymentMetricItem {
+        let lead_time_for_changes_seconds = calculate_lead_time_for_changes_seconds(item.clone());
 
-        let head_commit = item.deployment.head_commit.clone();
+        let head_commit = DeploymentCommitItem {
+            sha: item.deployment.head_commit.sha,
+            message: item.deployment.head_commit.message,
+            resource_path: item.deployment.head_commit.resource_path,
+            committed_at: item.deployment.head_commit.committed_at,
+            creator_login: item.deployment.head_commit.creator_login,
+        };
         let first_commit =
             item.first_operation
                 .unwrap_or(FirstCommitOrRepositoryInfo::FirstCommit(
-                    DeploymentCommitItem {
-                        sha: item.deployment.head_commit.sha,
-                        message: item.deployment.head_commit.message,
-                        resource_path: item.deployment.head_commit.resource_path,
-                        committed_at: item.deployment.head_commit.committed_at,
-                        creator_login: item.deployment.head_commit.creator_login,
-                    },
+                    head_commit.clone(),
                 ));
         let deployment_metric = DeploymentMetricItem {
             id: item.deployment.id,
-            head_commit: DeploymentCommitItem {
-                sha: head_commit.sha,
-                message: head_commit.message,
-                resource_path: head_commit.resource_path,
-                committed_at: head_commit.committed_at,
-                creator_login: head_commit.creator_login,
-            },
+            head_commit,
             first_commit,
             deployed_at: item.deployment.deployed_at,
             lead_time_for_changes_seconds,
         };
 
         deployment_metric
-    }
-}
+    };
 
 // ---------------------------
 // Calculation step
@@ -291,8 +284,8 @@ async fn retrieve_four_keys<
     .await?;
     let metrics_items = deployments_with_first_operation
         .into_iter()
-        .map(|it| CalculationEachDeploymentsStepImpl {}.to_metric_item(it))
-        .collect::<Vec<DeploymentMetricItem>>();
+        .map(to_metric_item)
+        .collect();
     let result = calculate_four_keys(metrics_items, context.clone())?;
 
     Ok(result)

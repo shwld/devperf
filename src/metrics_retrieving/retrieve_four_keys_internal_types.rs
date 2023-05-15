@@ -44,6 +44,10 @@ pub(super) trait AttachFirstOperationToDeploymentItemStep {
 // ---------------------------
 // CalculationEachDeploymentsStep
 // ---------------------------
+pub(super) type CalculateLeadTimeForChangesSeconds =
+    fn(DeploymentItemWithFirstOperation) -> Option<i64>;
+pub(super) type ToMetricItem = fn(DeploymentItemWithFirstOperation) -> DeploymentMetricItem;
+
 #[async_trait]
 pub(super) trait CalculationEachDeploymentsStep {
     fn calculate_lead_time_for_changes_seconds(
