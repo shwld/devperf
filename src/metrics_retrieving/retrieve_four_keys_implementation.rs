@@ -177,6 +177,8 @@ const group_by_date: GroupByDate = |metrics_items: Vec<DeploymentMetricItem>| ->
                 });
                 inner_items = Vec::new();
             }
+        } else {
+            current_date = Some(target_date);
         }
 
         inner_items.push(item);
@@ -275,6 +277,7 @@ impl<
             .into_iter()
             .map(to_metric_item)
             .collect();
+        log::debug!("metrics_items: {:?}", metrics_items);
         let daily_items = group_by_date(extract_items_for_period(
             metrics_items,
             context.since,
