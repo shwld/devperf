@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub struct DeploymentsFetcherParams {
@@ -43,9 +44,15 @@ pub enum CommitOrRepositoryInfo {
     RepositoryInfo(RepositoryInfo),
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum DeploymentInfo {
+    GithubDeployment { id: String },
+    HerokuRelease { id: String, version: u64 },
+}
+
 #[derive(Debug, Clone)]
 pub struct DeploymentItem {
-    pub id: String,
+    pub info: DeploymentInfo,
     pub head_commit: CommitItem,
     pub base: CommitOrRepositoryInfo,
     pub creator_login: String,

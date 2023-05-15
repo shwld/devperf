@@ -1,5 +1,5 @@
 use super::interface::{
-    CommitItem, CommitOrRepositoryInfo, DeploymentItem, DeploymentsFetcher,
+    CommitItem, CommitOrRepositoryInfo, DeploymentInfo, DeploymentItem, DeploymentsFetcher,
     DeploymentsFetcherError, DeploymentsFetcherParams, RepositoryInfo,
 };
 use crate::{
@@ -311,7 +311,9 @@ fn convert_to_items(
                     creator_login: deployment.clone().creator.login,
                 };
                 let deployment_item = DeploymentItem {
-                    id: deployment.clone().id,
+                    info: DeploymentInfo::GithubDeployment {
+                        id: deployment.clone().id,
+                    },
                     head_commit: commit_item.clone(),
                     base: previous.clone(),
                     creator_login: deployment.clone().creator.login,

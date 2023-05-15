@@ -14,7 +14,7 @@ use crate::{
         heroku_app_name::ValidatedHerokuAppName, heroku_auth_token::ValidatedHerokuAuthToken,
     },
     dependencies::deployments_fetcher::{
-        interface::{CommitItem, DeploymentItem},
+        interface::{CommitItem, DeploymentInfo, DeploymentItem},
         shared::get_created_at,
     },
     shared::non_empty_vec::NonEmptyVec,
@@ -323,7 +323,10 @@ fn convert_to_items(
                     creator_login: release.clone().commit.author.map(|x| x.login).unwrap(),
                 };
                 let deployment_item = DeploymentItem {
-                    id: release.clone().release.id,
+                    info: DeploymentInfo::HerokuRelease {
+                        id: release.clone().release.id,
+                        version: release.clone().release.version,
+                    },
                     head_commit: commit_item.clone(),
                     base: previous.clone(),
                     creator_login: release.clone().commit.author.map(|x| x.login).unwrap(),

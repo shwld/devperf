@@ -150,7 +150,7 @@ const to_metric_item: ToMetricItem =
                     head_commit.clone(),
                 ));
         DeploymentMetricItem {
-            id: item.deployment.id,
+            info: item.deployment.info,
             head_commit,
             first_commit,
             deployed_at: item.deployment.deployed_at,
