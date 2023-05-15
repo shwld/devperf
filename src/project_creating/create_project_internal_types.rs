@@ -1,0 +1,29 @@
+use async_trait::async_trait;
+
+use super::create_project::{
+    CreateGithubDeploymentProjectError, CreateProjectEvent, GitHubDeploymentProjectCreated,
+    HerokuReleaseProjectCreated, UncreatedGitHubDeploymentProject, UncreatedHerokuReleaseProject,
+    UncreatedProject,
+};
+
+// ---------------------------
+// CreateStep
+// ---------------------------
+pub(super) type CreateGithubProject =
+    fn(uncreated_project: UncreatedGitHubDeploymentProject) -> GitHubDeploymentProjectCreated;
+
+pub(super) type CreateHerokuProject =
+    fn(uncreated_project: UncreatedHerokuReleaseProject) -> HerokuReleaseProjectCreated;
+
+#[async_trait]
+pub(super) trait CreateProjectStep {
+    async fn create_project(
+        &self,
+        uncreated_project: UncreatedProject,
+    ) -> Result<CreateProjectEvent, CreateGithubDeploymentProjectError>;
+}
+
+// ---------------------------
+// Create events
+// ---------------------------
+pub(super) type CreateEvents = fn(project: CreateProjectEvent) -> Vec<CreateProjectEvent>;

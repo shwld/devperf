@@ -17,8 +17,9 @@ use super::{
     retrieve_four_keys_internal_types::{
         AttachFirstOperationToDeploymentItemStep, CalculateDeploymentFrequencyPerDay,
         CalculateLeadTime, CalculateLeadTimeForChangesSeconds, CalculateTotalDeployments,
-        DailyItems, DeploymentItemWithFirstOperation, ExtractItemsInPeriod, FetchDeploymentsParams,
-        FetchDeploymentsStep, GroupByDate, RetrieveFourKeysStep, ToMetricItem,
+        CreateEvents, DailyItems, DeploymentItemWithFirstOperation, ExtractItemsInPeriod,
+        FetchDeploymentsParams, FetchDeploymentsStep, GroupByDate, RetrieveFourKeysStep,
+        ToMetricItem,
     },
     retrieve_four_keys_public_types::{
         DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
@@ -327,9 +328,9 @@ impl<
 // ---------------------------
 // create events
 // ---------------------------
-fn create_events(project: FourKeysResult) -> Vec<RetrieveFourKeysEvent> {
+const create_events: CreateEvents = |project: FourKeysResult| -> Vec<RetrieveFourKeysEvent> {
     vec![RetrieveFourKeysEvent::RetrieveFourKeys(project)]
-}
+};
 
 // ---------------------------
 // overall workflow

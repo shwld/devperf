@@ -3,7 +3,8 @@ use chrono::{DateTime, NaiveDate, Utc};
 
 use super::retrieve_four_keys::{
     DeploymentMetricItem, DeploymentMetricLeadTimeForChanges, FirstCommitOrRepositoryInfo,
-    FourKeysResult, RetrieveFourKeysEventError, RetrieveFourKeysExecutionContext,
+    FourKeysResult, RetrieveFourKeysEvent, RetrieveFourKeysEventError,
+    RetrieveFourKeysExecutionContext,
 };
 use crate::dependencies::deployments_fetcher::interface::DeploymentItem;
 
@@ -88,3 +89,8 @@ pub(super) trait RetrieveFourKeysStep {
         context: RetrieveFourKeysExecutionContext,
     ) -> Result<FourKeysResult, RetrieveFourKeysEventError>;
 }
+
+// ---------------------------
+// Create events
+// ---------------------------
+pub(super) type CreateEvents = fn(project: FourKeysResult) -> Vec<RetrieveFourKeysEvent>;
