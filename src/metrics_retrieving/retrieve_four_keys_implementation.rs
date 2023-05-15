@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate, Utc};
 use futures::future::try_join_all;
 
 use crate::{
@@ -15,9 +15,10 @@ use crate::{
 
 use super::{
     retrieve_four_keys_internal_types::{
-        AttachFirstOperationToDeploymentItemStep, CalculateLeadTimeForChangesSeconds, DailyItems,
-        DeploymentItemWithFirstOperation, FetchDeploymentsParams, FetchDeploymentsStep,
-        GroupByDate, ToMetricItem,
+        AttachFirstOperationToDeploymentItemStep, CalculateDeploymentFrequencyPerDay,
+        CalculateLeadTime, CalculateLeadTimeForChangesSeconds, CalculateTotalDeployments,
+        DailyItems, DeploymentItemWithFirstOperation, ExtractItemsInPeriod, FetchDeploymentsParams,
+        FetchDeploymentsStep, GroupByDate, ToMetricItem,
     },
     retrieve_four_keys_public_types::{
         DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
@@ -194,75 +195,49 @@ const group_by_date: GroupByDate = |metrics_items: Vec<DeploymentMetricItem>| ->
     items_by_date
 };
 
-fn calculate_four_keys(
-    metrics_items: Vec<DeploymentMetricItem>,
-    context: RetrieveFourKeysExecutionContext,
-) -> Result<FourKeysResult, RetrieveFourKeysEventError> {
-    let ranged_items = metrics_items
-        .into_iter()
-        .filter(|it| it.deployed_at >= context.since && it.deployed_at <= context.until)
-        .collect::<Vec<DeploymentMetricItem>>();
-    let daily_items = group_by_date(ranged_items);
-    log::debug!("daily_items: {:?}", daily_items);
+const extract_items_for_period: ExtractItemsInPeriod =
+    |metric_items: Vec<DeploymentMetricItem>, since: DateTime<Utc>, until: DateTime<Utc>| {
+        metric_items
+            .into_iter()
+            .filter(|it| it.deployed_at >= since && it.deployed_at <= until)
+            .collect::<Vec<DeploymentMetricItem>>()
+    };
 
-    let total_deployments = daily_items
+const calculate_total_deployments: CalculateTotalDeployments = |items: Vec<DailyItems>| -> u32 {
+    items
         .iter()
-        .fold(0, |total, i| total + i.items.len() as u32);
-    let duration_since = context.until.signed_duration_since(context.since);
-    let days = duration_since.num_days();
-    let deployment_frequency_per_day =
-        total_deployments as f32 / (days as f32 * (context.project.working_days_per_week / 7.0));
+        .fold(0, |total, i| total + i.items.len() as u32)
+};
 
-    let durations = daily_items
-        .iter()
-        .flat_map(|daily| daily.items.iter())
-        .flat_map(|item| item.lead_time_for_changes_seconds)
-        .collect::<Vec<i64>>();
-    log::debug!("durations: {:?}", durations);
-    let median_duration = median(durations);
-    let hours = (median_duration / 3600.0) as i64;
-    let minutes = (median_duration.round() as i64 % 3600) / 60;
-    let seconds = (median_duration.round() as i64) - (hours * 3600) - (minutes * 60);
-    let lead_time = DeploymentMetricLeadTimeForChanges {
-        hours,
-        minutes,
-        seconds,
-        total_seconds: median_duration,
+const calculate_deployment_frequency_per_day: CalculateDeploymentFrequencyPerDay =
+    |total_deployments: u32,
+     since: DateTime<Utc>,
+     until: DateTime<Utc>,
+     working_days_per_week: f32| {
+        let duration_since = until.signed_duration_since(since);
+        let days = duration_since.num_days();
+        total_deployments as f32 / (days as f32 * (working_days_per_week / 7.0))
     };
 
-    let metrics = DeploymentMetric {
-        since: context.since,
-        until: context.until,
-        developers: context.project.developer_count,
-        working_days_per_week: context.project.working_days_per_week,
-        deploys: total_deployments,
-        deployment_frequency_per_day,
-        deploys_per_a_day_per_a_developer: deployment_frequency_per_day
-            / context.project.developer_count as f32,
-        lead_time_for_changes: lead_time,
+const calculate_lead_time: CalculateLeadTime =
+    |items: Vec<DailyItems>| -> DeploymentMetricLeadTimeForChanges {
+        let durations = items
+            .iter()
+            .flat_map(|daily| daily.items.iter())
+            .flat_map(|item| item.lead_time_for_changes_seconds)
+            .collect::<Vec<i64>>();
+        log::debug!("durations: {:?}", durations);
+        let median_duration = median(durations);
+        let hours = (median_duration / 3600.0) as i64;
+        let minutes = (median_duration.round() as i64 % 3600) / 60;
+        let seconds = (median_duration.round() as i64) - (hours * 3600) - (minutes * 60);
+        DeploymentMetricLeadTimeForChanges {
+            hours,
+            minutes,
+            seconds,
+            total_seconds: median_duration,
+        }
     };
-
-    let deployment_frequencies_by_day = daily_items
-        .into_iter()
-        .map(|daily| {
-            // TODO: 型定義でTotalityを確保したい
-            let date = daily.items[0].deployed_at.date_naive();
-            let deployments = daily.items.len() as u32;
-            DeploymentMetricSummary {
-                date,
-                deploys: deployments,
-                items: daily.items,
-            }
-        })
-        .collect::<Vec<DeploymentMetricSummary>>();
-
-    let deployment_frequency = FourKeysResult {
-        metrics,
-        deployments: deployment_frequencies_by_day,
-    };
-
-    Ok(deployment_frequency)
-}
 
 // ---------------------------
 // Retrieve FourKeys event
@@ -293,9 +268,49 @@ async fn retrieve_four_keys<
         .into_iter()
         .map(to_metric_item)
         .collect();
-    let result = calculate_four_keys(metrics_items, context.clone())?;
+    let daily_items = group_by_date(extract_items_for_period(
+        metrics_items,
+        context.since,
+        context.until,
+    ));
+    log::debug!("daily_items: {:?}", daily_items);
 
-    Ok(result)
+    let total_deployments = calculate_total_deployments(daily_items.clone());
+    let deployment_frequency_per_day = calculate_deployment_frequency_per_day(
+        total_deployments,
+        context.since,
+        context.until,
+        context.project.working_days_per_week,
+    );
+    let lead_time = calculate_lead_time(daily_items.clone());
+
+    let metrics = DeploymentMetric {
+        since: context.since,
+        until: context.until,
+        developers: context.project.developer_count,
+        working_days_per_week: context.project.working_days_per_week,
+        deploys: total_deployments,
+        deployment_frequency_per_day,
+        deploys_per_a_day_per_a_developer: deployment_frequency_per_day
+            / context.project.developer_count as f32,
+        lead_time_for_changes: lead_time,
+    };
+
+    let deployment_frequencies_by_date = daily_items
+        .into_iter()
+        .map(|daily| DeploymentMetricSummary {
+            date: daily.date,
+            deploys: daily.items.len() as u32,
+            items: daily.items,
+        })
+        .collect::<Vec<DeploymentMetricSummary>>();
+
+    let deployment_frequency = FourKeysResult {
+        metrics,
+        deployments: deployment_frequencies_by_date,
+    };
+
+    Ok(deployment_frequency)
 }
 
 // ---------------------------

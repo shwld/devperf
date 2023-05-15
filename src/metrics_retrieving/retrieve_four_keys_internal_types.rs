@@ -2,7 +2,8 @@ use async_trait::async_trait;
 use chrono::{DateTime, NaiveDate, Utc};
 
 use super::retrieve_four_keys::{
-    DeploymentMetricItem, FirstCommitOrRepositoryInfo, RetrieveFourKeysEventError,
+    DeploymentMetricItem, DeploymentMetricLeadTimeForChanges, FirstCommitOrRepositoryInfo,
+    RetrieveFourKeysEventError,
 };
 use crate::dependencies::deployments_fetcher::interface::DeploymentItem;
 
@@ -51,9 +52,28 @@ pub(super) type ToMetricItem = fn(DeploymentItemWithFirstOperation) -> Deploymen
 // ---------------------------
 // AggregationStep
 // ---------------------------
+pub(super) type ExtractItemsInPeriod = fn(
+    items: Vec<DeploymentMetricItem>,
+    since: DateTime<Utc>,
+    until: DateTime<Utc>,
+) -> Vec<DeploymentMetricItem>;
+
 #[derive(Debug, Clone)]
 pub(super) struct DailyItems {
     pub(super) date: NaiveDate,
     pub(super) items: Vec<DeploymentMetricItem>,
 }
+
 pub(super) type GroupByDate = fn(Vec<DeploymentMetricItem>) -> Vec<DailyItems>;
+
+pub(super) type CalculateTotalDeployments = fn(Vec<DailyItems>) -> u32;
+
+// TODO: Make the mold more explicit.
+pub(super) type CalculateDeploymentFrequencyPerDay = fn(
+    total_deployments: u32,
+    since: DateTime<Utc>,
+    until: DateTime<Utc>,
+    working_days_per_week: f32,
+) -> f32;
+
+pub(super) type CalculateLeadTime = fn(Vec<DailyItems>) -> DeploymentMetricLeadTimeForChanges;
