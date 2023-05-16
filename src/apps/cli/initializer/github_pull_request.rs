@@ -5,7 +5,7 @@ use super::input::{
 use crate::{
     dependencies::project_config_io::writer::settings_toml::ProjectConfigIOWriterWithSettingsToml,
     project_creating::create_project::{
-        CreateProject, CreateProjectWorkflow, UncreatedGitHubPullRequest, UncreatedProject,
+        CreateProject, CreateProjectWorkflow, UncreatedGitHubPullRequestProject, UncreatedProject,
     },
 };
 
@@ -17,14 +17,15 @@ pub async fn init() {
     let developer_count = developer_count::input();
     let working_days_per_week = working_days_per_week::input();
 
-    let uncreated_project = UncreatedProject::GitHubPullRequest(UncreatedGitHubPullRequest {
-        project_name,
-        github_owner_repo: owner_repo,
-        github_deploy_branch_name: branch,
-        developer_count,
-        working_days_per_week,
-        github_personal_token: token,
-    });
+    let uncreated_project =
+        UncreatedProject::GitHubPullRequest(UncreatedGitHubPullRequestProject {
+            project_name,
+            github_owner_repo: owner_repo,
+            github_deploy_branch_name: branch,
+            developer_count,
+            working_days_per_week,
+            github_personal_token: token,
+        });
     let workflow = CreateProjectWorkflow {
         project_io_writer: ProjectConfigIOWriterWithSettingsToml,
     };

@@ -5,6 +5,7 @@ use crate::{
     dependencies::{
         deployments_fetcher::{
             github_deployment::DeploymentsFetcherWithGithubDeployment,
+            github_merged_pull::DeploymentsFetcherWithGithubMergedPullRequest,
             heroku_release::DeploymentsFetcherWithHerokuRelease,
         },
         first_commit_getter::github::FirstCommitGetterWithGitHub,
@@ -66,11 +67,28 @@ pub async fn get_four_keys(
             workflow.retrieve_four_keys(context.clone())
         }
         ProjectCreated::GitHubDeployment(config) => {
-            log::info!("GitHub project detected");
+            log::info!("GitHub deployment project detected");
             let deployments_fetcher = DeploymentsFetcherWithGithubDeployment {
                 github_personal_token: config.github_personal_token.clone(),
                 github_owner_repo: config.github_owner_repo.clone(),
                 environment: config.github_deployment_environment.clone(),
+            };
+            let first_commit_getter = FirstCommitGetterWithGitHub {
+                github_personal_token: config.github_personal_token,
+                github_owner_repo: config.github_owner_repo,
+            };
+            let workflow = RetrieveFourKeysWorkflow {
+                deployments_fetcher,
+                first_commit_getter,
+            };
+            workflow.retrieve_four_keys(context)
+        }
+        ProjectCreated::GitHubPullRequest(config) => {
+            log::info!("GitHub pull request project detected");
+            let deployments_fetcher = DeploymentsFetcherWithGithubMergedPullRequest {
+                github_personal_token: config.github_personal_token.clone(),
+                github_owner_repo: config.github_owner_repo.clone(),
+                deploy_trigger_branch: config.github_deploy_branch_name,
             };
             let first_commit_getter = FirstCommitGetterWithGitHub {
                 github_personal_token: config.github_personal_token,

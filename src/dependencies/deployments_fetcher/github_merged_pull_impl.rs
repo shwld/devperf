@@ -3,7 +3,7 @@ use octocrab::Octocrab;
 
 use crate::{
     common_types::{
-        github_owner_repo::ValidatedGitHubOwnerRepo,
+        deploy_branch_name::ValidatedDeployBranchName, github_owner_repo::ValidatedGitHubOwnerRepo,
         github_personal_token::ValidatedGitHubPersonalToken,
     },
     dependencies::deployments_fetcher::github_merged_pull_types::MergedPullsResponse,
@@ -95,7 +95,7 @@ const get_client: GetClient = |
 struct GitHubMergedPullsFetcherImpl {
     github_personal_token: ValidatedGitHubPersonalToken,
     github_owner_repo: ValidatedGitHubOwnerRepo,
-    deploy_trigger_branch: String,
+    deploy_trigger_branch: ValidatedDeployBranchName,
 }
 #[async_trait]
 impl GitHubMergedPullsFetcher for GitHubMergedPullsFetcherImpl {
@@ -126,7 +126,7 @@ impl GitHubMergedPullsFetcher for GitHubMergedPullsFetcherImpl {
                 .iter()
                 .filter(|it| {
                     let branch_ok = if let Some(base_ref) = &it.base_ref {
-                        base_ref.name == self.deploy_trigger_branch
+                        base_ref.name == self.deploy_trigger_branch.to_string()
                     } else {
                         false
                     };
@@ -234,7 +234,7 @@ const collect_to_items: CollectToItems = |items: Vec<MergedPullsPullsNode>| -> V
 pub struct DeploymentsFetcherWithGithubMergedPullRequest {
     pub github_personal_token: ValidatedGitHubPersonalToken,
     pub github_owner_repo: ValidatedGitHubOwnerRepo,
-    pub deploy_trigger_branch: String,
+    pub deploy_trigger_branch: ValidatedDeployBranchName,
 }
 #[async_trait]
 impl DeploymentsFetcher for DeploymentsFetcherWithGithubMergedPullRequest {
@@ -260,6 +260,7 @@ mod tests {
 
     use crate::{
         common_types::{
+            deploy_branch_name::ValidatedDeployBranchName,
             github_owner_repo::ValidatedGitHubOwnerRepo,
             github_personal_token::ValidatedGitHubPersonalToken,
         },
@@ -278,10 +279,11 @@ mod tests {
                 let token = ValidatedGitHubPersonalToken::new(Some(token)).unwrap();
                 let owner_repo =
                     ValidatedGitHubOwnerRepo::new("shwld/revelup-note".to_string()).unwrap();
+                let branch_name = ValidatedDeployBranchName::new(Some("main".to_string())).unwrap();
                 let fetcher = DeploymentsFetcherWithGithubMergedPullRequest {
                     github_personal_token: token,
                     github_owner_repo: owner_repo,
-                    deploy_trigger_branch: "main".to_string(),
+                    deploy_trigger_branch: branch_name,
                 };
                 let result = fetcher
                     .fetch(DeploymentsFetcherParams {
