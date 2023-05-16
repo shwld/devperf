@@ -3,9 +3,7 @@ use chrono::{DateTime, Utc};
 use octocrab::Octocrab;
 use serde::{Deserialize, Serialize};
 
-use super::interface::{
-    DeploymentItem, DeploymentsFetcherError, DeploymentsFetcherParams, RepositoryInfo,
-};
+use super::interface::{DeploymentItem, DeploymentsFetcherError, DeploymentsFetcherParams};
 use crate::common_types::github_personal_token::ValidatedGitHubPersonalToken;
 
 pub(super) type GetClient =

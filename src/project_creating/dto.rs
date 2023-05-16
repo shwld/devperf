@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::common_types::{
+    deploy_branch_name::{ValidateDeployBranchNameError, ValidatedDeployBranchName},
     deployment_source::DeploymentSource,
     developer_count::{ValidateDeveloperCountError, ValidatedDeveloperCount},
     github_deployment_environment::{
@@ -14,8 +15,11 @@ use crate::common_types::{
     working_days_per_week::{ValidateWorkingDaysPerWeekError, ValidatedWorkingDaysPerWeek},
 };
 
-use super::create_project_public_types::{
-    GitHubDeploymentProjectCreated, HerokuReleaseProjectCreated, ProjectCreated,
+use super::{
+    create_project::GitHubPullRequestProjectCreated,
+    create_project_public_types::{
+        GitHubDeploymentProjectCreated, HerokuReleaseProjectCreated, ProjectCreated,
+    },
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,6 +28,7 @@ pub struct ProjectConfigDto {
     pub github_personal_token: String,
     pub github_owner: String,
     pub github_repo: String,
+    pub github_deployment_branch_name: Option<String>,
     pub github_deployment_environment: Option<String>,
     pub heroku_app_name: Option<String>,
     pub heroku_auth_token: Option<String>,
@@ -40,6 +45,8 @@ pub enum CreateProjectDtoError {
     GitHubOwnerRepo(#[from] ValidateGitHubOwnerRepoError),
     #[error("GitHub deployment environment is invalid")]
     GitHubDeploymentEnvironment(#[from] ValidateGitHubDeploymentEnvironmentError),
+    #[error("GitHub deployment branch is invalid")]
+    GitHubDeploymentBranch(#[from] ValidateDeployBranchNameError),
     #[error("GitHub developer count is invalid")]
     DeveloperCount(#[from] ValidateDeveloperCountError),
     #[error("GitHub working days per week is invalid")]
@@ -87,10 +94,53 @@ fn from_github_deployment_project_created(
         github_owner: owner,
         github_repo: repo,
         github_deployment_environment: Some(domain_obj.github_deployment_environment.to_string()),
+        github_deployment_branch_name: None,
         developer_count: domain_obj.developer_count.to_u32(),
         working_days_per_week: domain_obj.working_days_per_week.to_f32(),
     }
 }
+
+fn to_github_pull_request_project_created(
+    dto: &ProjectConfigDto,
+) -> Result<GitHubPullRequestProjectCreated, CreateProjectDtoError> {
+    let github_personal_token =
+        ValidatedGitHubPersonalToken::new(Some(dto.github_personal_token.clone()))?;
+    let github_owner_repo =
+        ValidatedGitHubOwnerRepo::new(format!("{}/{}", dto.github_owner, dto.github_repo))?;
+    let github_deploy_branch_name =
+        ValidatedDeployBranchName::new(dto.github_deployment_branch_name.clone())?;
+    let developer_count = ValidatedDeveloperCount::new(dto.developer_count.to_string())?;
+    let working_days_per_week =
+        ValidatedWorkingDaysPerWeek::new(dto.working_days_per_week.to_string())?;
+    Ok(GitHubPullRequestProjectCreated {
+        project_name: dto.project_name.to_string(),
+        github_personal_token,
+        github_owner_repo,
+        github_deploy_branch_name,
+        developer_count,
+        working_days_per_week,
+    })
+}
+
+fn from_github_pull_request_project_created(
+    domain_obj: GitHubPullRequestProjectCreated,
+) -> ProjectConfigDto {
+    let (owner, repo) = domain_obj.github_owner_repo.get_values();
+    ProjectConfigDto {
+        project_name: domain_obj.project_name,
+        github_personal_token: domain_obj.github_personal_token.to_string(),
+        heroku_auth_token: None,
+        heroku_app_name: None,
+        deployment_source: DeploymentSource::GitHubPullRequest.value(),
+        github_owner: owner,
+        github_repo: repo,
+        github_deployment_environment: None,
+        github_deployment_branch_name: Some(domain_obj.github_deploy_branch_name.to_string()),
+        developer_count: domain_obj.developer_count.to_u32(),
+        working_days_per_week: domain_obj.working_days_per_week.to_f32(),
+    }
+}
+
 fn to_heroku_release_project_created(
     dto: &ProjectConfigDto,
 ) -> Result<HerokuReleaseProjectCreated, CreateProjectDtoError> {
@@ -124,6 +174,7 @@ fn from_heroku_release_project_created(
         github_owner: owner,
         github_repo: repo,
         github_deployment_environment: None,
+        github_deployment_branch_name: None,
         heroku_app_name: Some(domain_obj.heroku_app_name.to_string()),
         heroku_auth_token: Some(domain_obj.heroku_auth_token.to_string()),
         deployment_source: DeploymentSource::HerokuRelease.value(),
@@ -138,6 +189,9 @@ impl From<ProjectCreated> for ProjectConfigDto {
             ProjectCreated::GitHubDeployment(domain_obj) => {
                 from_github_deployment_project_created(domain_obj)
             }
+            ProjectCreated::GitHubPullRequest(domain_obj) => {
+                from_github_pull_request_project_created(domain_obj)
+            }
             ProjectCreated::HerokuRelease(domain_obj) => {
                 from_heroku_release_project_created(domain_obj)
             }
@@ -151,6 +205,9 @@ impl TryFrom<ProjectConfigDto> for ProjectCreated {
         if dto.deployment_source.as_str() == DeploymentSource::GitHubDeployment.value() {
             let domain_obj = to_github_deployment_project_created(&dto)?;
             Ok(ProjectCreated::GitHubDeployment(domain_obj))
+        } else if dto.deployment_source.as_str() == DeploymentSource::GitHubPullRequest.value() {
+            let domain_obj = to_github_pull_request_project_created(&dto)?;
+            Ok(ProjectCreated::GitHubPullRequest(domain_obj))
         } else if dto.deployment_source.as_str() == DeploymentSource::HerokuRelease.value() {
             let domain_obj = to_heroku_release_project_created(&dto)?;
             Ok(ProjectCreated::HerokuRelease(domain_obj))
