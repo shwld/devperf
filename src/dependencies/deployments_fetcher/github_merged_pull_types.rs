@@ -1,7 +1,12 @@
 use octocrab::Octocrab;
 
-use super::interface::{DeploymentsFetcherError, DeploymentsFetcherParams, RepositoryInfo};
-use crate::common_types::github_personal_token::ValidatedGitHubPersonalToken;
+use super::interface::{
+    DeploymentItem, DeploymentsFetcherError, DeploymentsFetcherParams, RepositoryInfo,
+};
+use crate::{
+    common_types::github_personal_token::ValidatedGitHubPersonalToken,
+    shared::non_empty_vec::NonEmptyVec,
+};
 
 pub(super) type GetClient =
     fn(ValidatedGitHubPersonalToken) -> Result<Octocrab, DeploymentsFetcherError>;
@@ -28,3 +33,10 @@ pub(super) trait GitHubMergedPullsFetcher {
 // Filtering step
 // ---------------------------
 pub(super) type IsDeployablePullRequest = fn(&GitHubMergedPullRequestItem) -> bool;
+
+// ---------------------------
+// Collecting step
+// ---------------------------
+pub(super) type CollectToItems = fn(
+    deployment_nodes: NonEmptyVec<GitHubMergedPullRequestItemOrRepositoryInfo>,
+) -> Vec<DeploymentItem>;
