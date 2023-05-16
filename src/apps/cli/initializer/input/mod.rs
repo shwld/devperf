@@ -1,4 +1,5 @@
 pub mod developer_count;
+pub mod github_deploy_branch;
 pub mod github_deployment_environment;
 pub mod github_owner_repo;
 pub mod github_personal_token;
