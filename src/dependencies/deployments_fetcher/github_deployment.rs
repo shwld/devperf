@@ -72,7 +72,7 @@ fn deployments_query(
                 }}
             }}
         }}
-    ", owner = owner_repo.get_owner(), repo = owner_repo.get_repo(), after = after.map_or_else(|| "".to_owned(), |cursor| format!(", after: \"{}\"", cursor)));
+    ", owner = owner_repo.get_owner(), repo = owner_repo.get_repo(), environment = environment, after = after.map_or_else(|| "".to_owned(), |cursor| format!(", after: \"{}\"", cursor)));
 
     query
 }

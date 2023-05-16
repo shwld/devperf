@@ -5,8 +5,8 @@ use thiserror::Error;
 
 // Input
 pub struct DeploymentsFetcherParams {
-    pub since: Option<DateTime<Utc>>,
-    pub until: Option<DateTime<Utc>>,
+    pub since: DateTime<Utc>,
+    pub until: DateTime<Utc>,
 }
 
 // Output
@@ -32,8 +32,18 @@ pub enum CommitOrRepositoryInfo {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum DeploymentInfo {
-    GithubDeployment { id: String },
-    HerokuRelease { id: String, version: u64 },
+    GithubDeployment {
+        id: String,
+    },
+    GithubMergedPullRequest {
+        id: String,
+        number: u64,
+        title: String,
+    },
+    HerokuRelease {
+        id: String,
+        version: u64,
+    },
 }
 
 #[derive(Debug, Clone)]

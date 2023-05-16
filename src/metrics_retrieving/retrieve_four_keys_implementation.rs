@@ -45,8 +45,8 @@ impl<F: DeploymentsFetcher + Sync + Send> FetchDeploymentsStep for FetchDeployme
         let deployments = self
             .deployments_fetcher
             .fetch(DeploymentsFetcherParams {
-                since: Some(params.since),
-                until: Some(params.until),
+                since: params.since,
+                until: params.until,
             })
             .await?;
 
