@@ -240,10 +240,12 @@ const calculate_lead_time: CalculateLeadTime =
             .collect::<Vec<i64>>();
         log::debug!("durations: {:?}", durations);
         let median_duration = median(durations);
+        let days = (median_duration / 86400.0) as i64;
         let hours = (median_duration / 3600.0) as i64;
         let minutes = (median_duration.round() as i64 % 3600) / 60;
         let seconds = (median_duration.round() as i64) - (hours * 3600) - (minutes * 60);
         DeploymentPerformanceLeadTimeForChanges {
+            days,
             hours,
             minutes,
             seconds,

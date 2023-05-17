@@ -74,6 +74,7 @@ pub struct DeploymentPerformanceSummary {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct DeploymentPerformanceLeadTimeForChanges {
+    pub days: i64,
     pub hours: i64,
     pub minutes: i64,
     pub seconds: i64,
