@@ -15,6 +15,7 @@ use crate::{
 };
 
 use super::{
+    retrieve_four_keys::Context,
     retrieve_four_keys_internal_types::{
         AttachFirstOperationToDeploymentItemStep, CalculateDeploymentFrequencyPerDay,
         CalculateLeadTime, CalculateLeadTimeForChangesSeconds, CalculateTotalDeployments,
@@ -23,8 +24,8 @@ use super::{
         ToMetricItem,
     },
     retrieve_four_keys_public_types::{
-        DeploymentCommitItem, DeploymentMetric, DeploymentMetricItem,
-        DeploymentMetricLeadTimeForChanges, DeploymentMetricSummary, FourKeysResult,
+        DeploymentCommitItem, DeploymentPerformance, DeploymentPerformanceItem,
+        DeploymentPerformanceLeadTimeForChanges, DeploymentPerformanceSummary, FourKeysResult,
         RepositoryInfo, RetrieveFourKeys, RetrieveFourKeysEvent, RetrieveFourKeysEventError,
         RetrieveFourKeysExecutionContext,
     },
@@ -144,7 +145,7 @@ const calculate_lead_time_for_changes_seconds: CalculateLeadTimeForChangesSecond
 
 // NOTE: Should I write using "From"?
 const to_metric_item: ToMetricItem =
-    |item: DeploymentItemWithFirstOperation| -> DeploymentMetricItem {
+    |item: DeploymentItemWithFirstOperation| -> DeploymentPerformanceItem {
         let lead_time_for_changes_seconds = calculate_lead_time_for_changes_seconds(item.clone());
 
         let head_commit = DeploymentCommitItem {
@@ -159,7 +160,7 @@ const to_metric_item: ToMetricItem =
                 .unwrap_or(FirstCommitOrRepositoryInfo::FirstCommit(
                     head_commit.clone(),
                 ));
-        DeploymentMetricItem {
+        DeploymentPerformanceItem {
             info: item.deployment.info,
             head_commit,
             first_commit,
@@ -171,46 +172,47 @@ const to_metric_item: ToMetricItem =
 // ---------------------------
 // Calculation step
 // ---------------------------
-const group_by_date: GroupByDate = |metrics_items: Vec<DeploymentMetricItem>| -> Vec<DailyItems> {
-    let mut items_by_date: Vec<DailyItems> = Vec::new();
-    let mut inner_items = Vec::new();
-    let mut current_date: Option<NaiveDate> = None;
+const group_by_date: GroupByDate =
+    |metrics_items: Vec<DeploymentPerformanceItem>| -> Vec<DailyItems> {
+        let mut items_by_date: Vec<DailyItems> = Vec::new();
+        let mut inner_items = Vec::new();
+        let mut current_date: Option<NaiveDate> = None;
 
-    for item in metrics_items {
-        let target_date = item.deployed_at.date_naive();
-        if let Some(current_time) = current_date {
-            if target_date != current_time {
+        for item in metrics_items {
+            let target_date = item.deployed_at.date_naive();
+            if let Some(current_time) = current_date {
+                if target_date != current_time {
+                    current_date = Some(target_date);
+                    items_by_date.push(DailyItems {
+                        date: target_date,
+                        items: inner_items,
+                    });
+                    inner_items = Vec::new();
+                }
+            } else {
                 current_date = Some(target_date);
+            }
+
+            inner_items.push(item);
+        }
+        if !inner_items.is_empty() {
+            if let Some(current_date) = current_date {
                 items_by_date.push(DailyItems {
-                    date: target_date,
+                    date: current_date,
                     items: inner_items,
                 });
-                inner_items = Vec::new();
             }
-        } else {
-            current_date = Some(target_date);
         }
 
-        inner_items.push(item);
-    }
-    if !inner_items.is_empty() {
-        if let Some(current_date) = current_date {
-            items_by_date.push(DailyItems {
-                date: current_date,
-                items: inner_items,
-            });
-        }
-    }
-
-    items_by_date
-};
+        items_by_date
+    };
 
 const extract_items_for_period: ExtractItemsInPeriod =
-    |metric_items: Vec<DeploymentMetricItem>, since: DateTime<Utc>, until: DateTime<Utc>| {
+    |metric_items: Vec<DeploymentPerformanceItem>, since: DateTime<Utc>, until: DateTime<Utc>| {
         metric_items
             .into_iter()
             .filter(|it| it.deployed_at >= since && it.deployed_at <= until)
-            .collect::<Vec<DeploymentMetricItem>>()
+            .collect::<Vec<DeploymentPerformanceItem>>()
     };
 
 const calculate_total_deployments: CalculateTotalDeployments = |items: Vec<DailyItems>| -> u32 {
@@ -230,7 +232,7 @@ const calculate_deployment_frequency_per_day: CalculateDeploymentFrequencyPerDay
     };
 
 const calculate_lead_time: CalculateLeadTime =
-    |items: Vec<DailyItems>| -> DeploymentMetricLeadTimeForChanges {
+    |items: Vec<DailyItems>| -> DeploymentPerformanceLeadTimeForChanges {
         let durations = items
             .iter()
             .flat_map(|daily| daily.items.iter())
@@ -241,7 +243,7 @@ const calculate_lead_time: CalculateLeadTime =
         let hours = (median_duration / 3600.0) as i64;
         let minutes = (median_duration.round() as i64 % 3600) / 60;
         let seconds = (median_duration.round() as i64) - (hours * 3600) - (minutes * 60);
-        DeploymentMetricLeadTimeForChanges {
+        DeploymentPerformanceLeadTimeForChanges {
             hours,
             minutes,
             seconds,
@@ -302,30 +304,33 @@ impl<
         );
         let lead_time = calculate_lead_time(daily_items.clone());
 
-        let metrics = DeploymentMetric {
+        let context = Context {
             since: context.since,
             until: context.until,
             developers: context.project.developer_count,
             working_days_per_week: context.project.working_days_per_week,
+        };
+        let performance = DeploymentPerformance {
             deploys: total_deployments,
             deployment_frequency_per_day,
             deploys_per_a_day_per_a_developer: deployment_frequency_per_day
-                / context.project.developer_count as f32,
+                / context.developers as f32,
             lead_time_for_changes: lead_time,
         };
 
         let deployment_frequencies_by_date = daily_items
             .into_iter()
-            .map(|daily| DeploymentMetricSummary {
+            .map(|daily| DeploymentPerformanceSummary {
                 date: daily.date,
                 deploys: daily.items.len() as u32,
                 items: daily.items,
             })
-            .collect::<Vec<DeploymentMetricSummary>>();
+            .collect::<Vec<DeploymentPerformanceSummary>>();
 
         let deployment_frequency = FourKeysResult {
-            metrics,
             deployments: deployment_frequencies_by_date,
+            context,
+            performance,
         };
 
         Ok(deployment_frequency)
