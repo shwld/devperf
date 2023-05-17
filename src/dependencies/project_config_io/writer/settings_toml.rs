@@ -30,6 +30,7 @@ impl ProjectConfigIOWriter for ProjectConfigIOWriterWithSettingsToml {
             github_owner: data.github_owner,
             github_repo: data.github_repo,
             github_deployment_environment: data.github_deployment_environment,
+            github_deployment_branch_name: data.github_deployment_branch_name,
             heroku_app_name: data.heroku_app_name,
             heroku_auth_token: data.heroku_auth_token,
             developer_count: data.developer_count,

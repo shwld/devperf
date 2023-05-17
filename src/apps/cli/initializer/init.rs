@@ -1,7 +1,9 @@
 use anyhow::Result;
 use inquire::Select;
 
-use crate::common_types::deployment_source::DeploymentSource;
+use crate::{
+    apps::cli::initializer::github_pull_request, common_types::deployment_source::DeploymentSource,
+};
 
 use super::{github_deployment, heroku_release};
 
@@ -12,13 +14,18 @@ pub async fn perform() -> Result<()> {
     let heroku_release = DeploymentSource::HerokuRelease.label();
     let options: Vec<&str> = vec![&github_deployment, &github_pull_request, &heroku_release];
     let answer = Select::new("Select Deployment Frequency Source: ", options).prompt()?;
+    let source = DeploymentSource::try_new(answer).expect("Invalid deployment source");
 
-    if answer == github_deployment {
-        github_deployment::init().await;
-    } else if answer == heroku_release {
-        heroku_release::init().await;
-    } else {
-        panic!("Not implemented");
+    match source {
+        DeploymentSource::GitHubDeployment => {
+            github_deployment::init().await;
+        }
+        DeploymentSource::GitHubPullRequest => {
+            github_pull_request::init().await;
+        }
+        DeploymentSource::HerokuRelease => {
+            heroku_release::init().await;
+        }
     }
 
     Ok(())

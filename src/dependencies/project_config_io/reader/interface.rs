@@ -9,6 +9,8 @@ pub enum ProjectConfigIOReaderError {
     ConfigFileReadError(#[source] anyhow::Error),
     #[error("Cannot find the project")]
     ProjectNotFound(String),
+    #[error("Invalid data source")]
+    DataSourceIsInvalid(String),
 }
 
 #[async_trait]
