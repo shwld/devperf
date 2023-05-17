@@ -10,6 +10,7 @@ pub struct ProjectConfig {
     pub github_owner: String,
     pub github_repo: String,
     pub github_deployment_environment: Option<String>,
+    pub github_deployment_branch_name: Option<String>,
     pub heroku_app_name: Option<String>,
     pub heroku_auth_token: Option<String>,
     pub developer_count: u32,

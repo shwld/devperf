@@ -2,15 +2,18 @@ use async_trait::async_trait;
 
 use super::create_project::{
     CreateGithubDeploymentProjectError, CreateProjectEvent, GitHubDeploymentProjectCreated,
-    HerokuReleaseProjectCreated, UncreatedGitHubDeploymentProject, UncreatedHerokuReleaseProject,
-    UncreatedProject,
+    GitHubPullRequestProjectCreated, HerokuReleaseProjectCreated, UncreatedGitHubDeploymentProject,
+    UncreatedGitHubPullRequestProject, UncreatedHerokuReleaseProject, UncreatedProject,
 };
 
 // ---------------------------
 // CreateStep
 // ---------------------------
-pub(super) type CreateGithubProject =
+pub(super) type CreateGithubDeploymentProject =
     fn(uncreated_project: UncreatedGitHubDeploymentProject) -> GitHubDeploymentProjectCreated;
+
+pub(super) type CreateGithubPullRequestProject =
+    fn(uncreated_project: UncreatedGitHubPullRequestProject) -> GitHubPullRequestProjectCreated;
 
 pub(super) type CreateHerokuProject =
     fn(uncreated_project: UncreatedHerokuReleaseProject) -> HerokuReleaseProjectCreated;

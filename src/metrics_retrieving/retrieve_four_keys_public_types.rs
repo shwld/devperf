@@ -55,7 +55,7 @@ pub enum FirstCommitOrRepositoryInfo {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentMetricItem {
+pub struct DeploymentPerformanceItem {
     pub info: DeploymentInfo,
     pub head_commit: DeploymentCommitItem,
     pub first_commit: FirstCommitOrRepositoryInfo,
@@ -65,15 +65,15 @@ pub struct DeploymentMetricItem {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentMetricSummary {
+pub struct DeploymentPerformanceSummary {
     pub date: NaiveDate,
     pub deploys: u32,
-    pub items: Vec<DeploymentMetricItem>,
+    pub items: Vec<DeploymentPerformanceItem>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentMetricLeadTimeForChanges {
+pub struct DeploymentPerformanceLeadTimeForChanges {
     pub hours: i64,
     pub minutes: i64,
     pub seconds: i64,
@@ -82,22 +82,28 @@ pub struct DeploymentMetricLeadTimeForChanges {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentMetric {
+pub struct Context {
     pub since: DateTime<chrono::Utc>,
     pub until: chrono::DateTime<chrono::Utc>,
     pub developers: u32,
     pub working_days_per_week: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct DeploymentPerformance {
     pub deploys: u32,
     pub deploys_per_a_day_per_a_developer: f32,
     pub deployment_frequency_per_day: f32,
-    pub lead_time_for_changes: DeploymentMetricLeadTimeForChanges,
+    pub lead_time_for_changes: DeploymentPerformanceLeadTimeForChanges,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct FourKeysResult {
-    pub deployments: Vec<DeploymentMetricSummary>,
-    pub metrics: DeploymentMetric,
+    pub deployments: Vec<DeploymentPerformanceSummary>,
+    pub context: Context,
+    pub performance: DeploymentPerformance,
 }
 
 // Events

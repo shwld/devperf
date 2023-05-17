@@ -7,7 +7,7 @@ use thiserror::Error;
 
 use crate::{
     common_types::{
-        developer_count::ValidatedDeveloperCount,
+        deploy_branch_name::ValidatedDeployBranchName, developer_count::ValidatedDeveloperCount,
         github_deployment_environment::ValidatedGitHubDeploymentEnvironment,
         github_owner_repo::ValidatedGitHubOwnerRepo,
         github_personal_token::ValidatedGitHubPersonalToken,
@@ -29,6 +29,14 @@ pub struct UncreatedGitHubDeploymentProject {
     pub developer_count: ValidatedDeveloperCount,
     pub working_days_per_week: ValidatedWorkingDaysPerWeek,
 }
+pub struct UncreatedGitHubPullRequestProject {
+    pub project_name: String,
+    pub github_personal_token: ValidatedGitHubPersonalToken,
+    pub github_owner_repo: ValidatedGitHubOwnerRepo,
+    pub github_deploy_branch_name: ValidatedDeployBranchName,
+    pub developer_count: ValidatedDeveloperCount,
+    pub working_days_per_week: ValidatedWorkingDaysPerWeek,
+}
 pub struct UncreatedHerokuReleaseProject {
     pub project_name: String,
     pub github_personal_token: ValidatedGitHubPersonalToken,
@@ -40,6 +48,7 @@ pub struct UncreatedHerokuReleaseProject {
 }
 pub enum UncreatedProject {
     GitHubDeployment(UncreatedGitHubDeploymentProject),
+    GitHubPullRequest(UncreatedGitHubPullRequestProject),
     HerokuRelease(UncreatedHerokuReleaseProject),
 }
 
@@ -51,6 +60,16 @@ pub struct GitHubDeploymentProjectCreated {
     pub github_personal_token: ValidatedGitHubPersonalToken,
     pub github_owner_repo: ValidatedGitHubOwnerRepo,
     pub github_deployment_environment: ValidatedGitHubDeploymentEnvironment,
+    pub developer_count: ValidatedDeveloperCount,
+    pub working_days_per_week: ValidatedWorkingDaysPerWeek,
+}
+
+#[derive(Clone)]
+pub struct GitHubPullRequestProjectCreated {
+    pub project_name: String,
+    pub github_personal_token: ValidatedGitHubPersonalToken,
+    pub github_owner_repo: ValidatedGitHubOwnerRepo,
+    pub github_deploy_branch_name: ValidatedDeployBranchName,
     pub developer_count: ValidatedDeveloperCount,
     pub working_days_per_week: ValidatedWorkingDaysPerWeek,
 }
@@ -69,6 +88,7 @@ pub struct HerokuReleaseProjectCreated {
 #[derive(Clone)]
 pub enum ProjectCreated {
     GitHubDeployment(GitHubDeploymentProjectCreated),
+    GitHubPullRequest(GitHubPullRequestProjectCreated),
     HerokuRelease(HerokuReleaseProjectCreated),
 }
 

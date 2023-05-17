@@ -4,7 +4,8 @@ use crate::dependencies::project_config_io::writer::interface::ProjectConfigIOWr
 
 use super::{
     create_project_internal_types::{
-        CreateEvents, CreateGithubProject, CreateHerokuProject, CreateProjectStep,
+        CreateEvents, CreateGithubDeploymentProject, CreateGithubPullRequestProject,
+        CreateHerokuProject, CreateProjectStep,
     },
     create_project_public_types::*,
     dto::ProjectConfigDto,
@@ -13,13 +14,25 @@ use super::{
 // ---------------------------
 // create step
 // ---------------------------
-const create_github_project: CreateGithubProject =
+const create_github_deployment_project: CreateGithubDeploymentProject =
     |uncreated_project: UncreatedGitHubDeploymentProject| -> GitHubDeploymentProjectCreated {
         GitHubDeploymentProjectCreated {
             project_name: uncreated_project.project_name,
             github_personal_token: uncreated_project.github_personal_token,
             github_owner_repo: uncreated_project.github_owner_repo,
             github_deployment_environment: uncreated_project.github_deployment_environment,
+            developer_count: uncreated_project.developer_count,
+            working_days_per_week: uncreated_project.working_days_per_week,
+        }
+    };
+
+const create_github_pull_request_project: CreateGithubPullRequestProject =
+    |uncreated_project: UncreatedGitHubPullRequestProject| -> GitHubPullRequestProjectCreated {
+        GitHubPullRequestProjectCreated {
+            project_name: uncreated_project.project_name,
+            github_personal_token: uncreated_project.github_personal_token,
+            github_owner_repo: uncreated_project.github_owner_repo,
+            github_deploy_branch_name: uncreated_project.github_deploy_branch_name,
             developer_count: uncreated_project.developer_count,
             working_days_per_week: uncreated_project.working_days_per_week,
         }
@@ -49,8 +62,12 @@ impl<T: ProjectConfigIOWriter + Sync + Send> CreateProjectStep for CreateProject
     ) -> Result<CreateProjectEvent, CreateGithubDeploymentProjectError> {
         let created_project = match uncreated_project {
             UncreatedProject::GitHubDeployment(uncreated_project) => {
-                let project = create_github_project(uncreated_project);
+                let project = create_github_deployment_project(uncreated_project);
                 ProjectCreated::GitHubDeployment(project)
+            }
+            UncreatedProject::GitHubPullRequest(uncreated_project) => {
+                let project = create_github_pull_request_project(uncreated_project);
+                ProjectCreated::GitHubPullRequest(project)
             }
             UncreatedProject::HerokuRelease(uncreated_project) => {
                 let project = create_heroku_project(uncreated_project);
