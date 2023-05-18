@@ -12,7 +12,7 @@ pub struct ProjectConfigIOWriterWithSettingsToml;
 #[async_trait]
 impl ProjectConfigIOWriter for ProjectConfigIOWriterWithSettingsToml {
     async fn write(&self, data: WriteConfigData) -> Result<(), ProjectConfigIOWriterError> {
-        let config = confy::load::<Config>("devops-metrics-tools", None);
+        let mut config = confy::load::<Config>("devops-metrics-tools", None);
         let mut config = match config {
             Ok(c) => c,
             Err(_e) => Config {
@@ -39,10 +39,10 @@ impl ProjectConfigIOWriter for ProjectConfigIOWriterWithSettingsToml {
             deployment_source: data.deployment_source,
         };
 
-        config
+        *config
             .projects
             .entry(data.project_name)
-            .or_insert(project_config);
+            .or_insert(project_config) = project_config.clone();
 
         confy::store("devops-metrics-tools", None, config)
             .map_err(|e| anyhow!(e))
