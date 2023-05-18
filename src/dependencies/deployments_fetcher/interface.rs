@@ -20,14 +20,9 @@ pub struct CommitItem {
 }
 
 #[derive(Debug, Clone)]
-pub struct RepositoryInfo {
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone)]
-pub enum CommitOrRepositoryInfo {
-    Commit(CommitItem),
-    RepositoryInfo(RepositoryInfo),
+pub enum BaseCommitShaOrRepositoryInfo {
+    BaseCommitSha(String),
+    RepositoryCreatedAt(DateTime<Utc>),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -50,7 +45,7 @@ pub enum DeploymentInfo {
 pub struct DeploymentItem {
     pub info: DeploymentInfo,
     pub head_commit: CommitItem,
-    pub base: CommitOrRepositoryInfo,
+    pub base: BaseCommitShaOrRepositoryInfo,
     pub creator_login: String,
     pub deployed_at: DateTime<Utc>,
 }

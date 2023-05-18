@@ -1,6 +1,6 @@
 use super::interface::{
-    CommitItem, CommitOrRepositoryInfo, DeploymentInfo, DeploymentItem, DeploymentsFetcher,
-    DeploymentsFetcherError, DeploymentsFetcherParams, RepositoryInfo,
+    BaseCommitShaOrRepositoryInfo, CommitItem, DeploymentInfo, DeploymentItem, DeploymentsFetcher,
+    DeploymentsFetcherError, DeploymentsFetcherParams,
 };
 use crate::{
     common_types::{
@@ -170,7 +170,7 @@ pub struct DeploymentsCreatorGraphQLResponse {
 #[allow(clippy::large_enum_variant)] // most are HerokuRelease
 pub enum DeploymentNodeGraphQLResponseOrRepositoryInfo {
     DeploymentsDeploymentsNodeGraphQLResponse(DeploymentsDeploymentsNodeGraphQLResponse),
-    RepositoryInfo(RepositoryInfo),
+    RepositoryCreatedAt(DateTime<Utc>),
 }
 
 fn get_client(
@@ -231,9 +231,7 @@ async fn fetch_deployments(
                     .map_err(DeploymentsFetcherError::GetRepositoryCreatedAtError)?;
             log::debug!("repo_created_at: {:#?}", repo_created_at);
             deployment_nodes.push(
-                DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryInfo(RepositoryInfo {
-                    created_at: repo_created_at,
-                }),
+                DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryCreatedAt(repo_created_at),
             );
         }
     }
@@ -275,32 +273,26 @@ fn convert_to_items(
     let mut sorted: NonEmptyVec<DeploymentNodeGraphQLResponseOrRepositoryInfo> = deployment_nodes;
     sorted.sort_by_key(|a| match a {
         DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse(deployment) => deployment.created_at,
-        DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryInfo(info) => info.created_at,
+        DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryCreatedAt(created_at) => *created_at,
     });
     let (first_item, rest) = sorted.get();
 
     // TODO: 無理やりすぎる
     let rest = rest.iter().flat_map(|x| match x {
         DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse(deployment) => Some(deployment.clone()),
-        DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryInfo(_info) => None,
+        DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryCreatedAt(_) => None,
     }).collect::<Vec<DeploymentsDeploymentsNodeGraphQLResponse>>();
 
-    let first_commit: CommitOrRepositoryInfo = match first_item {
-        DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse(item) => CommitOrRepositoryInfo::Commit(CommitItem {
-            sha: item.id.clone(),
-            message: item.commit.message.clone(),
-            resource_path: item.commit.commit_resource_path.clone(),
-            committed_at: item.commit.committed_date,
-            creator_login: item.creator.login,
-        }),
-        DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryInfo(info) => CommitOrRepositoryInfo::RepositoryInfo(info),
+    let first_commit: BaseCommitShaOrRepositoryInfo = match first_item {
+        DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse(item) => BaseCommitShaOrRepositoryInfo::BaseCommitSha(item.commit.sha.clone()),
+        DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryCreatedAt(created_at) => BaseCommitShaOrRepositoryInfo::RepositoryCreatedAt(created_at),
     };
 
     let deployment_items = rest
         .iter()
         .scan(
             first_commit,
-            |previous: &mut CommitOrRepositoryInfo,
+            |previous: &mut BaseCommitShaOrRepositoryInfo,
              deployment: &DeploymentsDeploymentsNodeGraphQLResponse| {
                 let status = find_status(deployment);
                 let commit_item = CommitItem {
@@ -319,7 +311,7 @@ fn convert_to_items(
                     creator_login: deployment.clone().creator.login,
                     deployed_at: status.map_or(deployment.created_at, |x| x.created_at),
                 };
-                *previous = CommitOrRepositoryInfo::Commit(commit_item);
+                *previous = BaseCommitShaOrRepositoryInfo::BaseCommitSha(commit_item.sha);
                 Some(deployment_item)
             },
         )

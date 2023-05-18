@@ -14,8 +14,8 @@ use super::{
         CollectToItems, GetClient, GitHubMergedPullsFetcher, MergedPullsPullsNode,
     },
     interface::{
-        CommitItem, CommitOrRepositoryInfo, DeploymentInfo, DeploymentItem, DeploymentsFetcher,
-        DeploymentsFetcherError, DeploymentsFetcherParams,
+        BaseCommitShaOrRepositoryInfo, CommitItem, DeploymentInfo, DeploymentItem,
+        DeploymentsFetcher, DeploymentsFetcherError, DeploymentsFetcherParams,
     },
 };
 
@@ -49,23 +49,7 @@ fn merged_pulls_query(owner_repo: ValidatedGitHubOwnerRepo, after: Option<String
                       }}
                     }}
                   }}
-                  first_commit: commits(first: 1) {{
-                    nodes {{
-                      id
-                      commit {{
-                        id
-                        sha: oid
-                        message
-                        resource_path: resourcePath
-                        committed_date: committedDate
-                        author {{
-                          user {{
-                            login
-                          }}
-                        }}
-                      }}
-                    }}
-                  }}
+                  base_commit_sha: baseRefOid
                 }}
                 page_info: pageInfo {{
                   end_cursor: endCursor
@@ -179,34 +163,12 @@ const collect_to_items: CollectToItems = |items: Vec<MergedPullsPullsNode>| -> V
                 .ok_or(DeploymentsFetcherError::InvalidResponse(
                     "merge commit is empty".to_string(),
                 ));
-            let base_commit = item
-                .first_commit
-                .nodes
-                .into_iter()
-                .next()
-                .map(|node| CommitItem {
-                    sha: node.commit.sha,
-                    message: node.commit.message,
-                    resource_path: node.commit.resource_path,
-                    committed_at: node.commit.committed_date,
-                    creator_login: node
-                        .commit
-                        .author
-                        .and_then(|x| x.user)
-                        .map(|x| x.login)
-                        .unwrap_or_else(|| "".to_string()),
-                })
-                .ok_or(DeploymentsFetcherError::InvalidResponse(
-                    "first commits is empty".to_string(),
-                ));
             let deployed_at = item
                 .merged_at
                 .ok_or(DeploymentsFetcherError::InvalidResponse(
                     "merged_at is empty".to_string(),
                 ));
-            if let (Ok(head_commit), Ok(base_commit), Ok(deployed_at)) =
-                (head_commit, base_commit, deployed_at)
-            {
+            if let (Ok(head_commit), Ok(deployed_at)) = (head_commit, deployed_at) {
                 Ok(DeploymentItem {
                     info: DeploymentInfo::GithubMergedPullRequest {
                         id: item.id,
@@ -214,7 +176,7 @@ const collect_to_items: CollectToItems = |items: Vec<MergedPullsPullsNode>| -> V
                         title: item.title,
                     },
                     head_commit,
-                    base: CommitOrRepositoryInfo::Commit(base_commit),
+                    base: BaseCommitShaOrRepositoryInfo::BaseCommitSha(item.base_commit_sha),
                     creator_login: item
                         .merged_by
                         .map(|x| x.login)

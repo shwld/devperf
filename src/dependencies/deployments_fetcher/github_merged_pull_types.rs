@@ -54,7 +54,7 @@ pub struct MergedPullsPullsNode {
     pub merged_by: Option<MergedPullsUser>,
     pub merged_at: Option<DateTime<Utc>>,
     pub merge_commit: Option<MergedPullsCommit>,
-    pub first_commit: MergedPullsCommits,
+    pub base_commit_sha: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

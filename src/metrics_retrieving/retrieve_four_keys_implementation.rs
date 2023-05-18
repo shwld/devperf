@@ -7,7 +7,8 @@ use itertools::Itertools;
 use crate::{
     dependencies::{
         deployments_fetcher::interface::{
-            CommitOrRepositoryInfo, DeploymentItem, DeploymentsFetcher, DeploymentsFetcherParams,
+            BaseCommitShaOrRepositoryInfo, DeploymentItem, DeploymentsFetcher,
+            DeploymentsFetcherParams,
         },
         first_commit_getter::interface::{FirstCommitGetter, ValidatedFirstCommitGetterParams},
     },
@@ -75,9 +76,9 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
     ) -> Result<DeploymentItemWithFirstOperation, RetrieveFourKeysEventError> {
         let first_operation: Option<FirstCommitOrRepositoryInfo> =
             match deployment_item.clone().base {
-                CommitOrRepositoryInfo::Commit(first_commit) => {
+                BaseCommitShaOrRepositoryInfo::BaseCommitSha(first_commit_sha) => {
                     let params = ValidatedFirstCommitGetterParams::new(
-                        first_commit.sha.clone(),
+                        first_commit_sha.clone(),
                         deployment_item.clone().head_commit.sha,
                     );
                     if let Ok(params) = params {
@@ -95,10 +96,8 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
                         None
                     }
                 }
-                CommitOrRepositoryInfo::RepositoryInfo(info) => Some(
-                    FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo {
-                        created_at: info.created_at,
-                    }),
+                BaseCommitShaOrRepositoryInfo::RepositoryCreatedAt(created_at) => Some(
+                    FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo { created_at }),
                 ),
             };
         Ok(DeploymentItemWithFirstOperation {

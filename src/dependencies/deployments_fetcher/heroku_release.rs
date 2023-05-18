@@ -21,8 +21,8 @@ use crate::{
 };
 
 use super::interface::{
-    CommitOrRepositoryInfo, DeploymentsFetcher, DeploymentsFetcherError, DeploymentsFetcherParams,
-    RepositoryInfo,
+    BaseCommitShaOrRepositoryInfo, DeploymentsFetcher, DeploymentsFetcherError,
+    DeploymentsFetcherParams,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -278,24 +278,12 @@ fn convert_to_items(
         })
         .collect::<Vec<HerokuRelease>>();
 
-    let first_commit: CommitOrRepositoryInfo = match first_item {
+    let first_commit: BaseCommitShaOrRepositoryInfo = match first_item {
         HerokuReleaseOrRepositoryInfo::HerokuRelease(item) => {
-            CommitOrRepositoryInfo::Commit(CommitItem {
-                sha: item.release.id.clone(),
-                message: item.commit.commit.message.clone(),
-                resource_path: item.commit.html_url.clone(),
-                committed_at: item.commit.commit.author.and_then(|x| x.date).ok_or(
-                    DeploymentsFetcherError::InvalidResponse("author is not found".to_string()),
-                )?,
-                creator_login: item.commit.author.map(|x| x.login).ok_or(
-                    DeploymentsFetcherError::InvalidResponse("login is not found".to_string()),
-                )?,
-            })
+            BaseCommitShaOrRepositoryInfo::BaseCommitSha(item.commit.sha)
         }
         HerokuReleaseOrRepositoryInfo::RepositoryInfo(info) => {
-            CommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo {
-                created_at: info.created_at,
-            })
+            BaseCommitShaOrRepositoryInfo::RepositoryCreatedAt(info.created_at)
         }
     };
 
@@ -303,7 +291,7 @@ fn convert_to_items(
         .iter()
         .scan(
             first_commit,
-            |previous: &mut CommitOrRepositoryInfo, release: &HerokuRelease| {
+            |previous: &mut BaseCommitShaOrRepositoryInfo, release: &HerokuRelease| {
                 let author_date = release.clone().commit.commit.author.and_then(|x| x.date);
                 let author_login = release.clone().commit.author.map(|x| x.login);
                 if author_date.is_none() || author_login.is_none() {
@@ -332,7 +320,8 @@ fn convert_to_items(
                     creator_login: release.clone().commit.author.map(|x| x.login).unwrap(),
                     deployed_at: release.release.created_at,
                 };
-                *previous = CommitOrRepositoryInfo::Commit(commit_item);
+                *previous =
+                    BaseCommitShaOrRepositoryInfo::BaseCommitSha(release.clone().commit.sha);
                 Some(deployment_item)
             },
         )
