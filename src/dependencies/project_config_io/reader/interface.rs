@@ -1,7 +1,18 @@
 use async_trait::async_trait;
 use thiserror::Error;
 
-use crate::project_creating::dto::ProjectConfigDto;
+use crate::{
+    common_types::{
+        github_personal_token::ValidatedGitHubPersonalToken,
+        heroku_auth_token::ValidatedHerokuAuthToken,
+    },
+    project_creating::dto::ProjectConfigDto,
+};
+
+pub struct GlobalConfig {
+    pub github_personal_token: ValidatedGitHubPersonalToken,
+    pub heroku_auth_token: Option<ValidatedHerokuAuthToken>,
+}
 
 #[derive(Debug, Error)]
 pub enum ProjectConfigIOReaderError {
@@ -19,4 +30,5 @@ pub trait ProjectConfigIOReader {
         &self,
         project_name: String,
     ) -> Result<ProjectConfigDto, ProjectConfigIOReaderError>;
+    async fn read_globals(&self) -> Result<GlobalConfig, ProjectConfigIOReaderError>;
 }

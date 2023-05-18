@@ -1,10 +1,12 @@
 use anyhow::anyhow;
 
 use crate::common_types::deployment_source::DeploymentSource;
+use crate::common_types::github_personal_token::ValidatedGitHubPersonalToken;
+use crate::common_types::heroku_auth_token::ValidatedHerokuAuthToken;
 use crate::project_creating::dto::ProjectConfigDto;
 
 use super::super::settings_toml::{Config, ProjectName};
-use super::interface::{ProjectConfigIOReader, ProjectConfigIOReaderError};
+use super::interface::{GlobalConfig, ProjectConfigIOReader, ProjectConfigIOReaderError};
 use async_trait::async_trait;
 
 pub struct ProjectConfigIOReaderWithSettingsToml;
@@ -82,6 +84,29 @@ impl ProjectConfigIOReader for ProjectConfigIOReaderWithSettingsToml {
                         deployment_source: DeploymentSource::HerokuRelease.value(),
                     }),
                 }
+            })
+    }
+
+    async fn read_globals(&self) -> Result<GlobalConfig, ProjectConfigIOReaderError> {
+        confy::load::<Config>("devops-metrics-tools", None)
+            .map_err(|e| anyhow!(e))
+            .map_err(ProjectConfigIOReaderError::ConfigFileReadError)
+            .and_then(|c| {
+                let heroku_auth_token = match c.heroku_auth_token {
+                    Some(token) => {
+                        Some(ValidatedHerokuAuthToken::new(Some(token)).map_err(|e| {
+                            ProjectConfigIOReaderError::DataSourceIsInvalid(e.to_string())
+                        })?)
+                    }
+                    None => None,
+                };
+                Ok(GlobalConfig {
+                    github_personal_token: ValidatedGitHubPersonalToken::new(Some(
+                        c.github_personal_token,
+                    ))
+                    .map_err(|e| ProjectConfigIOReaderError::DataSourceIsInvalid(e.to_string()))?,
+                    heroku_auth_token,
+                })
             })
     }
 }
