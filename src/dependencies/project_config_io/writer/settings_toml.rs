@@ -17,6 +17,7 @@ impl ProjectConfigIOWriter for ProjectConfigIOWriterWithSettingsToml {
             Ok(c) => c,
             Err(_e) => Config {
                 github_personal_token: data.github_personal_token.clone(),
+                heroku_auth_token: data.heroku_auth_token.clone(),
                 projects: HashMap::new(),
             },
         };
@@ -38,10 +39,10 @@ impl ProjectConfigIOWriter for ProjectConfigIOWriterWithSettingsToml {
             deployment_source: data.deployment_source,
         };
 
-        config
+        *config
             .projects
             .entry(data.project_name)
-            .or_insert(project_config);
+            .or_insert(project_config) = project_config.clone();
 
         confy::store("devops-metrics-tools", None, config)
             .map_err(|e| anyhow!(e))

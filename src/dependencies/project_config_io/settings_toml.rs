@@ -21,6 +21,7 @@ pub struct ProjectConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub github_personal_token: String,
+    pub heroku_auth_token: Option<String>,
     pub projects: HashMap<ProjectName, ProjectConfig>,
 }
 
@@ -29,6 +30,7 @@ impl ::std::default::Default for Config {
     fn default() -> Self {
         Self {
             github_personal_token: "".to_string(),
+            heroku_auth_token: None,
             projects: HashMap::new(),
         }
     }

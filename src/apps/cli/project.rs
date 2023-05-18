@@ -9,5 +9,5 @@ pub enum ProjectAction {
 }
 
 pub async fn add() -> Result<()> {
-    initializer::init::perform().await
+    initializer::add_project::perform().await
 }

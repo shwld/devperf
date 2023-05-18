@@ -1,3 +1,4 @@
+pub mod add_project;
 pub mod github_deployment;
 pub mod github_pull_request;
 pub mod heroku_release;
