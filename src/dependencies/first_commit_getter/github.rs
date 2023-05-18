@@ -113,9 +113,11 @@ async fn fetch_first_commit_from_compare(
         .ok_or(FirstCommitGetterError::CannotGotFromJson(
             "date".to_string(),
         ))?;
-    let creator_login = first_commit.clone().author.map(|x| x.login).ok_or(
-        FirstCommitGetterError::CannotGotFromJson("login".to_string()),
-    )?;
+    let creator_login = first_commit
+        .clone()
+        .author
+        .map(|x| x.login)
+        .unwrap_or("".to_string());
     Ok(FirstCommitItem {
         sha: first_commit.clone().sha,
         message: first_commit.clone().commit.message,

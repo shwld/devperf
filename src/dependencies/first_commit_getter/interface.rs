@@ -54,7 +54,7 @@ pub enum FirstCommitGetterError {
     InvalidAPIResponse(String),
     #[error("Cannot parse response json")]
     CannotParseResponse(#[source] anyhow::Error),
-    #[error("Cannot got from json")]
+    #[error("Cannot got from json: {0}")]
     CannotGotFromJson(String),
 }
 
