@@ -73,7 +73,10 @@ impl ProjectConfigIOReader for ProjectConfigIOReaderWithSettingsToml {
                         github_deployment_environment: None,
                         github_deployment_branch_name: None,
                         heroku_app_name: project_config.clone().heroku_app_name,
-                        heroku_auth_token: project_config.clone().heroku_auth_token,
+                        heroku_auth_token: match project_config.clone().heroku_auth_token {
+                            Some(token) => Some(token),
+                            None => c.heroku_auth_token.clone(),
+                        },
                         github_owner: project_config.clone().github_owner,
                         github_repo: project_config.clone().github_repo,
                         deployment_source: DeploymentSource::HerokuRelease.value(),

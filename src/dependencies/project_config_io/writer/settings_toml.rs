@@ -17,6 +17,7 @@ impl ProjectConfigIOWriter for ProjectConfigIOWriterWithSettingsToml {
             Ok(c) => c,
             Err(_e) => Config {
                 github_personal_token: data.github_personal_token.clone(),
+                heroku_auth_token: data.heroku_auth_token.clone(),
                 projects: HashMap::new(),
             },
         };
