@@ -2,9 +2,9 @@ use async_trait::async_trait;
 use chrono::{DateTime, NaiveDate, Utc};
 
 use super::retrieve_four_keys::{
-    DeploymentPerformanceItem, DeploymentPerformanceLeadTimeForChanges,
-    FirstCommitOrRepositoryInfo, FourKeysResult, RetrieveFourKeysEvent, RetrieveFourKeysEventError,
-    RetrieveFourKeysExecutionContext,
+    DeploymentFrequencyLabel, DeploymentFrequencyPerformance2022, DeploymentPerformanceItem,
+    DeploymentPerformanceLeadTimeForChanges, FirstCommitOrRepositoryInfo, FourKeysResult,
+    RetrieveFourKeysEvent, RetrieveFourKeysEventError, RetrieveFourKeysExecutionContext,
 };
 use crate::dependencies::deployments_fetcher::interface::DeploymentItem;
 
@@ -76,6 +76,20 @@ pub(super) type CalculateDeploymentFrequencyPerDay = fn(
     until: DateTime<Utc>,
     working_days_per_week: f32,
 ) -> f32;
+
+pub(super) type CalculateDeploymentPerformance2022 = fn(
+    total_deployments: u32,
+    since: DateTime<Utc>,
+    until: DateTime<Utc>,
+    working_days_per_week: f32,
+) -> DeploymentFrequencyPerformance2022;
+
+pub(super) type GetDeploymentFrequencyLabel = fn(
+    total_deployments: u32,
+    since: DateTime<Utc>,
+    until: DateTime<Utc>,
+    working_days_per_week: f32,
+) -> DeploymentFrequencyLabel;
 
 pub(super) type CalculateLeadTime = fn(Vec<DailyItems>) -> DeploymentPerformanceLeadTimeForChanges;
 

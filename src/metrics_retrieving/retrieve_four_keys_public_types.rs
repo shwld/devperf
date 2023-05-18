@@ -92,10 +92,38 @@ pub struct Context {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentPerformance {
-    pub deploys: u32,
+pub enum DeploymentFrequencyPerformance2022 {
+    Elite,
+    High,
+    Medium,
+    Low,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum DeploymentFrequencyLabel {
+    Daily,
+    Weekly,
+    Monthly,
+    Yearly,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct DeploymentFrequency {
+    pub performance: DeploymentFrequencyPerformance2022,
+    pub label: DeploymentFrequencyLabel,
+    pub all_deploys: u32,
+    pub weekly_deploy_median: u32,
+    pub deployment_week_percentile: f32,
     pub deploys_per_a_day_per_a_developer: f32,
     pub deployment_frequency_per_day: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct DeploymentPerformance {
+    pub deployment_frequency: DeploymentFrequency,
     pub lead_time_for_changes: DeploymentPerformanceLeadTimeForChanges,
 }
 
