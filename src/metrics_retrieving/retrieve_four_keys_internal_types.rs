@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveDate, Utc};
 
 use super::retrieve_four_keys::{
-    DeploymentFrequencyLabel, DeploymentFrequencyPerformance2022, DeploymentPerformanceItem,
+    Context, DeploymentFrequency, DeploymentFrequencyLabel,
+    DeploymentFrequencyPerformanceSurvey2022, DeploymentPerformanceItem,
     DeploymentPerformanceLeadTimeForChanges, FirstCommitOrRepositoryInfo, FourKeysResult,
     RetrieveFourKeysEvent, RetrieveFourKeysEventError, RetrieveFourKeysExecutionContext,
 };
@@ -60,38 +63,27 @@ pub(super) type ExtractItemsInPeriod = fn(
 ) -> Vec<DeploymentPerformanceItem>;
 
 #[derive(Debug, Clone)]
-pub(super) struct DailyItems {
-    pub(super) date: NaiveDate,
-    pub(super) items: Vec<DeploymentPerformanceItem>,
-}
-
-pub(super) type GroupByDate = fn(Vec<DeploymentPerformanceItem>) -> Vec<DailyItems>;
-
-pub(super) type CalculateTotalDeployments = fn(Vec<DailyItems>) -> u32;
+pub(super) struct DailyItems(pub(super) HashMap<NaiveDate, Vec<DeploymentPerformanceItem>>);
+#[derive(Debug, Clone)]
+pub(super) struct WeeklyItems(pub(super) HashMap<NaiveDate, Vec<DeploymentPerformanceItem>>);
+#[derive(Debug, Clone)]
+pub(super) struct MonthlyItems(pub(super) HashMap<u32, Vec<DeploymentPerformanceItem>>);
 
 // TODO: Make the mold more explicit.
-pub(super) type CalculateDeploymentFrequencyPerDay = fn(
-    total_deployments: u32,
-    since: DateTime<Utc>,
-    until: DateTime<Utc>,
-    working_days_per_week: f32,
-) -> f32;
+pub(super) type CalculateDeploymentFrequency =
+    fn(Vec<DeploymentPerformanceItem>, Context) -> DeploymentFrequency;
 
-pub(super) type CalculateDeploymentPerformance2022 = fn(
-    total_deployments: u32,
-    since: DateTime<Utc>,
-    until: DateTime<Utc>,
-    working_days_per_week: f32,
-) -> DeploymentFrequencyPerformance2022;
+pub(super) type GetDeploymentPerformance2022 = fn(
+    DeploymentFrequency,
+    DeploymentFrequencyLabel,
+    Context,
+) -> DeploymentFrequencyPerformanceSurvey2022;
 
-pub(super) type GetDeploymentFrequencyLabel = fn(
-    total_deployments: u32,
-    since: DateTime<Utc>,
-    until: DateTime<Utc>,
-    working_days_per_week: f32,
-) -> DeploymentFrequencyLabel;
+pub(super) type GetDeploymentPerformanceLabel =
+    fn(DeploymentFrequency, Context) -> DeploymentFrequencyLabel;
 
-pub(super) type CalculateLeadTime = fn(Vec<DailyItems>) -> DeploymentPerformanceLeadTimeForChanges;
+pub(super) type CalculateLeadTime =
+    fn(Vec<DeploymentPerformanceItem>) -> DeploymentPerformanceLeadTimeForChanges;
 
 // ---------------------------
 // RetrieveFourKeysStep

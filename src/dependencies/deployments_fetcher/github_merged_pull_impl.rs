@@ -222,9 +222,9 @@ const collect_to_items: CollectToItems = |items: Vec<MergedPullsPullsNode>| -> V
                     deployed_at,
                 })
             } else {
-                return Err(DeploymentsFetcherError::InvalidResponse(
+                Err(DeploymentsFetcherError::InvalidResponse(
                     "Invalid response".to_string(),
-                ));
+                ))
             }
         })
         .filter_map(Result::ok)

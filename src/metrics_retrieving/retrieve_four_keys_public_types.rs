@@ -92,7 +92,7 @@ pub struct Context {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub enum DeploymentFrequencyPerformance2022 {
+pub enum DeploymentFrequencyPerformanceSurvey2022 {
     Elite,
     High,
     Medium,
@@ -111,19 +111,26 @@ pub enum DeploymentFrequencyLabel {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct DeploymentFrequency {
-    pub performance: DeploymentFrequencyPerformance2022,
-    pub label: DeploymentFrequencyLabel,
-    pub all_deploys: u32,
-    pub weekly_deploy_median: u32,
-    pub deployment_week_percentile: f32,
-    pub deploys_per_a_day_per_a_developer: f32,
+    pub total_deployments: u32,
+    pub weekly_deploy_median: f64,
+    pub deployment_week_percentile: f64,
+    pub deployment_month_percentile: f64,
     pub deployment_frequency_per_day: f32,
+    pub deploys_per_a_day_per_a_developer: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct DeploymentFrequencyPerformance {
+    pub performance: DeploymentFrequencyPerformanceSurvey2022,
+    pub label: DeploymentFrequencyLabel,
+    pub value: DeploymentFrequency,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct DeploymentPerformance {
-    pub deployment_frequency: DeploymentFrequency,
+    pub deployment_frequency: DeploymentFrequencyPerformance,
     pub lead_time_for_changes: DeploymentPerformanceLeadTimeForChanges,
 }
 
