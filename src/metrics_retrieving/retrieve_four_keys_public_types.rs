@@ -113,8 +113,8 @@ pub enum DeploymentFrequencyLabel {
 pub struct DeploymentFrequency {
     pub total_deployments: u32,
     pub weekly_deploy_median: f64,
-    pub deployment_week_percentile: f64,
-    pub deployment_month_percentile: f64,
+    pub deployment_week_median: f64,
+    pub deployment_month_median: f64,
     pub deployment_frequency_per_day: f32,
     pub deploys_per_a_day_per_a_developer: f32,
 }
@@ -154,7 +154,7 @@ pub enum RetrieveFourKeysEvent {
 pub enum RetrieveFourKeysEventError {
     #[error("Cannot fetch")]
     FetchDeploymentsError(#[from] DeploymentsFetcherError),
-    #[error("GetFirstCommitFromCompareError")]
+    #[error("GetFirstCommitFromCompareError: {0}")]
     GetFirstCommitFromCompareError(#[from] FirstCommitGetterError),
 }
 

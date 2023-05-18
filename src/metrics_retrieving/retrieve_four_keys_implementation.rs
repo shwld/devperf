@@ -1,6 +1,6 @@
 use async_std::stream::StreamExt;
 use async_trait::async_trait;
-use chrono::{DateTime, Datelike, NaiveDate, Utc, Weekday};
+use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc, Weekday};
 use futures::future::try_join_all;
 use itertools::Itertools;
 
@@ -173,10 +173,20 @@ const to_metric_item: ToMetricItem =
 // Calculation step
 // ---------------------------
 impl DailyItems {
-    fn new(items: Vec<DeploymentPerformanceItem>) -> Self {
-        let items = items
+    fn new(
+        items: Vec<DeploymentPerformanceItem>,
+        since: DateTime<Utc>,
+        until: DateTime<Utc>,
+    ) -> Self {
+        let mut items = items
             .into_iter()
             .into_group_map_by(|it| it.deployed_at.date_naive());
+
+        let mut dt = since.date_naive();
+        while dt <= until.date_naive() {
+            items.entry(dt).or_insert_with(Vec::new);
+            dt += Duration::days(1);
+        }
 
         DailyItems(items)
     }
@@ -185,10 +195,19 @@ impl DailyItems {
     }
 }
 impl WeeklyItems {
-    fn new(items: Vec<DeploymentPerformanceItem>) -> Self {
-        let items = items
+    fn new(
+        items: Vec<DeploymentPerformanceItem>,
+        since: DateTime<Utc>,
+        until: DateTime<Utc>,
+    ) -> Self {
+        let mut items = items
             .into_iter()
             .into_group_map_by(|it| it.deployed_at.date_naive().week(Weekday::Mon).first_day());
+        let mut dt = since.date_naive().week(Weekday::Mon).first_day();
+        while dt <= until.date_naive() {
+            items.entry(dt).or_insert_with(Vec::new);
+            dt += Duration::weeks(1);
+        }
 
         WeeklyItems(items)
     }
@@ -197,10 +216,20 @@ impl WeeklyItems {
     }
 }
 impl MonthlyItems {
-    fn new(items: Vec<DeploymentPerformanceItem>) -> Self {
-        let items = items
+    fn new(
+        items: Vec<DeploymentPerformanceItem>,
+        since: DateTime<Utc>,
+        until: DateTime<Utc>,
+    ) -> Self {
+        let mut items = items
             .into_iter()
             .into_group_map_by(|it| it.deployed_at.date_naive().month());
+
+        let mut dt = since.month();
+        while dt <= until.month() {
+            items.entry(dt).or_insert_with(Vec::new);
+            dt += 1;
+        }
 
         MonthlyItems(items)
     }
@@ -229,27 +258,31 @@ const calculate_deployment_frequency: CalculateDeploymentFrequency =
         let deploys_per_a_day_per_a_developer =
             deployment_frequency_per_day / context.developers as f32;
 
-        let weekly_deployment_counts = WeeklyItems::new(items.clone())
-            .iter()
-            .map(|(_week, items)| items.len() as i64)
-            .collect::<Vec<_>>();
-        let weekly_deployments = WeeklyItems::new(items.clone())
+        let weekly_deployment_counts =
+            WeeklyItems::new(items.clone(), context.since, context.until)
+                .iter()
+                .map(|(_week, items)| items.len() as i64)
+                .collect::<Vec<_>>();
+        let weekly_deployments = WeeklyItems::new(items.clone(), context.since, context.until)
             .iter()
             .map(|(_week, items)| if items.is_empty() { 0 } else { 1 })
             .collect::<Vec<i64>>();
-        let monthly_deployments = MonthlyItems::new(items)
+        let monthly_deployments = MonthlyItems::new(items, context.since, context.until)
             .iter()
             .map(|(_month, items)| if items.is_empty() { 0 } else { 1 })
             .collect::<Vec<i64>>();
+        log::debug!("weekly_deployment_counts: {:?}", weekly_deployment_counts);
+        log::debug!("weekly_deployments: {:?}", weekly_deployments);
+        log::debug!("monthly_deployments: {:?}", monthly_deployments);
         let weekly_deploy_median = median(weekly_deployment_counts);
-        let deployment_week_percentile = median(weekly_deployments);
-        let deployment_month_percentile = median(monthly_deployments);
+        let deployment_week_median = median(weekly_deployments);
+        let deployment_month_median = median(monthly_deployments);
 
         DeploymentFrequency {
             total_deployments,
             weekly_deploy_median,
-            deployment_week_percentile,
-            deployment_month_percentile,
+            deployment_week_median,
+            deployment_month_median,
             deployment_frequency_per_day,
             deploys_per_a_day_per_a_developer,
         }
@@ -272,9 +305,9 @@ const get_deployment_performance_label: GetDeploymentPerformanceLabel =
         let coefficient = context.working_days_per_week as f64 * (3.0 / 5.0);
         if deployment_frequency.weekly_deploy_median > coefficient {
             DeploymentFrequencyLabel::Daily
-        } else if deployment_frequency.deployment_week_percentile >= 1.0 {
+        } else if deployment_frequency.deployment_week_median >= 1.0 {
             DeploymentFrequencyLabel::Weekly
-        } else if deployment_frequency.deployment_month_percentile >= 1.0 {
+        } else if deployment_frequency.deployment_month_median >= 1.0 {
             DeploymentFrequencyLabel::Monthly
         } else {
             DeploymentFrequencyLabel::Yearly
@@ -371,17 +404,20 @@ impl<
             lead_time_for_changes,
         };
 
-        let deployment_frequencies_by_date = DailyItems::new(extracted_items)
-            .iter()
-            .map(|(date, daily_items)| DeploymentPerformanceSummary {
-                date: *date,
-                deploys: daily_items.len() as u32,
-                items: daily_items.to_vec(),
-            })
-            .collect::<Vec<DeploymentPerformanceSummary>>();
+        let deployment_frequencies_by_date =
+            DailyItems::new(extracted_items, context.since, context.until)
+                .iter()
+                .map(|(date, daily_items)| DeploymentPerformanceSummary {
+                    date: *date,
+                    deploys: daily_items.len() as u32,
+                    items: daily_items.to_vec(),
+                })
+                .collect::<Vec<DeploymentPerformanceSummary>>();
+        let mut sorted_deployment_frequencies_by_date = deployment_frequencies_by_date.clone();
+        sorted_deployment_frequencies_by_date.sort_by_key(|item| item.date);
 
         let deployment_frequency = FourKeysResult {
-            deployments: deployment_frequencies_by_date,
+            deployments: sorted_deployment_frequencies_by_date,
             context,
             performance,
         };
