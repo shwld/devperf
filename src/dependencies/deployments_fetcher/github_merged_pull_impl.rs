@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use octocrab::Octocrab;
+use wildmatch::WildMatch;
 
 use crate::{
     common_types::{
@@ -110,7 +111,8 @@ impl GitHubMergedPullsFetcher for GitHubMergedPullsFetcherImpl {
                 .iter()
                 .filter(|it| {
                     let branch_ok = if let Some(base_ref) = &it.base_ref {
-                        base_ref.name == self.deploy_trigger_branch.to_string()
+                        let wild_match = WildMatch::new(&self.deploy_trigger_branch.to_string());
+                        wild_match.matches(&base_ref.name)
                     } else {
                         false
                     };

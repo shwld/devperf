@@ -30,6 +30,7 @@ serde = { version = "1.0.159", features = ["derive"] }
 serde_json = "1.0.95"
 thiserror = "1.0.40"
 tokio = { version = "1.27.0", features = ["full"] }
+wildmatch = "2.1.1"
 
 # The profile that 'cargo dist' will build with
 [profile.dist]
