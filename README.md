@@ -3,7 +3,7 @@
 devops-metrics-tools is a CLI tool developed for obtaining DevOps' Four Keys.
 
 This tool is characterized by the ability to store settings for multiple projects in a configuration file,
-and it can measure based on GitHub's deployment or Heroku's release information.
+and it can measure based on GitHub(deployment/pull request) or Heroku's release information.
 
 ## Features
 
@@ -11,17 +11,28 @@ and it can measure based on GitHub's deployment or Heroku's release information.
 You can store settings for multiple projects in a configuration file. This makes it easy to switch between different projects or environments.
 
 ### Works with GitHub and Heroku
-This tool can fetch and analyze data based on GitHub's deployment or Heroku's release information.
+This tool can fetch and analyze data based on GitHub's deployment, GitHub's pull request or Heroku's release information.
 
 ### Command-Line Interface
 All functionality is accessible through a user-friendly command-line interface.
 
-## TODO: Installation
+## Installation
 
-Provide instructions on how to install the CLI tool here.
+```bash
+brew install shwld/tap/devperf
+```
 
-## TODO: Usage
-Provide a description of how to use the tool, including various commands and options that can be used.
+## Usage
+
+Initialize the configuration file.
+
+```bash
+devperf init
+```
+
+```bash
+devperf four-keys --project hoge
+```
 
 ## TODO: Configuration
 Explain the structure and options of the configuration file in detail. Explain how users can configure multiple projects and set up the tool to use either GitHub or Heroku.
