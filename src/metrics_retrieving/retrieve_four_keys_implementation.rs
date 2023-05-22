@@ -1,10 +1,11 @@
 use async_std::stream::StreamExt;
 use async_trait::async_trait;
-use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc, Weekday};
+use chrono::{Datelike, NaiveDate, Weekday};
 use futures::future::try_join_all;
 use itertools::Itertools;
 
 use crate::{
+    common_types::date_time_range::DateTimeRange,
     dependencies::{
         deployments_fetcher::interface::{
             BaseCommitShaOrRepositoryInfo, DeploymentItem, DeploymentsFetcher,
@@ -51,8 +52,7 @@ impl<F: DeploymentsFetcher + Sync + Send> FetchDeploymentsStep for FetchDeployme
         let deployments = self
             .deployments_fetcher
             .fetch(DeploymentsFetcherParams {
-                since: params.since,
-                until: params.until,
+                timeframe: params.timeframe,
             })
             .await?;
 
@@ -173,19 +173,13 @@ const to_metric_item: ToMetricItem =
 // Calculation step
 // ---------------------------
 impl DailyItems {
-    fn new(
-        items: Vec<DeploymentPerformanceItem>,
-        since: DateTime<Utc>,
-        until: DateTime<Utc>,
-    ) -> Self {
+    fn new(items: Vec<DeploymentPerformanceItem>, timeframe: DateTimeRange) -> Self {
         let mut items = items
             .into_iter()
             .into_group_map_by(|it| it.deployed_at.date_naive());
 
-        let mut dt = since.date_naive();
-        while dt <= until.date_naive() {
-            items.entry(dt).or_insert_with(Vec::new);
-            dt += Duration::days(1);
+        for dt in timeframe.days_iter() {
+            items.entry(dt.date_naive()).or_insert_with(Vec::new);
         }
 
         DailyItems(items)
@@ -195,18 +189,13 @@ impl DailyItems {
     }
 }
 impl WeeklyItems {
-    fn new(
-        items: Vec<DeploymentPerformanceItem>,
-        since: DateTime<Utc>,
-        until: DateTime<Utc>,
-    ) -> Self {
+    fn new(items: Vec<DeploymentPerformanceItem>, timeframe: DateTimeRange) -> Self {
         let mut items = items
             .into_iter()
             .into_group_map_by(|it| it.deployed_at.date_naive().week(Weekday::Mon).first_day());
-        let mut dt = since.date_naive().week(Weekday::Mon).first_day();
-        while dt <= until.date_naive() {
-            items.entry(dt).or_insert_with(Vec::new);
-            dt += Duration::weeks(1);
+
+        for dt in timeframe.weeks_iter() {
+            items.entry(dt.date_naive()).or_insert_with(Vec::new);
         }
 
         WeeklyItems(items)
@@ -216,19 +205,13 @@ impl WeeklyItems {
     }
 }
 impl MonthlyItems {
-    fn new(
-        items: Vec<DeploymentPerformanceItem>,
-        since: DateTime<Utc>,
-        until: DateTime<Utc>,
-    ) -> Self {
+    fn new(items: Vec<DeploymentPerformanceItem>, timeframe: DateTimeRange) -> Self {
         let mut items = items
             .into_iter()
             .into_group_map_by(|it| it.deployed_at.date_naive().month());
 
-        let mut dt = since.month();
-        while dt <= until.month() {
-            items.entry(dt).or_insert_with(Vec::new);
-            dt += 1;
+        for month in timeframe.months_iter() {
+            items.entry(month).or_insert_with(Vec::new);
         }
 
         MonthlyItems(items)
@@ -239,35 +222,30 @@ impl MonthlyItems {
 }
 
 const extract_items_for_period: ExtractItemsInPeriod =
-    |metric_items: Vec<DeploymentPerformanceItem>, since: DateTime<Utc>, until: DateTime<Utc>| {
+    |metric_items: Vec<DeploymentPerformanceItem>, timeframe: DateTimeRange| {
         metric_items
             .into_iter()
-            .filter(|it| it.deployed_at >= since && it.deployed_at <= until)
+            .filter(|it| timeframe.is_include(&it.deployed_at))
             .collect::<Vec<DeploymentPerformanceItem>>()
     };
 
 const calculate_deployment_frequency: CalculateDeploymentFrequency =
     |items: Vec<DeploymentPerformanceItem>, context: Context| {
         let total_deployments = items.len() as u32;
-        let days = context
-            .until
-            .signed_duration_since(context.since)
-            .num_days();
-        let deployment_frequency_per_day =
-            total_deployments as f32 / (days as f32 * (context.working_days_per_week / 7.0));
+        let deployment_frequency_per_day = total_deployments as f32
+            / (context.timeframe.num_days() as f32 * (context.working_days_per_week / 7.0));
         let deploys_per_a_day_per_a_developer =
             deployment_frequency_per_day / context.developers as f32;
 
-        let weekly_deployment_counts =
-            WeeklyItems::new(items.clone(), context.since, context.until)
-                .iter()
-                .map(|(_week, items)| items.len() as i64)
-                .collect::<Vec<_>>();
-        let weekly_deployments = WeeklyItems::new(items.clone(), context.since, context.until)
+        let weekly_deployment_counts = WeeklyItems::new(items.clone(), context.timeframe.clone())
+            .iter()
+            .map(|(_week, items)| items.len() as i64)
+            .collect::<Vec<_>>();
+        let weekly_deployments = WeeklyItems::new(items.clone(), context.timeframe.clone())
             .iter()
             .map(|(_week, items)| if items.is_empty() { 0 } else { 1 })
             .collect::<Vec<i64>>();
-        let monthly_deployments = MonthlyItems::new(items, context.since, context.until)
+        let monthly_deployments = MonthlyItems::new(items, context.timeframe)
             .iter()
             .map(|(_month, items)| if items.is_empty() { 0 } else { 1 })
             .collect::<Vec<i64>>();
@@ -356,8 +334,7 @@ impl<
         context: RetrieveFourKeysExecutionContext,
     ) -> Result<FourKeysResult, RetrieveFourKeysEventError> {
         let context = Context {
-            since: context.since,
-            until: context.until,
+            timeframe: context.timeframe,
             developers: context.project.developer_count,
             working_days_per_week: context.project.working_days_per_week,
         };
@@ -366,8 +343,7 @@ impl<
         };
         let deployments = fetch_deployments_step
             .fetch_deployments(FetchDeploymentsParams {
-                since: context.since,
-                until: context.until,
+                timeframe: context.timeframe.clone(),
             })
             .await?;
         let deployments_with_first_operation = AttachFirstOperationToDeploymentItemStepImpl {
@@ -381,7 +357,7 @@ impl<
             .collect();
         let mut sorted_items = metrics_items;
         sorted_items.sort_by_key(|item| item.deployed_at);
-        let extracted_items = extract_items_for_period(sorted_items, context.since, context.until);
+        let extracted_items = extract_items_for_period(sorted_items, context.timeframe.clone());
 
         let deployment_frequency_value =
             calculate_deployment_frequency(extracted_items.clone(), context.clone());
@@ -405,7 +381,7 @@ impl<
         };
 
         let deployment_frequencies_by_date =
-            DailyItems::new(extracted_items, context.since, context.until)
+            DailyItems::new(extracted_items, context.timeframe.clone())
                 .iter()
                 .map(|(date, daily_items)| DeploymentPerformanceSummary {
                     date: *date,
@@ -413,7 +389,7 @@ impl<
                     items: daily_items.to_vec(),
                 })
                 .collect::<Vec<DeploymentPerformanceSummary>>();
-        let mut sorted_deployment_frequencies_by_date = deployment_frequencies_by_date.clone();
+        let mut sorted_deployment_frequencies_by_date = deployment_frequencies_by_date;
         sorted_deployment_frequencies_by_date.sort_by_key(|item| item.date);
 
         let deployment_frequency = FourKeysResult {

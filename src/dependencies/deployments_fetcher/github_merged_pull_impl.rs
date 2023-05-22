@@ -119,8 +119,7 @@ impl GitHubMergedPullsFetcher for GitHubMergedPullsFetcherImpl {
                     branch_ok
                         && it
                             .merged_at
-                            .map(|it| it >= params.since && it <= params.until)
-                            .unwrap_or(false)
+                            .map_or(false, |merged_at| params.timeframe.is_include(&merged_at))
                 })
                 .cloned()
                 .collect::<Vec<MergedPullsPullsNode>>();
@@ -224,7 +223,7 @@ mod tests {
 
     use crate::{
         common_types::{
-            deploy_branch_name::ValidatedDeployBranchName,
+            date_time_range::DateTimeRange, deploy_branch_name::ValidatedDeployBranchName,
             github_owner_repo::ValidatedGitHubOwnerRepo,
             github_personal_token::ValidatedGitHubPersonalToken,
         },
@@ -249,12 +248,12 @@ mod tests {
                     github_owner_repo: owner_repo,
                     deploy_trigger_branch: branch_name,
                 };
-                let result = fetcher
-                    .fetch(DeploymentsFetcherParams {
-                        since: datetime_utc::parse("2023-05-01").unwrap(),
-                        until: datetime_utc::parse("2023-06-01").unwrap(),
-                    })
-                    .await;
+                let timeframe = DateTimeRange::new(
+                    datetime_utc::parse("2021-05-01").unwrap(),
+                    datetime_utc::parse("2021-06-01").unwrap(),
+                )
+                .unwrap();
+                let result = fetcher.fetch(DeploymentsFetcherParams { timeframe }).await;
                 println!("{:#?}", result);
                 assert_eq!(result.is_ok(), true);
             }

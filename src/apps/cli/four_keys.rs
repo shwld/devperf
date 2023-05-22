@@ -2,6 +2,7 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 
 use crate::{
+    common_types::date_time_range::DateTimeRange,
     dependencies::{
         deployments_fetcher::{
             github_deployment::DeploymentsFetcherWithGithubDeployment,
@@ -40,10 +41,10 @@ pub async fn get_four_keys(
 ) -> Result<()> {
     let config_reader = ProjectConfigIOReaderWithSettingsToml {};
     let project_config_dto = config_reader.read(project_name.to_string()).await?;
+    let timeframe = DateTimeRange::new(since, until)?;
     let context = RetrieveFourKeysExecutionContext {
         project: RetrieveFourKeysExecutionContextDto::build_context(project_config_dto.clone())?,
-        since,
-        until,
+        timeframe,
     };
     let project_config: ProjectCreated = project_config_dto.try_into()?;
 

@@ -3,10 +3,11 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::common_types::date_time_range::DateTimeRange;
+
 // Input
 pub struct DeploymentsFetcherParams {
-    pub since: DateTime<Utc>,
-    pub until: DateTime<Utc>,
+    pub timeframe: DateTimeRange,
 }
 
 // Output

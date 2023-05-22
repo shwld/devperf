@@ -315,7 +315,7 @@ fn convert_to_items(
                         id: release.clone().release.id,
                         version: release.clone().release.version,
                     },
-                    head_commit: commit_item.clone(),
+                    head_commit: commit_item,
                     base: previous.clone(),
                     creator_login: release.clone().commit.author.map(|x| x.login).unwrap(),
                     deployed_at: release.release.created_at,
