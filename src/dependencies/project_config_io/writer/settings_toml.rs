@@ -1,18 +1,17 @@
 use anyhow::anyhow;
+use async_trait::async_trait;
 use std::collections::HashMap;
 
-use async_trait::async_trait;
-
 use super::super::settings_toml::{Config, ProjectConfig};
-
 use super::interface::{ProjectConfigIOWriter, ProjectConfigIOWriterError, WriteConfigData};
+use crate::apps::cli::config::CONFY_APP_NAME;
 
 #[derive(Debug, Clone)]
 pub struct ProjectConfigIOWriterWithSettingsToml;
 #[async_trait]
 impl ProjectConfigIOWriter for ProjectConfigIOWriterWithSettingsToml {
     async fn write(&self, data: WriteConfigData) -> Result<(), ProjectConfigIOWriterError> {
-        let config = confy::load::<Config>("devops-metrics-tools", None);
+        let config = confy::load::<Config>(CONFY_APP_NAME, None);
         let mut config = match config {
             Ok(c) => c,
             Err(_e) => Config {
@@ -44,7 +43,7 @@ impl ProjectConfigIOWriter for ProjectConfigIOWriterWithSettingsToml {
             .entry(data.project_name)
             .or_insert(project_config) = project_config.clone();
 
-        confy::store("devops-metrics-tools", None, config)
+        confy::store(CONFY_APP_NAME, None, config)
             .map_err(|e| anyhow!(e))
             .map_err(ProjectConfigIOWriterError::CannotWritten)
     }

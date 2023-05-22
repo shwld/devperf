@@ -2,7 +2,7 @@ use clap::Subcommand;
 use confy::ConfyError;
 use std::path::PathBuf;
 
-const CONFY_APP_NAME: &str = "devops-metrics-tools";
+pub const CONFY_APP_NAME: &str = "devperf";
 
 #[derive(Subcommand)]
 pub enum ConfigAction {

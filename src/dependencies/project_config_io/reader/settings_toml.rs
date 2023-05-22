@@ -1,13 +1,13 @@
 use anyhow::anyhow;
+use async_trait::async_trait;
 
+use super::super::settings_toml::{Config, ProjectName};
+use super::interface::{GlobalConfig, ProjectConfigIOReader, ProjectConfigIOReaderError};
+use crate::apps::cli::config::CONFY_APP_NAME;
 use crate::common_types::deployment_source::DeploymentSource;
 use crate::common_types::github_personal_token::ValidatedGitHubPersonalToken;
 use crate::common_types::heroku_auth_token::ValidatedHerokuAuthToken;
 use crate::project_creating::dto::ProjectConfigDto;
-
-use super::super::settings_toml::{Config, ProjectName};
-use super::interface::{GlobalConfig, ProjectConfigIOReader, ProjectConfigIOReaderError};
-use async_trait::async_trait;
 
 pub struct ProjectConfigIOReaderWithSettingsToml;
 #[async_trait]
@@ -16,7 +16,7 @@ impl ProjectConfigIOReader for ProjectConfigIOReaderWithSettingsToml {
         &self,
         project_name: ProjectName,
     ) -> Result<ProjectConfigDto, ProjectConfigIOReaderError> {
-        confy::load::<Config>("devops-metrics-tools", None)
+        confy::load::<Config>(CONFY_APP_NAME, None)
             .map_err(|e| anyhow!(e))
             .map_err(ProjectConfigIOReaderError::ConfigFileReadError)
             .and_then(|c| {
@@ -88,7 +88,7 @@ impl ProjectConfigIOReader for ProjectConfigIOReaderWithSettingsToml {
     }
 
     async fn read_globals(&self) -> Result<GlobalConfig, ProjectConfigIOReaderError> {
-        confy::load::<Config>("devops-metrics-tools", None)
+        confy::load::<Config>(CONFY_APP_NAME, None)
             .map_err(|e| anyhow!(e))
             .map_err(ProjectConfigIOReaderError::ConfigFileReadError)
             .and_then(|c| {
