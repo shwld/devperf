@@ -3,9 +3,12 @@ use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::dependencies::{
-    deployments_fetcher::interface::{DeploymentInfo, DeploymentsFetcherError},
-    first_commit_getter::interface::FirstCommitGetterError,
+use crate::{
+    common_types::date_time_range::DateTimeRange,
+    dependencies::{
+        deployments_fetcher::interface::{DeploymentInfo, DeploymentsFetcherError},
+        first_commit_getter::interface::FirstCommitGetterError,
+    },
 };
 
 // ==================================
@@ -26,13 +29,12 @@ pub struct RetrieveFourKeysExecutionContextProject {
 #[derive(Clone)]
 pub struct RetrieveFourKeysExecutionContext {
     pub project: RetrieveFourKeysExecutionContextProject,
-    pub since: DateTime<Utc>,
-    pub until: DateTime<Utc>,
+    pub timeframe: DateTimeRange,
 }
 
 // ------------------------------------
 // outputs from the workflow (success case)
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct DeploymentCommitItem {
     pub sha: String,
@@ -42,18 +44,18 @@ pub struct DeploymentCommitItem {
     pub creator_login: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RepositoryInfo {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum FirstCommitOrRepositoryInfo {
     FirstCommit(DeploymentCommitItem),
     RepositoryInfo(RepositoryInfo),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct DeploymentPerformanceItem {
     pub info: DeploymentInfo,
@@ -63,7 +65,7 @@ pub struct DeploymentPerformanceItem {
     pub lead_time_for_changes_seconds: Option<i64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct DeploymentPerformanceSummary {
     pub date: NaiveDate,
@@ -71,7 +73,7 @@ pub struct DeploymentPerformanceSummary {
     pub items: Vec<DeploymentPerformanceItem>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct DeploymentPerformanceLeadTimeForChanges {
     pub days: i64,
@@ -81,16 +83,15 @@ pub struct DeploymentPerformanceLeadTimeForChanges {
     pub total_seconds: f64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct Context {
-    pub since: DateTime<chrono::Utc>,
-    pub until: chrono::DateTime<chrono::Utc>,
+    pub timeframe: DateTimeRange,
     pub developers: u32,
     pub working_days_per_week: f32,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum DeploymentFrequencyPerformanceSurvey2022 {
     Elite,
@@ -99,7 +100,7 @@ pub enum DeploymentFrequencyPerformanceSurvey2022 {
     Low,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum DeploymentFrequencyLabel {
     Daily,
@@ -108,7 +109,7 @@ pub enum DeploymentFrequencyLabel {
     Yearly,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct DeploymentFrequency {
     pub total_deployments: u32,
@@ -119,7 +120,7 @@ pub struct DeploymentFrequency {
     pub deploys_per_a_day_per_a_developer: f32,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct DeploymentFrequencyPerformance {
     pub performance: DeploymentFrequencyPerformanceSurvey2022,
@@ -127,14 +128,14 @@ pub struct DeploymentFrequencyPerformance {
     pub value: DeploymentFrequency,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct DeploymentPerformance {
     pub deployment_frequency: DeploymentFrequencyPerformance,
     pub lead_time_for_changes: DeploymentPerformanceLeadTimeForChanges,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct FourKeysResult {
     pub deployments: Vec<DeploymentPerformanceSummary>,

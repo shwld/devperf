@@ -284,7 +284,7 @@ fn convert_to_items(
     }).collect::<Vec<DeploymentsDeploymentsNodeGraphQLResponse>>();
 
     let first_commit: BaseCommitShaOrRepositoryInfo = match first_item {
-        DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse(item) => BaseCommitShaOrRepositoryInfo::BaseCommitSha(item.commit.sha.clone()),
+        DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse(item) => BaseCommitShaOrRepositoryInfo::BaseCommitSha(item.commit.sha),
         DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryCreatedAt(created_at) => BaseCommitShaOrRepositoryInfo::RepositoryCreatedAt(created_at),
     };
 

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::NaiveDate;
 
 use super::retrieve_four_keys::{
     Context, DeploymentFrequency, DeploymentFrequencyLabel,
@@ -9,14 +9,16 @@ use super::retrieve_four_keys::{
     DeploymentPerformanceLeadTimeForChanges, FirstCommitOrRepositoryInfo, FourKeysResult,
     RetrieveFourKeysEvent, RetrieveFourKeysEventError, RetrieveFourKeysExecutionContext,
 };
-use crate::dependencies::deployments_fetcher::interface::DeploymentItem;
+use crate::{
+    common_types::date_time_range::DateTimeRange,
+    dependencies::deployments_fetcher::interface::DeploymentItem,
+};
 
 // ---------------------------
 // FetchDeploymentsStep
 // ---------------------------
 pub(super) struct FetchDeploymentsParams {
-    pub(super) since: DateTime<Utc>,
-    pub(super) until: DateTime<Utc>,
+    pub timeframe: DateTimeRange,
 }
 #[async_trait]
 pub(super) trait FetchDeploymentsStep {
@@ -58,8 +60,7 @@ pub(super) type ToMetricItem = fn(DeploymentItemWithFirstOperation) -> Deploymen
 // ---------------------------
 pub(super) type ExtractItemsInPeriod = fn(
     items: Vec<DeploymentPerformanceItem>,
-    since: DateTime<Utc>,
-    until: DateTime<Utc>,
+    timeframe: DateTimeRange,
 ) -> Vec<DeploymentPerformanceItem>;
 
 #[derive(Debug, Clone)]
