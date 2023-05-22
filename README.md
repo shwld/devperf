@@ -30,6 +30,8 @@ Initialize the configuration file.
 devperf init
 ```
 
+show performance metrics.
+
 ```bash
 devperf four-keys --project hoge
 ```
