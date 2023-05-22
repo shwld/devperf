@@ -1,6 +1,7 @@
 # DevOps Metrics Tools
 
 devops-metrics-tools is a CLI tool developed for obtaining DevOps' Four Keys.
+CLI command is `devperf`.
 
 This tool is characterized by the ability to store settings for multiple projects in a configuration file,
 and it can measure based on GitHub(deployment/pull request) or Heroku's release information.
