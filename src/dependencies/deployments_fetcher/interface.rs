@@ -43,7 +43,7 @@ pub enum DeploymentInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct DeploymentItem {
+pub struct DeploymentLog {
     pub info: DeploymentInfo,
     pub head_commit: CommitItem,
     pub base: BaseCommitShaOrRepositoryInfo,
@@ -74,5 +74,5 @@ pub trait DeploymentsFetcher {
     async fn fetch(
         &self,
         params: DeploymentsFetcherParams,
-    ) -> Result<Vec<DeploymentItem>, DeploymentsFetcherError>;
+    ) -> Result<Vec<DeploymentLog>, DeploymentsFetcherError>;
 }

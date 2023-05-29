@@ -9,7 +9,7 @@ use crate::{
     },
     dependencies::{
         deployments_fetcher::interface::{
-            BaseCommitShaOrRepositoryInfo, DeploymentItem, DeploymentsFetcher,
+            BaseCommitShaOrRepositoryInfo, DeploymentLog, DeploymentsFetcher,
             DeploymentsFetcherParams,
         },
         first_commit_getter::interface::{FirstCommitGetter, ValidatedFirstCommitGetterParams},
@@ -24,8 +24,8 @@ use super::{
         DeploymentFrequencyPerformanceSurvey2022,
     },
     retrieve_four_keys_internal_types::{
-        AttachFirstOperationToDeploymentItemStep, CalculateDeploymentFrequency, CalculateLeadTime,
-        CalculateLeadTimeForChangesSeconds, CreateEvents, DeploymentItemWithFirstOperation,
+        AttachFirstOperationToDeploymentLogStep, CalculateDeploymentFrequency, CalculateLeadTime,
+        CalculateLeadTimeForChangesSeconds, CreateEvents, DeploymentLogWithFirstOperation,
         ExtractItemsInPeriod, FetchDeploymentsParams, FetchDeploymentsStep,
         GetDeploymentPerformance2022, GetDeploymentPerformanceLabel, RetrieveFourKeysStep,
         ToMetricItem,
@@ -49,7 +49,7 @@ impl<F: DeploymentsFetcher + Sync + Send> FetchDeploymentsStep for FetchDeployme
     async fn fetch_deployments(
         self,
         params: FetchDeploymentsParams,
-    ) -> Result<Vec<DeploymentItem>, RetrieveFourKeysEventError> {
+    ) -> Result<Vec<DeploymentLog>, RetrieveFourKeysEventError> {
         let deployments = self
             .deployments_fetcher
             .fetch(DeploymentsFetcherParams {
@@ -62,19 +62,19 @@ impl<F: DeploymentsFetcher + Sync + Send> FetchDeploymentsStep for FetchDeployme
 }
 
 // ---------------------------
-// AttachFirstOperationToDeploymentItemStep
+// AttachFirstOperationToDeploymentLogStep
 // ---------------------------
-struct AttachFirstOperationToDeploymentItemStepImpl<F: FirstCommitGetter> {
+struct AttachFirstOperationToDeploymentLogStepImpl<F: FirstCommitGetter> {
     first_commit_getter: F,
 }
 #[async_trait]
-impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemStep
-    for AttachFirstOperationToDeploymentItemStepImpl<F>
+impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentLogStep
+    for AttachFirstOperationToDeploymentLogStepImpl<F>
 {
     async fn attach_first_operation_to_deployment_item(
         &self,
-        deployment_item: DeploymentItem,
-    ) -> Result<DeploymentItemWithFirstOperation, RetrieveFourKeysEventError> {
+        deployment_item: DeploymentLog,
+    ) -> Result<DeploymentLogWithFirstOperation, RetrieveFourKeysEventError> {
         let first_operation: Option<FirstCommitOrRepositoryInfo> =
             match deployment_item.clone().base {
                 BaseCommitShaOrRepositoryInfo::BaseCommitSha(first_commit_sha) => {
@@ -101,7 +101,7 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
                     FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo { created_at }),
                 ),
             };
-        Ok(DeploymentItemWithFirstOperation {
+        Ok(DeploymentLogWithFirstOperation {
             deployment: deployment_item,
             first_operation,
         })
@@ -109,8 +109,8 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
 
     async fn attach_first_operation_to_deployment_items(
         &self,
-        deployment_items: Vec<DeploymentItem>,
-    ) -> Result<Vec<DeploymentItemWithFirstOperation>, RetrieveFourKeysEventError> {
+        deployment_items: Vec<DeploymentLog>,
+    ) -> Result<Vec<DeploymentLogWithFirstOperation>, RetrieveFourKeysEventError> {
         let futures = deployment_items
             .into_iter()
             .map(|it| self.attach_first_operation_to_deployment_item(it))
@@ -130,7 +130,7 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
 // CalculationEachDeploymentsStep
 // ---------------------------
 pub(super) const calculate_lead_time_for_changes_seconds: CalculateLeadTimeForChangesSeconds =
-    |item: DeploymentItemWithFirstOperation| -> Option<i64> {
+    |item: DeploymentLogWithFirstOperation| -> Option<i64> {
         if let Some(operation) = item.first_operation {
             let first_committed_at = match operation {
                 FirstCommitOrRepositoryInfo::FirstCommit(commit) => commit.committed_at,
@@ -146,7 +146,7 @@ pub(super) const calculate_lead_time_for_changes_seconds: CalculateLeadTimeForCh
 
 // NOTE: Should I write using "From"?
 const to_metric_item: ToMetricItem =
-    |item: DeploymentItemWithFirstOperation| -> DeploymentPerformanceItem {
+    |item: DeploymentLogWithFirstOperation| -> DeploymentPerformanceItem {
         let lead_time_for_changes_seconds = calculate_lead_time_for_changes_seconds(item.clone());
 
         let head_commit = DeploymentCommitItem {
@@ -307,7 +307,7 @@ impl<
                 timeframe: context.timeframe.clone(),
             })
             .await?;
-        let deployments_with_first_operation = AttachFirstOperationToDeploymentItemStepImpl {
+        let deployments_with_first_operation = AttachFirstOperationToDeploymentLogStepImpl {
             first_commit_getter: self.first_commit_getter,
         }
         .attach_first_operation_to_deployment_items(deployments)

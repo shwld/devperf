@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use octocrab::Octocrab;
 use serde::{Deserialize, Serialize};
 
-use super::interface::{DeploymentItem, DeploymentsFetcherError, DeploymentsFetcherParams};
+use super::interface::{DeploymentLog, DeploymentsFetcherError, DeploymentsFetcherParams};
 use crate::common_types::github_personal_token::ValidatedGitHubPersonalToken;
 
 pub(super) type GetClient =
@@ -117,4 +117,4 @@ pub(super) trait GitHubMergedPullsFetcher {
 // ---------------------------
 // Collecting step
 // ---------------------------
-pub(super) type CollectToItems = fn(items: Vec<MergedPullsPullsNode>) -> Vec<DeploymentItem>;
+pub(super) type CollectToItems = fn(items: Vec<MergedPullsPullsNode>) -> Vec<DeploymentLog>;

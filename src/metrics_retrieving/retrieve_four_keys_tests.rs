@@ -6,7 +6,7 @@ mod tests {
                 retrieve_four_keys::{
                     calculate_lead_time_for_changes_seconds, FirstCommitOrRepositoryInfo,
                 },
-                retrieve_four_keys_internal_types::DeploymentItemWithFirstOperation,
+                retrieve_four_keys_internal_types::DeploymentLogWithFirstOperation,
             },
             shared::datetime_utc::parse,
             test::factories::{
@@ -18,7 +18,7 @@ mod tests {
 
         #[test]
         fn when_first_operation_is_none_should_none() {
-            let item = DeploymentItemWithFirstOperation {
+            let item = DeploymentLogWithFirstOperation {
                 deployment: build_deployment_item(parse("2023-01-01").unwrap()),
                 first_operation: None,
             };
@@ -27,7 +27,7 @@ mod tests {
 
         #[test]
         fn when_first_operation_is_first_commit_should_get_seconds() {
-            let item = DeploymentItemWithFirstOperation {
+            let item = DeploymentLogWithFirstOperation {
                 deployment: build_deployment_item(parse("2023-01-05").unwrap()),
                 first_operation: Some(FirstCommitOrRepositoryInfo::FirstCommit(
                     build_first_commit(parse("2023-01-01").unwrap()),
@@ -41,7 +41,7 @@ mod tests {
 
         #[test]
         fn when_first_operation_is_repo_info_should_get_seconds() {
-            let item = DeploymentItemWithFirstOperation {
+            let item = DeploymentLogWithFirstOperation {
                 deployment: build_deployment_item(parse("2023-01-05").unwrap()),
                 first_operation: Some(FirstCommitOrRepositoryInfo::RepositoryInfo(
                     build_repository_info(parse("2023-01-01").unwrap()),

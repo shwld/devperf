@@ -14,7 +14,7 @@ use crate::{
         heroku_app_name::ValidatedHerokuAppName, heroku_auth_token::ValidatedHerokuAuthToken,
     },
     dependencies::deployments_fetcher::{
-        interface::{CommitItem, DeploymentInfo, DeploymentItem},
+        interface::{CommitItem, DeploymentInfo, DeploymentLog},
         shared::get_created_at,
     },
     shared::non_empty_vec::NonEmptyVec,
@@ -242,7 +242,7 @@ async fn attach_commit(
 
 fn convert_to_items(
     deployment_nodes: NonEmptyVec<HerokuReleaseOrRepositoryInfo>,
-) -> Result<Vec<DeploymentItem>, DeploymentsFetcherError> {
+) -> Result<Vec<DeploymentLog>, DeploymentsFetcherError> {
     let mut sorted: NonEmptyVec<HerokuReleaseOrRepositoryInfo> = deployment_nodes;
     sorted.sort_by_key(|a| match a {
         HerokuReleaseOrRepositoryInfo::HerokuRelease(release) => release.release.created_at,
@@ -310,7 +310,7 @@ fn convert_to_items(
                         .unwrap(),
                     creator_login: release.clone().commit.author.map(|x| x.login).unwrap(),
                 };
-                let deployment_item = DeploymentItem {
+                let deployment_item = DeploymentLog {
                     info: DeploymentInfo::HerokuRelease {
                         id: release.clone().release.id,
                         version: release.clone().release.version,
@@ -325,7 +325,7 @@ fn convert_to_items(
                 Some(deployment_item)
             },
         )
-        .collect::<Vec<DeploymentItem>>();
+        .collect::<Vec<DeploymentLog>>();
 
     Ok(deployment_items)
 }
@@ -341,7 +341,7 @@ impl DeploymentsFetcher for DeploymentsFetcherWithHerokuRelease {
     async fn fetch(
         &self,
         params: DeploymentsFetcherParams,
-    ) -> Result<Vec<DeploymentItem>, DeploymentsFetcherError> {
+    ) -> Result<Vec<DeploymentLog>, DeploymentsFetcherError> {
         let succeeded_releases = fetch_deployments(
             self.heroku_app_name.clone(),
             self.heroku_auth_token.clone(),

@@ -15,7 +15,7 @@ use super::{
         CollectToItems, GetClient, GitHubMergedPullsFetcher, MergedPullsPullsNode,
     },
     interface::{
-        BaseCommitShaOrRepositoryInfo, CommitItem, DeploymentInfo, DeploymentItem,
+        BaseCommitShaOrRepositoryInfo, CommitItem, DeploymentInfo, DeploymentLog,
         DeploymentsFetcher, DeploymentsFetcherError, DeploymentsFetcherParams,
     },
 };
@@ -144,7 +144,7 @@ impl GitHubMergedPullsFetcher for GitHubMergedPullsFetcherImpl {
     }
 }
 
-const collect_to_items: CollectToItems = |items: Vec<MergedPullsPullsNode>| -> Vec<DeploymentItem> {
+const collect_to_items: CollectToItems = |items: Vec<MergedPullsPullsNode>| -> Vec<DeploymentLog> {
     items
         .into_iter()
         .map(|item| {
@@ -170,7 +170,7 @@ const collect_to_items: CollectToItems = |items: Vec<MergedPullsPullsNode>| -> V
                     "merged_at is empty".to_string(),
                 ));
             if let (Ok(head_commit), Ok(deployed_at)) = (head_commit, deployed_at) {
-                Ok(DeploymentItem {
+                Ok(DeploymentLog {
                     info: DeploymentInfo::GithubMergedPullRequest {
                         id: item.id,
                         number: item.number,
@@ -204,7 +204,7 @@ impl DeploymentsFetcher for DeploymentsFetcherWithGithubMergedPullRequest {
     async fn fetch(
         &self,
         params: DeploymentsFetcherParams,
-    ) -> Result<Vec<DeploymentItem>, DeploymentsFetcherError> {
+    ) -> Result<Vec<DeploymentLog>, DeploymentsFetcherError> {
         let fetcher = GitHubMergedPullsFetcherImpl {
             github_personal_token: self.github_personal_token.clone(),
             github_owner_repo: self.github_owner_repo.clone(),

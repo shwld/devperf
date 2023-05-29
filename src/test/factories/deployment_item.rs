@@ -1,11 +1,11 @@
 use chrono::{DateTime, Utc};
 
 use crate::dependencies::deployments_fetcher::interface::{
-    BaseCommitShaOrRepositoryInfo, CommitItem, DeploymentInfo, DeploymentItem,
+    BaseCommitShaOrRepositoryInfo, CommitItem, DeploymentInfo, DeploymentLog,
 };
 
-pub fn build_deployment_item(deployed_at: DateTime<Utc>) -> DeploymentItem {
-    DeploymentItem {
+pub fn build_deployment_item(deployed_at: DateTime<Utc>) -> DeploymentLog {
+    DeploymentLog {
         info: DeploymentInfo::GithubDeployment {
             id: "id".to_string(),
         },

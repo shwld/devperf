@@ -1,5 +1,5 @@
 use super::interface::{
-    BaseCommitShaOrRepositoryInfo, CommitItem, DeploymentInfo, DeploymentItem, DeploymentsFetcher,
+    BaseCommitShaOrRepositoryInfo, CommitItem, DeploymentInfo, DeploymentLog, DeploymentsFetcher,
     DeploymentsFetcherError, DeploymentsFetcherParams,
 };
 use crate::{
@@ -269,7 +269,7 @@ fn find_status(
 
 fn convert_to_items(
     deployment_nodes: NonEmptyVec<DeploymentNodeGraphQLResponseOrRepositoryInfo>,
-) -> Vec<DeploymentItem> {
+) -> Vec<DeploymentLog> {
     let mut sorted: NonEmptyVec<DeploymentNodeGraphQLResponseOrRepositoryInfo> = deployment_nodes;
     sorted.sort_by_key(|a| match a {
         DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse(deployment) => deployment.created_at,
@@ -302,7 +302,7 @@ fn convert_to_items(
                     committed_at: deployment.clone().commit.committed_date,
                     creator_login: deployment.clone().creator.login,
                 };
-                let deployment_item = DeploymentItem {
+                let deployment_item = DeploymentLog {
                     info: DeploymentInfo::GithubDeployment {
                         id: deployment.clone().id,
                     },
@@ -315,7 +315,7 @@ fn convert_to_items(
                 Some(deployment_item)
             },
         )
-        .collect::<Vec<DeploymentItem>>();
+        .collect::<Vec<DeploymentLog>>();
 
     deployment_items
 }
@@ -330,7 +330,7 @@ impl DeploymentsFetcher for DeploymentsFetcherWithGithubDeployment {
     async fn fetch(
         &self,
         _params: DeploymentsFetcherParams,
-    ) -> Result<Vec<DeploymentItem>, DeploymentsFetcherError> {
+    ) -> Result<Vec<DeploymentLog>, DeploymentsFetcherError> {
         let deployment_nodes = fetch_deployments(
             self.github_personal_token.clone(),
             self.github_owner_repo.clone(),
