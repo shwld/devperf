@@ -129,7 +129,7 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
 // ---------------------------
 // CalculationEachDeploymentsStep
 // ---------------------------
-const calculate_lead_time_for_changes_seconds: CalculateLeadTimeForChangesSeconds =
+pub(super) const calculate_lead_time_for_changes_seconds: CalculateLeadTimeForChangesSeconds =
     |item: DeploymentItemWithFirstOperation| -> Option<i64> {
         if let Some(operation) = item.first_operation {
             let first_committed_at = match operation {
