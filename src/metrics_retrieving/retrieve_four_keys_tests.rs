@@ -12,11 +12,12 @@ mod tests {
             test::factories::{
                 deployment_item::build_deployment_item,
                 first_commit_or_repository_info::build_first_commit,
+                repository_info::build_repository_info,
             },
         };
 
         #[test]
-        fn when_first_operation_is_none_should_success() {
+        fn when_first_operation_is_none_should_none() {
             let item = DeploymentItemWithFirstOperation {
                 deployment: build_deployment_item(parse("2023-01-01").unwrap()),
                 first_operation: None,
@@ -25,11 +26,25 @@ mod tests {
         }
 
         #[test]
-        fn when_first_operation_is_first_commit_should_success() {
+        fn when_first_operation_is_first_commit_should_get_seconds() {
             let item = DeploymentItemWithFirstOperation {
                 deployment: build_deployment_item(parse("2023-01-05").unwrap()),
                 first_operation: Some(FirstCommitOrRepositoryInfo::FirstCommit(
                     build_first_commit(parse("2023-01-01").unwrap()),
+                )),
+            };
+            assert_eq!(
+                calculate_lead_time_for_changes_seconds(item),
+                Some(4 * 24 * 60 * 60)
+            );
+        }
+
+        #[test]
+        fn when_first_operation_is_repo_info_should_get_seconds() {
+            let item = DeploymentItemWithFirstOperation {
+                deployment: build_deployment_item(parse("2023-01-05").unwrap()),
+                first_operation: Some(FirstCommitOrRepositoryInfo::RepositoryInfo(
+                    build_repository_info(parse("2023-01-01").unwrap()),
                 )),
             };
             assert_eq!(
