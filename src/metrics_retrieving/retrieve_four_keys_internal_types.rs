@@ -1,7 +1,4 @@
-use std::collections::HashMap;
-
 use async_trait::async_trait;
-use chrono::NaiveDate;
 
 use super::retrieve_four_keys::{
     Context, DeploymentFrequency, DeploymentFrequencyLabel,
@@ -62,13 +59,6 @@ pub(super) type ExtractItemsInPeriod = fn(
     items: Vec<DeploymentPerformanceItem>,
     timeframe: DateTimeRange,
 ) -> Vec<DeploymentPerformanceItem>;
-
-#[derive(Debug, Clone)]
-pub(super) struct DailyItems(pub(super) HashMap<NaiveDate, Vec<DeploymentPerformanceItem>>);
-#[derive(Debug, Clone)]
-pub(super) struct WeeklyItems(pub(super) HashMap<NaiveDate, Vec<DeploymentPerformanceItem>>);
-#[derive(Debug, Clone)]
-pub(super) struct MonthlyItems(pub(super) HashMap<u32, Vec<DeploymentPerformanceItem>>);
 
 // TODO: Make the mold more explicit.
 pub(super) type CalculateDeploymentFrequency =
