@@ -368,5 +368,112 @@ mod tests {
                 }
             }
         }
+
+        #[tokio::test]
+        async fn deployment_performance_is_low_yearly() {
+            let context = RetrieveFourKeysExecutionContext {
+                timeframe: DateTimeRange::new(
+                    parse("2023-01-01 00:00:00").expect("Could not parse since"),
+                    parse("2023-03-31 00:00:00").expect("Could not parse since"),
+                )
+                .expect("Could not create timeframe"),
+                project: RetrieveFourKeysExecutionContextProject {
+                    name: "project".to_string(),
+                    developer_count: 2,
+                    working_days_per_week: 2.5,
+                },
+            };
+            let deployments_fetcher = DeploymentsFetcherWithMock {
+                deployment_logs: vec![
+                    build_deployment_log("2023-04-01 10:00:00"),
+                    build_deployment_log("2023-01-31 10:00:00"), // January  5th week
+                    build_deployment_log("2023-01-02 10:00:00"), // January  1st week
+                    build_deployment_log("2022-12-31 10:00:00"),
+                    // total deploys    = 2
+                    // all days         = 90
+                    //
+                    // weekly_deploys
+                    //   January  1st week: 1
+                    //   January  2nd week: 0
+                    //   January  3th week: 0
+                    //   January  4th week: 0
+                    //   January  5th week: 1
+                    //   February 2nd week: 0
+                    //   February 3th week: 0
+                    //   February 4th week: 0
+                    //   February 5th week: 0
+                    //   March    2nd week: 0
+                    //   March    3th week: 0
+                    //   March    4th week: 0
+                    //   March    5th week: 0
+                    //   [0,0,0,0,0,0,(0),0,0,0,0,1,1]
+                    //   -> Median:         0.0
+                    //
+                    // deployed_weekly
+                    //   January 1st week:  true(1)
+                    //   January 2nd week:  false(0)
+                    //   January 3th week:  false(0)
+                    //   January 4th week:  false(0)
+                    //   January 5th week:  true(1)
+                    //   February 2nd week: false(0)
+                    //   February 3th week: false(0)
+                    //   February 4th week: false(0)
+                    //   February 5th week: false(0)
+                    //   March 2nd week:    false(0)
+                    //   March 3th week:    false(0)
+                    //   March 4th week:    false(0)
+                    //   March 5th week:    false(0)
+                    //   [0,0,0,0,0,0,(0),0,0,0,0,1,1]
+                    //   -> Median:         0.0
+                    //
+                    // deployed_monthly
+                    //   January:           true(1)
+                    //   February:          true(0)
+                    //   March:             true(0)
+                    //   [0,(0),1]
+                    //   -> Median:         0.0
+                    //
+                    // per day
+                    //   2days / (90days * (2.5 / 7)) = 0.0622222222
+                    // per day per a developer
+                    //   0.0622222222 / 2 = 0.0311111111
+                    //
+                    // performance
+                    //   0.0(weekly_deploys_median) > (3days(DORA defined) * (2.5working days / 5weekday)) -> Not enough
+                    //   0.0(deployed_weekly) >= 1.0(DORA defined) -> Not enough
+                    //   0.0(deployed_monthly) >= 1.0(DORA defined) -> Not enough
+                    //   -> Low, Yearly
+                ],
+            };
+            let first_commit_getter = FirstCommitGetterWithMock {
+                committed_at_str: "2023-01-02 10:00:00".to_string(),
+            };
+            let workflow = RetrieveFourKeysWorkflow {
+                deployments_fetcher,
+                first_commit_getter,
+            };
+            let result = workflow.retrieve_four_keys(context).await;
+            assert!(result.is_ok());
+
+            for item in result.unwrap() {
+                match item {
+                    RetrieveFourKeysEvent::RetrieveFourKeys(result) => {
+                        let all_days = result.deployments.len();
+                        let frequency = result.performance.deployment_frequency.value;
+                        let label = result.performance.deployment_frequency.label;
+                        let performance = result.performance.deployment_frequency.performance;
+                        assert_eq!(all_days, 90);
+                        assert_eq!(frequency.total_deployments, 2);
+                        assert_eq!(frequency.weekly_deployment_count_median, 0.0);
+                        assert_eq!(frequency.month_deployed_median, 0.0);
+                        assert_eq!(frequency.week_deployed_median, 0.0);
+                        assert_eq!(frequency.deployment_frequency_per_day, 0.062_222_224);
+                        assert_eq!(frequency.deploys_per_a_day_per_a_developer, 0.031_111_112);
+                        assert_eq!(label, DeploymentFrequencyLabel::Yearly);
+                        assert_eq!(performance, DeploymentFrequencyPerformanceSurvey2022::Low);
+                    }
+                }
+            }
+        }
     }
 }
