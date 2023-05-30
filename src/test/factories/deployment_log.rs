@@ -1,8 +1,9 @@
 use chrono::Utc;
 
 use crate::{
+    common_types::commit::Commit,
     dependencies::deployments_fetcher::interface::{
-        BaseCommitShaOrRepositoryInfo, CommitItem, DeploymentInfo, DeploymentLog,
+        BaseCommitShaOrRepositoryInfo, DeploymentInfo, DeploymentLog,
     },
     shared::datetime_utc::parse,
 };
@@ -13,7 +14,7 @@ pub fn build_deployment_log(deployed_at_str: &str) -> DeploymentLog {
         info: DeploymentInfo::GithubDeployment {
             id: "id".to_string(),
         },
-        head_commit: CommitItem {
+        head_commit: Commit {
             sha: "sha".to_string(),
             message: "message".to_string(),
             resource_path: "resource_path".to_string(),

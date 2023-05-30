@@ -1,3 +1,4 @@
+pub mod commit;
 pub mod daily_items;
 pub mod date_time_range;
 pub mod deploy_branch_name;

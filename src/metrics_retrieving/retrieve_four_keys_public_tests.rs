@@ -5,7 +5,7 @@ mod tests {
             common_types::date_time_range::DateTimeRange,
             dependencies::{
                 deployments_fetcher::mock::DeploymentsFetcherWithMock,
-                first_commit_getter::mock::FirstCommitGetterWithMock,
+                two_commits_comparer::mock::TwoCommitsComparerWithMock,
             },
             metrics_retrieving::retrieve_four_keys::{
                 DeploymentFrequencyLabel, DeploymentFrequencyPerformanceSurvey2022,
@@ -13,7 +13,7 @@ mod tests {
                 RetrieveFourKeysExecutionContextProject, RetrieveFourKeysWorkflow,
             },
             shared::datetime_utc::parse,
-            test::factories::deployment_log::build_deployment_log,
+            test::factories::{commit::build_commit, deployment_log::build_deployment_log},
         };
 
         #[tokio::test]
@@ -115,12 +115,12 @@ mod tests {
                     //   2.0(weekly_deploys_median) > (3days(DORA defined) * (2.5working days / 5weekday)) -> Daily, High
                 ],
             };
-            let first_commit_getter = FirstCommitGetterWithMock {
-                committed_at_str: "2023-01-02 10:00:00".to_string(),
+            let two_commits_comparer = TwoCommitsComparerWithMock {
+                commits: vec![build_commit("2023-01-02 10:00:00")],
             };
             let workflow = RetrieveFourKeysWorkflow {
                 deployments_fetcher,
-                first_commit_getter,
+                two_commits_comparer,
             };
             let result = workflow.retrieve_four_keys(context).await;
             assert!(result.is_ok());
@@ -228,12 +228,12 @@ mod tests {
                     //   1.0(deployed_weekly) >= 1.0(DORA defined) -> Medium, Weekly
                 ],
             };
-            let first_commit_getter = FirstCommitGetterWithMock {
-                committed_at_str: "2023-01-02 10:00:00".to_string(),
+            let two_commits_comparer = TwoCommitsComparerWithMock {
+                commits: vec![build_commit("2023-01-02 10:00:00")],
             };
             let workflow = RetrieveFourKeysWorkflow {
                 deployments_fetcher,
-                first_commit_getter,
+                two_commits_comparer,
             };
             let result = workflow.retrieve_four_keys(context).await;
             assert!(result.is_ok());
@@ -338,12 +338,12 @@ mod tests {
                     //   1.0(deployed_monthly) >= 1.0(DORA defined) -> Low, Monthly
                 ],
             };
-            let first_commit_getter = FirstCommitGetterWithMock {
-                committed_at_str: "2023-01-02 10:00:00".to_string(),
+            let two_commits_comparer = TwoCommitsComparerWithMock {
+                commits: vec![build_commit("2023-01-02 10:00:00")],
             };
             let workflow = RetrieveFourKeysWorkflow {
                 deployments_fetcher,
-                first_commit_getter,
+                two_commits_comparer,
             };
             let result = workflow.retrieve_four_keys(context).await;
             assert!(result.is_ok());
@@ -445,12 +445,12 @@ mod tests {
                     //   -> Low, Yearly
                 ],
             };
-            let first_commit_getter = FirstCommitGetterWithMock {
-                committed_at_str: "2023-01-02 10:00:00".to_string(),
+            let two_commits_comparer = TwoCommitsComparerWithMock {
+                commits: vec![build_commit("2023-01-02 10:00:00")],
             };
             let workflow = RetrieveFourKeysWorkflow {
                 deployments_fetcher,
-                first_commit_getter,
+                two_commits_comparer,
             };
             let result = workflow.retrieve_four_keys(context).await;
             assert!(result.is_ok());

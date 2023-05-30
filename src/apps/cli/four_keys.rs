@@ -9,10 +9,10 @@ use crate::{
             github_merged_pull::DeploymentsFetcherWithGithubMergedPullRequest,
             heroku_release::DeploymentsFetcherWithHerokuRelease,
         },
-        first_commit_getter::github::FirstCommitGetterWithGitHub,
         project_config_io::reader::{
             interface::ProjectConfigIOReader, settings_toml::ProjectConfigIOReaderWithSettingsToml,
         },
+        two_commits_comparer::github::TwoCommitsComparerWithGitHub,
     },
     metrics_retrieving::{
         dto::RetrieveFourKeysExecutionContextDto,
@@ -57,13 +57,13 @@ pub async fn get_four_keys(
                 github_owner_repo: config.github_owner_repo.clone(),
                 github_personal_token: config.github_personal_token.clone(),
             };
-            let first_commit_getter = FirstCommitGetterWithGitHub {
+            let two_commits_comparer = TwoCommitsComparerWithGitHub {
                 github_personal_token: config.github_personal_token.clone(),
                 github_owner_repo: config.github_owner_repo,
             };
             let workflow = RetrieveFourKeysWorkflow {
                 deployments_fetcher,
-                first_commit_getter,
+                two_commits_comparer,
             };
             workflow.retrieve_four_keys(context.clone())
         }
@@ -74,13 +74,13 @@ pub async fn get_four_keys(
                 github_owner_repo: config.github_owner_repo.clone(),
                 environment: config.github_deployment_environment.clone(),
             };
-            let first_commit_getter = FirstCommitGetterWithGitHub {
-                github_personal_token: config.github_personal_token,
+            let two_commits_comparer = TwoCommitsComparerWithGitHub {
+                github_personal_token: config.github_personal_token.clone(),
                 github_owner_repo: config.github_owner_repo,
             };
             let workflow = RetrieveFourKeysWorkflow {
                 deployments_fetcher,
-                first_commit_getter,
+                two_commits_comparer,
             };
             workflow.retrieve_four_keys(context)
         }
@@ -91,13 +91,13 @@ pub async fn get_four_keys(
                 github_owner_repo: config.github_owner_repo.clone(),
                 deploy_trigger_branch: config.github_deploy_branch_name,
             };
-            let first_commit_getter = FirstCommitGetterWithGitHub {
-                github_personal_token: config.github_personal_token,
+            let two_commits_comparer = TwoCommitsComparerWithGitHub {
+                github_personal_token: config.github_personal_token.clone(),
                 github_owner_repo: config.github_owner_repo,
             };
             let workflow = RetrieveFourKeysWorkflow {
                 deployments_fetcher,
-                first_commit_getter,
+                two_commits_comparer,
             };
             workflow.retrieve_four_keys(context)
         }
