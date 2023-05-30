@@ -12,6 +12,7 @@ use crate::{
 };
 
 use super::{
+    github_merged_pull_graphql::merged_pulls_query,
     github_merged_pull_types::{
         CollectToItems, GetClient, GitHubMergedPullsFetcher, MergedPullsPullsNode,
     },
@@ -20,51 +21,6 @@ use super::{
         DeploymentsFetcherError, DeploymentsFetcherParams,
     },
 };
-
-fn merged_pulls_query(owner_repo: ValidatedGitHubOwnerRepo, after: Option<String>) -> String {
-    let query = format!("
-        query {{
-          repository_owner: repositoryOwner(login: \"{owner}\") {{
-            repository(name: \"{repo}\") {{
-              pulls: pullRequests(first: 100, states: [MERGED], orderBy: {{field: CREATED_AT, direction: DESC}}{after}) {{
-                nodes {{
-                  id
-                  number
-                  title
-                  base_ref: baseRef {{
-                    id
-                    name
-                  }}
-                  merged_by: mergedBy {{
-                    login
-                  }}
-                  merged_at: mergedAt
-                  merge_commit: mergeCommit {{
-                    id
-                    sha: oid
-                    message
-                    resource_path: resourcePath
-                    committed_date: committedDate
-                    author {{
-                      user {{
-                        login
-                      }}
-                    }}
-                  }}
-                  base_commit_sha: baseRefOid
-                }}
-                page_info: pageInfo {{
-                  end_cursor: endCursor
-                  has_next_page: hasNextPage
-                }}
-              }}
-            }}
-          }}
-        }}
-    ", owner = owner_repo.get_owner(), repo = owner_repo.get_repo(), after = after.map_or_else(|| "".to_owned(), |cursor| format!(", after: \"{}\"", cursor)));
-
-    query
-}
 
 const get_client: GetClient = |
     github_personal_token: ValidatedGitHubPersonalToken,
