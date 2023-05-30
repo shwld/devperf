@@ -9,12 +9,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     common_types::{
-        github_owner_repo::ValidatedGitHubOwnerRepo,
+        commit::Commit, github_owner_repo::ValidatedGitHubOwnerRepo,
         github_personal_token::ValidatedGitHubPersonalToken,
         heroku_app_name::ValidatedHerokuAppName, heroku_auth_token::ValidatedHerokuAuthToken,
     },
     dependencies::deployments_fetcher::{
-        interface::{CommitItem, DeploymentInfo, DeploymentLog},
+        interface::{DeploymentInfo, DeploymentLog},
         shared::get_created_at,
     },
     shared::non_empty_vec::NonEmptyVec,
@@ -297,7 +297,7 @@ fn convert_to_items(
                 if author_date.is_none() || author_login.is_none() {
                     return None;
                 }
-                let commit_item = CommitItem {
+                let commit_item = Commit {
                     sha: release.clone().commit.sha,
                     message: release.clone().commit.commit.message,
                     resource_path: release.clone().commit.html_url,

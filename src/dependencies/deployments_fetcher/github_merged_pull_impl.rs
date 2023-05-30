@@ -4,7 +4,8 @@ use wildmatch::WildMatch;
 
 use crate::{
     common_types::{
-        deploy_branch_name::ValidatedDeployBranchName, github_owner_repo::ValidatedGitHubOwnerRepo,
+        commit::Commit, deploy_branch_name::ValidatedDeployBranchName,
+        github_owner_repo::ValidatedGitHubOwnerRepo,
         github_personal_token::ValidatedGitHubPersonalToken,
     },
     dependencies::deployments_fetcher::github_merged_pull_types::MergedPullsResponse,
@@ -15,8 +16,8 @@ use super::{
         CollectToItems, GetClient, GitHubMergedPullsFetcher, MergedPullsPullsNode,
     },
     interface::{
-        BaseCommitShaOrRepositoryInfo, CommitItem, DeploymentInfo, DeploymentLog,
-        DeploymentsFetcher, DeploymentsFetcherError, DeploymentsFetcherParams,
+        BaseCommitShaOrRepositoryInfo, DeploymentInfo, DeploymentLog, DeploymentsFetcher,
+        DeploymentsFetcherError, DeploymentsFetcherParams,
     },
 };
 
@@ -150,7 +151,7 @@ const collect_to_items: CollectToItems = |items: Vec<MergedPullsPullsNode>| -> V
         .map(|item| {
             let head_commit = item
                 .merge_commit
-                .map(|node| CommitItem {
+                .map(|node| Commit {
                     sha: node.sha,
                     message: node.message,
                     resource_path: node.resource_path,
@@ -255,7 +256,7 @@ mod tests {
                 .unwrap();
                 let result = fetcher.fetch(DeploymentsFetcherParams { timeframe }).await;
                 println!("{:#?}", result);
-                assert_eq!(result.is_ok(), true);
+                assert!(result.is_ok());
             }
             Err(_e) => {
                 println!("GITHUB_PERSONAL_TOKEN is not set");

@@ -1,10 +1,8 @@
-use crate::{
-    metrics_retrieving::retrieve_four_keys::DeploymentCommitItem, shared::datetime_utc::parse,
-};
+use crate::{common_types::commit::Commit, shared::datetime_utc::parse};
 
-pub fn build_first_commit(committed_at_str: &str) -> DeploymentCommitItem {
+pub fn build_commit(committed_at_str: &str) -> Commit {
     let committed_at = parse(committed_at_str).expect("Could not parse committed_at_str");
-    DeploymentCommitItem {
+    Commit {
         sha: "sha".to_string(),
         message: "message".to_string(),
         resource_path: "resource_path".to_string(),
