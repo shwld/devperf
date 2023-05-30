@@ -145,11 +145,11 @@ impl GitHubMergedPullsFetcher for GitHubMergedPullsFetcherImpl {
     }
 }
 
-const collect_to_items: CollectToItems = |items: Vec<MergedPullsPullsNode>| -> Vec<DeploymentLog> {
-    items
+const collect_to_logs: CollectToItems = |nodes: Vec<MergedPullsPullsNode>| -> Vec<DeploymentLog> {
+    nodes
         .into_iter()
-        .map(|item| {
-            let head_commit = item
+        .map(|node| {
+            let head_commit = node
                 .merge_commit
                 .map(|node| Commit {
                     sha: node.sha,
@@ -165,7 +165,7 @@ const collect_to_items: CollectToItems = |items: Vec<MergedPullsPullsNode>| -> V
                 .ok_or(DeploymentsFetcherError::InvalidResponse(
                     "merge commit is empty".to_string(),
                 ));
-            let deployed_at = item
+            let deployed_at = node
                 .merged_at
                 .ok_or(DeploymentsFetcherError::InvalidResponse(
                     "merged_at is empty".to_string(),
@@ -173,13 +173,13 @@ const collect_to_items: CollectToItems = |items: Vec<MergedPullsPullsNode>| -> V
             if let (Ok(head_commit), Ok(deployed_at)) = (head_commit, deployed_at) {
                 Ok(DeploymentLog {
                     info: DeploymentInfo::GithubMergedPullRequest {
-                        id: item.id,
-                        number: item.number,
-                        title: item.title,
+                        id: node.id,
+                        number: node.number,
+                        title: node.title,
                     },
                     head_commit,
-                    base: BaseCommitShaOrRepositoryInfo::BaseCommitSha(item.base_commit_sha),
-                    creator_login: item
+                    base: BaseCommitShaOrRepositoryInfo::BaseCommitSha(node.base_commit_sha),
+                    creator_login: node
                         .merged_by
                         .map(|x| x.login)
                         .unwrap_or_else(|| "".to_string()),
@@ -211,8 +211,8 @@ impl DeploymentsFetcher for DeploymentsFetcherWithGithubMergedPullRequest {
             github_owner_repo: self.github_owner_repo.clone(),
             deploy_trigger_branch: self.deploy_trigger_branch.clone(),
         };
-        let deployment_items = fetcher.fetch(params).await?;
-        let colleted_items = collect_to_items(deployment_items);
+        let deployment_logs = fetcher.fetch(params).await?;
+        let colleted_items = collect_to_logs(deployment_logs);
 
         Ok(colleted_items)
     }
