@@ -1,8 +1,9 @@
-use chrono::{DateTime, Utc};
+use crate::{
+    metrics_retrieving::retrieve_four_keys::DeploymentCommitItem, shared::datetime_utc::parse,
+};
 
-use crate::metrics_retrieving::retrieve_four_keys::DeploymentCommitItem;
-
-pub fn build_first_commit(committed_at: DateTime<Utc>) -> DeploymentCommitItem {
+pub fn build_first_commit(committed_at_str: &str) -> DeploymentCommitItem {
+    let committed_at = parse(committed_at_str).expect("Could not parse committed_at_str");
     DeploymentCommitItem {
         sha: "sha".to_string(),
         message: "message".to_string(),

@@ -8,7 +8,6 @@ mod dependencies;
 mod metrics_retrieving;
 mod project_creating;
 mod shared;
-#[cfg(test)]
 mod test;
 
 use apps::cli::config::{get_config_path, ConfigAction};

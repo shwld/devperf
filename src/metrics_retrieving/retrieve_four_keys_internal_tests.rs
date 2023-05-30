@@ -8,9 +8,8 @@ mod tests {
                 },
                 retrieve_four_keys_internal_types::DeploymentLogWithFirstOperation,
             },
-            shared::datetime_utc::parse,
             test::factories::{
-                deployment_item::build_deployment_item,
+                deployment_log::build_deployment_log,
                 first_commit_or_repository_info::build_first_commit,
                 repository_info::build_repository_info,
             },
@@ -19,7 +18,7 @@ mod tests {
         #[test]
         fn when_first_operation_is_none_should_none() {
             let item = DeploymentLogWithFirstOperation {
-                deployment: build_deployment_item(parse("2023-01-01").unwrap()),
+                deployment: build_deployment_log("2023-01-01 00:00:00"),
                 first_operation: None,
             };
             assert_eq!(calculate_lead_time_for_changes_seconds(item), None);
@@ -28,9 +27,9 @@ mod tests {
         #[test]
         fn when_first_operation_is_first_commit_should_get_seconds() {
             let item = DeploymentLogWithFirstOperation {
-                deployment: build_deployment_item(parse("2023-01-05").unwrap()),
+                deployment: build_deployment_log("2023-01-05 00:00:00"),
                 first_operation: Some(FirstCommitOrRepositoryInfo::FirstCommit(
-                    build_first_commit(parse("2023-01-01").unwrap()),
+                    build_first_commit("2023-01-01 00:00:00"),
                 )),
             };
             assert_eq!(
@@ -42,9 +41,9 @@ mod tests {
         #[test]
         fn when_first_operation_is_repo_info_should_get_seconds() {
             let item = DeploymentLogWithFirstOperation {
-                deployment: build_deployment_item(parse("2023-01-05").unwrap()),
+                deployment: build_deployment_log("2023-01-05 00:00:00"),
                 first_operation: Some(FirstCommitOrRepositoryInfo::RepositoryInfo(
-                    build_repository_info(parse("2023-01-01").unwrap()),
+                    build_repository_info("2023-01-01 00:00:00"),
                 )),
             };
             assert_eq!(

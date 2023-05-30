@@ -1,10 +1,14 @@
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 
-use crate::dependencies::deployments_fetcher::interface::{
-    BaseCommitShaOrRepositoryInfo, CommitItem, DeploymentInfo, DeploymentLog,
+use crate::{
+    dependencies::deployments_fetcher::interface::{
+        BaseCommitShaOrRepositoryInfo, CommitItem, DeploymentInfo, DeploymentLog,
+    },
+    shared::datetime_utc::parse,
 };
 
-pub fn build_deployment_item(deployed_at: DateTime<Utc>) -> DeploymentLog {
+pub fn build_deployment_log(deployed_at_str: &str) -> DeploymentLog {
+    let deployed_at = parse(deployed_at_str).expect("Could not parse deployed_at_str");
     DeploymentLog {
         info: DeploymentInfo::GithubDeployment {
             id: "id".to_string(),
