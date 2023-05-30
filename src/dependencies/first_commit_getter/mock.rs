@@ -6,14 +6,16 @@ use super::interface::{
     FirstCommitGetter, FirstCommitGetterError, FirstCommitItem, ValidatedFirstCommitGetterParams,
 };
 
-pub struct FirstCommitGetterWithMock {}
+pub struct FirstCommitGetterWithMock {
+    pub committed_at_str: String,
+}
 #[async_trait]
 impl FirstCommitGetter for FirstCommitGetterWithMock {
     async fn get(
         &self,
         _params: ValidatedFirstCommitGetterParams,
     ) -> Result<FirstCommitItem, FirstCommitGetterError> {
-        let committed_at = parse("2021-04-10 00:00:00").expect("Could not parse committed_at_str");
+        let committed_at = parse(&self.committed_at_str).expect("Could not parse committed_at_str");
         let first_commit = FirstCommitItem {
             sha: "sha".to_string(),
             message: "message".to_string(),

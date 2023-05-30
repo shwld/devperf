@@ -91,7 +91,7 @@ pub struct Context {
     pub working_days_per_week: f32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum DeploymentFrequencyPerformanceSurvey2022 {
     Elite,
@@ -100,7 +100,7 @@ pub enum DeploymentFrequencyPerformanceSurvey2022 {
     Low,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum DeploymentFrequencyLabel {
     Daily,
@@ -113,9 +113,9 @@ pub enum DeploymentFrequencyLabel {
 #[non_exhaustive]
 pub struct DeploymentFrequency {
     pub total_deployments: u32,
-    pub weekly_deploy_median: f64,
-    pub deployment_week_median: f64,
-    pub deployment_month_median: f64,
+    pub weekly_deployment_count_median: f64,
+    pub week_deployed_median: f64,
+    pub month_deployed_median: f64,
     pub deployment_frequency_per_day: f32,
     pub deploys_per_a_day_per_a_developer: f32,
 }

@@ -213,15 +213,15 @@ const calculate_deployment_frequency: CalculateDeploymentFrequency =
         log::debug!("weekly_deployment_counts: {:?}", weekly_deployment_counts);
         log::debug!("weekly_deployments: {:?}", weekly_deployments);
         log::debug!("monthly_deployments: {:?}", monthly_deployments);
-        let weekly_deploy_median = median(weekly_deployment_counts);
-        let deployment_week_median = median(weekly_deployments);
-        let deployment_month_median = median(monthly_deployments);
+        let weekly_deployment_count_median = median(weekly_deployment_counts);
+        let week_deployed_median = median(weekly_deployments);
+        let month_deployed_median = median(monthly_deployments);
 
         DeploymentFrequency {
             total_deployments,
-            weekly_deploy_median,
-            deployment_week_median,
-            deployment_month_median,
+            weekly_deployment_count_median,
+            week_deployed_median,
+            month_deployed_median,
             deployment_frequency_per_day,
             deploys_per_a_day_per_a_developer,
         }
@@ -242,11 +242,11 @@ const get_deployment_performance2022: GetDeploymentPerformance2022 =
 const get_deployment_performance_label: GetDeploymentPerformanceLabel =
     |deployment_frequency: DeploymentFrequency, context| -> DeploymentFrequencyLabel {
         let coefficient = context.working_days_per_week as f64 * (3.0 / 5.0);
-        if deployment_frequency.weekly_deploy_median > coefficient {
+        if deployment_frequency.weekly_deployment_count_median > coefficient {
             DeploymentFrequencyLabel::Daily
-        } else if deployment_frequency.deployment_week_median >= 1.0 {
+        } else if deployment_frequency.week_deployed_median >= 1.0 {
             DeploymentFrequencyLabel::Weekly
-        } else if deployment_frequency.deployment_month_median >= 1.0 {
+        } else if deployment_frequency.month_deployed_median >= 1.0 {
             DeploymentFrequencyLabel::Monthly
         } else {
             DeploymentFrequencyLabel::Yearly
