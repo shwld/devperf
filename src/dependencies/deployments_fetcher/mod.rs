@@ -3,6 +3,7 @@ mod github_merged_pull_impl;
 mod github_merged_pull_types;
 pub mod heroku_release;
 pub mod interface;
+pub mod mock;
 pub(super) mod shared;
 
 pub mod github_merged_pull {

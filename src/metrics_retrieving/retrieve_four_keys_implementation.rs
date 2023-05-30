@@ -1,14 +1,15 @@
 use async_std::stream::StreamExt;
 use async_trait::async_trait;
-use chrono::{Datelike, NaiveDate, Weekday};
 use futures::future::try_join_all;
-use itertools::Itertools;
 
 use crate::{
-    common_types::date_time_range::DateTimeRange,
+    common_types::{
+        daily_items::DailyItems, date_time_range::DateTimeRange, monthly_items::MonthlyItems,
+        weekly_items::WeeklyItems,
+    },
     dependencies::{
         deployments_fetcher::interface::{
-            BaseCommitShaOrRepositoryInfo, DeploymentItem, DeploymentsFetcher,
+            BaseCommitShaOrRepositoryInfo, DeploymentLog, DeploymentsFetcher,
             DeploymentsFetcherParams,
         },
         first_commit_getter::interface::{FirstCommitGetter, ValidatedFirstCommitGetterParams},
@@ -23,11 +24,11 @@ use super::{
         DeploymentFrequencyPerformanceSurvey2022,
     },
     retrieve_four_keys_internal_types::{
-        AttachFirstOperationToDeploymentItemStep, CalculateDeploymentFrequency, CalculateLeadTime,
-        CalculateLeadTimeForChangesSeconds, CreateEvents, DailyItems,
-        DeploymentItemWithFirstOperation, ExtractItemsInPeriod, FetchDeploymentsParams,
-        FetchDeploymentsStep, GetDeploymentPerformance2022, GetDeploymentPerformanceLabel,
-        MonthlyItems, RetrieveFourKeysStep, ToMetricItem, WeeklyItems,
+        AttachFirstOperationToDeploymentLogStep, CalculateDeploymentFrequency, CalculateLeadTime,
+        CalculateLeadTimeForChangesSeconds, CreateEvents, DeploymentLogWithFirstOperation,
+        ExtractItemsInPeriod, FetchDeploymentsParams, FetchDeploymentsStep,
+        GetDeploymentPerformance2022, GetDeploymentPerformanceLabel, RetrieveFourKeysStep,
+        ToMetricItem,
     },
     retrieve_four_keys_public_types::{
         DeploymentCommitItem, DeploymentPerformance, DeploymentPerformanceItem,
@@ -48,7 +49,7 @@ impl<F: DeploymentsFetcher + Sync + Send> FetchDeploymentsStep for FetchDeployme
     async fn fetch_deployments(
         self,
         params: FetchDeploymentsParams,
-    ) -> Result<Vec<DeploymentItem>, RetrieveFourKeysEventError> {
+    ) -> Result<Vec<DeploymentLog>, RetrieveFourKeysEventError> {
         let deployments = self
             .deployments_fetcher
             .fetch(DeploymentsFetcherParams {
@@ -61,19 +62,19 @@ impl<F: DeploymentsFetcher + Sync + Send> FetchDeploymentsStep for FetchDeployme
 }
 
 // ---------------------------
-// AttachFirstOperationToDeploymentItemStep
+// AttachFirstOperationToDeploymentLogStep
 // ---------------------------
-struct AttachFirstOperationToDeploymentItemStepImpl<F: FirstCommitGetter> {
+struct AttachFirstOperationToDeploymentLogStepImpl<F: FirstCommitGetter> {
     first_commit_getter: F,
 }
 #[async_trait]
-impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemStep
-    for AttachFirstOperationToDeploymentItemStepImpl<F>
+impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentLogStep
+    for AttachFirstOperationToDeploymentLogStepImpl<F>
 {
     async fn attach_first_operation_to_deployment_item(
         &self,
-        deployment_item: DeploymentItem,
-    ) -> Result<DeploymentItemWithFirstOperation, RetrieveFourKeysEventError> {
+        deployment_item: DeploymentLog,
+    ) -> Result<DeploymentLogWithFirstOperation, RetrieveFourKeysEventError> {
         let first_operation: Option<FirstCommitOrRepositoryInfo> =
             match deployment_item.clone().base {
                 BaseCommitShaOrRepositoryInfo::BaseCommitSha(first_commit_sha) => {
@@ -100,7 +101,7 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
                     FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo { created_at }),
                 ),
             };
-        Ok(DeploymentItemWithFirstOperation {
+        Ok(DeploymentLogWithFirstOperation {
             deployment: deployment_item,
             first_operation,
         })
@@ -108,8 +109,8 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
 
     async fn attach_first_operation_to_deployment_items(
         &self,
-        deployment_items: Vec<DeploymentItem>,
-    ) -> Result<Vec<DeploymentItemWithFirstOperation>, RetrieveFourKeysEventError> {
+        deployment_items: Vec<DeploymentLog>,
+    ) -> Result<Vec<DeploymentLogWithFirstOperation>, RetrieveFourKeysEventError> {
         let futures = deployment_items
             .into_iter()
             .map(|it| self.attach_first_operation_to_deployment_item(it))
@@ -128,8 +129,8 @@ impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentItemSte
 // ---------------------------
 // CalculationEachDeploymentsStep
 // ---------------------------
-const calculate_lead_time_for_changes_seconds: CalculateLeadTimeForChangesSeconds =
-    |item: DeploymentItemWithFirstOperation| -> Option<i64> {
+pub(super) const calculate_lead_time_for_changes_seconds: CalculateLeadTimeForChangesSeconds =
+    |item: DeploymentLogWithFirstOperation| -> Option<i64> {
         if let Some(operation) = item.first_operation {
             let first_committed_at = match operation {
                 FirstCommitOrRepositoryInfo::FirstCommit(commit) => commit.committed_at,
@@ -145,7 +146,7 @@ const calculate_lead_time_for_changes_seconds: CalculateLeadTimeForChangesSecond
 
 // NOTE: Should I write using "From"?
 const to_metric_item: ToMetricItem =
-    |item: DeploymentItemWithFirstOperation| -> DeploymentPerformanceItem {
+    |item: DeploymentLogWithFirstOperation| -> DeploymentPerformanceItem {
         let lead_time_for_changes_seconds = calculate_lead_time_for_changes_seconds(item.clone());
 
         let head_commit = DeploymentCommitItem {
@@ -172,55 +173,6 @@ const to_metric_item: ToMetricItem =
 // ---------------------------
 // Calculation step
 // ---------------------------
-impl DailyItems {
-    fn new(items: Vec<DeploymentPerformanceItem>, timeframe: DateTimeRange) -> Self {
-        let mut items = items
-            .into_iter()
-            .into_group_map_by(|it| it.deployed_at.date_naive());
-
-        for dt in timeframe.days_iter() {
-            items.entry(dt.date_naive()).or_insert_with(Vec::new);
-        }
-
-        DailyItems(items)
-    }
-    fn iter(&self) -> impl Iterator<Item = (&NaiveDate, &Vec<DeploymentPerformanceItem>)> {
-        self.0.iter()
-    }
-}
-impl WeeklyItems {
-    fn new(items: Vec<DeploymentPerformanceItem>, timeframe: DateTimeRange) -> Self {
-        let mut items = items
-            .into_iter()
-            .into_group_map_by(|it| it.deployed_at.date_naive().week(Weekday::Mon).first_day());
-
-        for dt in timeframe.weeks_iter() {
-            items.entry(dt.date_naive()).or_insert_with(Vec::new);
-        }
-
-        WeeklyItems(items)
-    }
-    fn iter(&self) -> impl Iterator<Item = (&NaiveDate, &Vec<DeploymentPerformanceItem>)> {
-        self.0.iter()
-    }
-}
-impl MonthlyItems {
-    fn new(items: Vec<DeploymentPerformanceItem>, timeframe: DateTimeRange) -> Self {
-        let mut items = items
-            .into_iter()
-            .into_group_map_by(|it| it.deployed_at.date_naive().month());
-
-        for month in timeframe.months_iter() {
-            items.entry(month).or_insert_with(Vec::new);
-        }
-
-        MonthlyItems(items)
-    }
-    fn iter(&self) -> impl Iterator<Item = (&u32, &Vec<DeploymentPerformanceItem>)> {
-        self.0.iter()
-    }
-}
-
 const extract_items_for_period: ExtractItemsInPeriod =
     |metric_items: Vec<DeploymentPerformanceItem>, timeframe: DateTimeRange| {
         metric_items
@@ -232,35 +184,50 @@ const extract_items_for_period: ExtractItemsInPeriod =
 const calculate_deployment_frequency: CalculateDeploymentFrequency =
     |items: Vec<DeploymentPerformanceItem>, context: Context| {
         let total_deployments = items.len() as u32;
-        let deployment_frequency_per_day = total_deployments as f32
-            / (context.timeframe.num_days() as f32 * (context.working_days_per_week / 7.0));
+        let deployment_days: i32 = DailyItems::new(
+            items.clone(),
+            |item| item.deployed_at.date_naive(),
+            context.timeframe.clone(),
+        )
+        .iter()
+        .map(|(_date, items)| if items.is_empty() { 0 } else { 1 })
+        .sum();
+        let timeframe_days = context.timeframe.num_days() as f32;
+        let deployment_frequency_per_day =
+            deployment_days as f32 / (timeframe_days * (context.working_days_per_week / 7.0));
         let deploys_per_a_day_per_a_developer =
             deployment_frequency_per_day / context.developers as f32;
 
-        let weekly_deployment_counts = WeeklyItems::new(items.clone(), context.timeframe.clone())
+        let weekly_deployments = WeeklyItems::new(
+            items.clone(),
+            |it| it.deployed_at.date_naive(),
+            context.timeframe.clone(),
+        );
+        let weekly_deployment_counts = weekly_deployments
             .iter()
             .map(|(_week, items)| items.len() as i64)
             .collect::<Vec<_>>();
-        let weekly_deployments = WeeklyItems::new(items.clone(), context.timeframe.clone())
+        let weekly_deployments = weekly_deployments
             .iter()
             .map(|(_week, items)| if items.is_empty() { 0 } else { 1 })
             .collect::<Vec<i64>>();
-        let monthly_deployments = MonthlyItems::new(items, context.timeframe)
-            .iter()
-            .map(|(_month, items)| if items.is_empty() { 0 } else { 1 })
-            .collect::<Vec<i64>>();
+        let monthly_deployments =
+            MonthlyItems::new(items, |it| it.deployed_at.date_naive(), context.timeframe)
+                .iter()
+                .map(|(_month, items)| if items.is_empty() { 0 } else { 1 })
+                .collect::<Vec<i64>>();
         log::debug!("weekly_deployment_counts: {:?}", weekly_deployment_counts);
         log::debug!("weekly_deployments: {:?}", weekly_deployments);
         log::debug!("monthly_deployments: {:?}", monthly_deployments);
-        let weekly_deploy_median = median(weekly_deployment_counts);
-        let deployment_week_median = median(weekly_deployments);
-        let deployment_month_median = median(monthly_deployments);
+        let weekly_deployment_count_median = median(weekly_deployment_counts);
+        let week_deployed_median = median(weekly_deployments);
+        let month_deployed_median = median(monthly_deployments);
 
         DeploymentFrequency {
             total_deployments,
-            weekly_deploy_median,
-            deployment_week_median,
-            deployment_month_median,
+            weekly_deployment_count_median,
+            week_deployed_median,
+            month_deployed_median,
             deployment_frequency_per_day,
             deploys_per_a_day_per_a_developer,
         }
@@ -281,11 +248,11 @@ const get_deployment_performance2022: GetDeploymentPerformance2022 =
 const get_deployment_performance_label: GetDeploymentPerformanceLabel =
     |deployment_frequency: DeploymentFrequency, context| -> DeploymentFrequencyLabel {
         let coefficient = context.working_days_per_week as f64 * (3.0 / 5.0);
-        if deployment_frequency.weekly_deploy_median > coefficient {
+        if deployment_frequency.weekly_deployment_count_median > coefficient {
             DeploymentFrequencyLabel::Daily
-        } else if deployment_frequency.deployment_week_median >= 1.0 {
+        } else if deployment_frequency.week_deployed_median >= 1.0 {
             DeploymentFrequencyLabel::Weekly
-        } else if deployment_frequency.deployment_month_median >= 1.0 {
+        } else if deployment_frequency.month_deployed_median >= 1.0 {
             DeploymentFrequencyLabel::Monthly
         } else {
             DeploymentFrequencyLabel::Yearly
@@ -346,7 +313,7 @@ impl<
                 timeframe: context.timeframe.clone(),
             })
             .await?;
-        let deployments_with_first_operation = AttachFirstOperationToDeploymentItemStepImpl {
+        let deployments_with_first_operation = AttachFirstOperationToDeploymentLogStepImpl {
             first_commit_getter: self.first_commit_getter,
         }
         .attach_first_operation_to_deployment_items(deployments)
@@ -380,15 +347,18 @@ impl<
             lead_time_for_changes,
         };
 
-        let deployment_frequencies_by_date =
-            DailyItems::new(extracted_items, context.timeframe.clone())
-                .iter()
-                .map(|(date, daily_items)| DeploymentPerformanceSummary {
-                    date: *date,
-                    deploys: daily_items.len() as u32,
-                    items: daily_items.to_vec(),
-                })
-                .collect::<Vec<DeploymentPerformanceSummary>>();
+        let deployment_frequencies_by_date = DailyItems::new(
+            extracted_items,
+            |item| item.deployed_at.date_naive(),
+            context.timeframe.clone(),
+        )
+        .iter()
+        .map(|(date, daily_items)| DeploymentPerformanceSummary {
+            date: *date,
+            deploys: daily_items.len() as u32,
+            items: daily_items.to_vec(),
+        })
+        .collect::<Vec<DeploymentPerformanceSummary>>();
         let mut sorted_deployment_frequencies_by_date = deployment_frequencies_by_date;
         sorted_deployment_frequencies_by_date.sort_by_key(|item| item.date);
 

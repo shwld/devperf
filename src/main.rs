@@ -8,6 +8,7 @@ mod dependencies;
 mod metrics_retrieving;
 mod project_creating;
 mod shared;
+mod test;
 
 use apps::cli::config::{get_config_path, ConfigAction};
 use apps::cli::four_keys::get_four_keys;

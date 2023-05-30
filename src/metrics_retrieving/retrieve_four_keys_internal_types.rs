@@ -1,7 +1,4 @@
-use std::collections::HashMap;
-
 use async_trait::async_trait;
-use chrono::NaiveDate;
 
 use super::retrieve_four_keys::{
     Context, DeploymentFrequency, DeploymentFrequencyLabel,
@@ -11,7 +8,7 @@ use super::retrieve_four_keys::{
 };
 use crate::{
     common_types::date_time_range::DateTimeRange,
-    dependencies::deployments_fetcher::interface::DeploymentItem,
+    dependencies::deployments_fetcher::interface::DeploymentLog,
 };
 
 // ---------------------------
@@ -25,35 +22,35 @@ pub(super) trait FetchDeploymentsStep {
     async fn fetch_deployments(
         self,
         params: FetchDeploymentsParams,
-    ) -> Result<Vec<DeploymentItem>, RetrieveFourKeysEventError>;
+    ) -> Result<Vec<DeploymentLog>, RetrieveFourKeysEventError>;
 }
 
 // ---------------------------
-// AttachFirstOperationToDeploymentItemStep
+// AttachFirstOperationToDeploymentLogStep
 // ---------------------------
 #[derive(Debug, Clone)]
-pub(super) struct DeploymentItemWithFirstOperation {
-    pub(super) deployment: DeploymentItem,
+pub(super) struct DeploymentLogWithFirstOperation {
+    pub(super) deployment: DeploymentLog,
     pub(super) first_operation: Option<FirstCommitOrRepositoryInfo>,
 }
 #[async_trait]
-pub(super) trait AttachFirstOperationToDeploymentItemStep {
+pub(super) trait AttachFirstOperationToDeploymentLogStep {
     async fn attach_first_operation_to_deployment_item(
         &self,
-        deployment_item: DeploymentItem,
-    ) -> Result<DeploymentItemWithFirstOperation, RetrieveFourKeysEventError>;
+        deployment_item: DeploymentLog,
+    ) -> Result<DeploymentLogWithFirstOperation, RetrieveFourKeysEventError>;
     async fn attach_first_operation_to_deployment_items(
         &self,
-        deployment_items: Vec<DeploymentItem>,
-    ) -> Result<Vec<DeploymentItemWithFirstOperation>, RetrieveFourKeysEventError>;
+        deployment_items: Vec<DeploymentLog>,
+    ) -> Result<Vec<DeploymentLogWithFirstOperation>, RetrieveFourKeysEventError>;
 }
 
 // ---------------------------
 // CalculationEachDeploymentsStep
 // ---------------------------
 pub(super) type CalculateLeadTimeForChangesSeconds =
-    fn(DeploymentItemWithFirstOperation) -> Option<i64>;
-pub(super) type ToMetricItem = fn(DeploymentItemWithFirstOperation) -> DeploymentPerformanceItem;
+    fn(DeploymentLogWithFirstOperation) -> Option<i64>;
+pub(super) type ToMetricItem = fn(DeploymentLogWithFirstOperation) -> DeploymentPerformanceItem;
 
 // ---------------------------
 // AggregationStep
@@ -62,13 +59,6 @@ pub(super) type ExtractItemsInPeriod = fn(
     items: Vec<DeploymentPerformanceItem>,
     timeframe: DateTimeRange,
 ) -> Vec<DeploymentPerformanceItem>;
-
-#[derive(Debug, Clone)]
-pub(super) struct DailyItems(pub(super) HashMap<NaiveDate, Vec<DeploymentPerformanceItem>>);
-#[derive(Debug, Clone)]
-pub(super) struct WeeklyItems(pub(super) HashMap<NaiveDate, Vec<DeploymentPerformanceItem>>);
-#[derive(Debug, Clone)]
-pub(super) struct MonthlyItems(pub(super) HashMap<u32, Vec<DeploymentPerformanceItem>>);
 
 // TODO: Make the mold more explicit.
 pub(super) type CalculateDeploymentFrequency =
