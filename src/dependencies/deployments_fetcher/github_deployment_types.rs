@@ -4,7 +4,7 @@ use super::github_deployment::DeploymentsDeploymentsNodeGraphQLResponse;
 
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)] // most are HerokuRelease
-pub enum DeploymentNodeGraphQLResponseOrRepositoryInfo {
+pub(super) enum DeploymentNodeGraphQLResponseOrRepositoryInfo {
     DeploymentsDeploymentsNodeGraphQLResponse(DeploymentsDeploymentsNodeGraphQLResponse),
     RepositoryCreatedAt(DateTime<Utc>),
 }

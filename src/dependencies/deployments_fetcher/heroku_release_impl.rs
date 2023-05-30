@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use futures::future::try_join_all;
 use http_cache_reqwest::{CACacheManager, Cache, CacheMode, HttpCache};
 use octocrab::{models::repos::RepoCommit, Octocrab};
@@ -7,7 +6,8 @@ use reqwest::Client;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 
 use super::{
-    heroku_release_types::{HerokuReleaseItem, HerokuSlugItem},
+    heroku_release_api_response::{HerokuReleaseItem, HerokuSlugItem},
+    heroku_release_types::{HerokuRelease, HerokuReleaseOrRepositoryInfo},
     interface::{
         BaseCommitShaOrRepositoryInfo, DeploymentsFetcher, DeploymentsFetcherError,
         DeploymentsFetcherParams,
@@ -20,6 +20,7 @@ use crate::{
         heroku_app_name::ValidatedHerokuAppName, heroku_auth_token::ValidatedHerokuAuthToken,
     },
     dependencies::deployments_fetcher::{
+        heroku_release_types::GitHubRepositoryInfo,
         interface::{DeploymentInfo, DeploymentLog},
         shared::get_created_at,
     },
@@ -94,24 +95,6 @@ async fn get_commit(
         .map_err(DeploymentsFetcherError::CommitIsNotFound)?;
 
     Ok(commit)
-}
-
-#[derive(Debug, Clone)]
-struct GitHubRepositoryInfo {
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone)]
-#[allow(clippy::large_enum_variant)] // most are HerokuRelease
-enum HerokuReleaseOrRepositoryInfo {
-    HerokuRelease(HerokuRelease),
-    RepositoryInfo(GitHubRepositoryInfo),
-}
-
-#[derive(Debug, Clone)]
-struct HerokuRelease {
-    pub release: HerokuReleaseItem,
-    pub commit: RepoCommit,
 }
 
 async fn fetch_deployments(

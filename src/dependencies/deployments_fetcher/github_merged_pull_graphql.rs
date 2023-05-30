@@ -53,93 +53,93 @@ pub(super) fn merged_pulls_query(
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct MergedPullsResponse {
-    pub data: MergedPullsData,
+pub(super) struct MergedPullsResponse {
+    pub(super) data: MergedPullsData,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct MergedPullsData {
-    pub repository_owner: MergedPullsRepositoryOwner,
+pub(super) struct MergedPullsData {
+    pub(super) repository_owner: MergedPullsRepositoryOwner,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct MergedPullsRepositoryOwner {
-    pub repository: MergedPullsRepository,
+pub(super) struct MergedPullsRepositoryOwner {
+    pub(super) repository: MergedPullsRepository,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct MergedPullsRepository {
-    pub pulls: MergedPullsPulls,
+pub(super) struct MergedPullsRepository {
+    pub(super) pulls: MergedPullsPulls,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct MergedPullsPulls {
-    pub nodes: Vec<MergedPullsPullsNode>,
-    pub page_info: MergedPullsPageInfo,
+pub(super) struct MergedPullsPulls {
+    pub(super) nodes: Vec<MergedPullsPullsNode>,
+    pub(super) page_info: MergedPullsPageInfo,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct MergedPullsPullsNode {
-    pub id: String,
-    pub number: u64,
-    pub title: String,
-    pub base_ref: Option<MergedPullsBaseRef>,
-    pub merged_by: Option<MergedPullsUser>,
-    pub merged_at: Option<DateTime<Utc>>,
-    pub merge_commit: Option<MergedPullsCommit>,
-    pub base_commit_sha: String,
+pub(super) struct MergedPullsPullsNode {
+    pub(super) id: String,
+    pub(super) number: u64,
+    pub(super) title: String,
+    pub(super) base_ref: Option<MergedPullsBaseRef>,
+    pub(super) merged_by: Option<MergedPullsUser>,
+    pub(super) merged_at: Option<DateTime<Utc>>,
+    pub(super) merge_commit: Option<MergedPullsCommit>,
+    pub(super) base_commit_sha: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct MergedPullsBaseRef {
-    pub id: String,
-    pub name: String,
+pub(super) struct MergedPullsBaseRef {
+    pub(super) id: String,
+    pub(super) name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct MergedPullsCommits {
-    pub nodes: Vec<MergedPullsCommitsNode>,
+pub(super) struct MergedPullsCommits {
+    pub(super) nodes: Vec<MergedPullsCommitsNode>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct MergedPullsCommitsNode {
-    pub id: String,
-    pub commit: MergedPullsCommit,
+pub(super) struct MergedPullsCommitsNode {
+    pub(super) id: String,
+    pub(super) commit: MergedPullsCommit,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct MergedPullsCommit {
-    pub id: String,
-    pub sha: String,
-    pub message: String,
-    pub resource_path: String,
-    pub committed_date: DateTime<Utc>,
-    pub author: Option<MergedPullsCommitAuthor>,
+pub(super) struct MergedPullsCommit {
+    pub(super) id: String,
+    pub(super) sha: String,
+    pub(super) message: String,
+    pub(super) resource_path: String,
+    pub(super) committed_date: DateTime<Utc>,
+    pub(super) author: Option<MergedPullsCommitAuthor>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct MergedPullsCommitAuthor {
-    pub user: Option<MergedPullsUser>,
+pub(super) struct MergedPullsCommitAuthor {
+    pub(super) user: Option<MergedPullsUser>,
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct MergedPullsUser {
-    pub login: String,
+pub(super) struct MergedPullsUser {
+    pub(super) login: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct MergedPullsPageInfo {
-    pub end_cursor: Option<String>,
-    pub has_next_page: bool,
+pub(super) struct MergedPullsPageInfo {
+    pub(super) end_cursor: Option<String>,
+    pub(super) has_next_page: bool,
 }

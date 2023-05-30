@@ -67,89 +67,89 @@ pub(super) fn deployments_query(
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentsGraphQLResponse {
-    pub data: DeploymentsDataGraphQLResponse,
+pub(super) struct DeploymentsGraphQLResponse {
+    pub(super) data: DeploymentsDataGraphQLResponse,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentsDataGraphQLResponse {
-    pub repository_owner: DeploymentsRepositoryOwnerGraphQLResponse,
+pub(super) struct DeploymentsDataGraphQLResponse {
+    pub(super) repository_owner: DeploymentsRepositoryOwnerGraphQLResponse,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentsRepositoryOwnerGraphQLResponse {
-    pub repository: DeploymentsRepositoryGraphQLResponse,
+pub(super) struct DeploymentsRepositoryOwnerGraphQLResponse {
+    pub(super) repository: DeploymentsRepositoryGraphQLResponse,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentsRepositoryGraphQLResponse {
-    pub deployments: DeploymentsDeploymentsGraphQLResponse,
+pub(super) struct DeploymentsRepositoryGraphQLResponse {
+    pub(super) deployments: DeploymentsDeploymentsGraphQLResponse,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentsDeploymentsGraphQLResponse {
-    pub nodes: Vec<DeploymentsDeploymentsNodeGraphQLResponse>,
-    pub page_info: DeploymentsPageInfoGraphQLResponse,
+pub(super) struct DeploymentsDeploymentsGraphQLResponse {
+    pub(super) nodes: Vec<DeploymentsDeploymentsNodeGraphQLResponse>,
+    pub(super) page_info: DeploymentsPageInfoGraphQLResponse,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentsDeploymentsNodeGraphQLResponse {
-    pub id: String,
-    pub commit: DeploymentsCommitGraphQLResponse,
-    pub task: String,
-    pub environment: String,
-    pub description: Option<String>,
-    pub original_environment: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub creator: DeploymentsCreatorGraphQLResponse,
-    pub statuses: DeploymentsDeploymentsStatusesGraphQLResponse,
+pub(super) struct DeploymentsDeploymentsNodeGraphQLResponse {
+    pub(super) id: String,
+    pub(super) commit: DeploymentsCommitGraphQLResponse,
+    pub(super) task: String,
+    pub(super) environment: String,
+    pub(super) description: Option<String>,
+    pub(super) original_environment: String,
+    pub(super) created_at: DateTime<Utc>,
+    pub(super) updated_at: DateTime<Utc>,
+    pub(super) creator: DeploymentsCreatorGraphQLResponse,
+    pub(super) statuses: DeploymentsDeploymentsStatusesGraphQLResponse,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentsCommitGraphQLResponse {
-    pub id: String,
-    pub sha: String,
-    pub message: String,
-    pub commit_resource_path: String,
-    pub committed_date: DateTime<Utc>,
+pub(super) struct DeploymentsCommitGraphQLResponse {
+    pub(super) id: String,
+    pub(super) sha: String,
+    pub(super) message: String,
+    pub(super) commit_resource_path: String,
+    pub(super) committed_date: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentsPageInfoGraphQLResponse {
-    pub end_cursor: Option<String>,
-    pub has_next_page: bool,
+pub(super) struct DeploymentsPageInfoGraphQLResponse {
+    pub(super) end_cursor: Option<String>,
+    pub(super) has_next_page: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentsDeploymentsStatusesGraphQLResponse {
-    pub nodes: Vec<DeploymentsDeploymentsStatusNodeGraphQLResponse>,
-    pub page_info: DeploymentsPageInfoGraphQLResponse,
+pub(super) struct DeploymentsDeploymentsStatusesGraphQLResponse {
+    pub(super) nodes: Vec<DeploymentsDeploymentsStatusNodeGraphQLResponse>,
+    pub(super) page_info: DeploymentsPageInfoGraphQLResponse,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentsDeploymentsStatusNodeGraphQLResponse {
-    pub id: String,
-    pub state: String,
-    pub description: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub environment_url: Option<String>,
-    pub log_url: Option<String>,
-    pub creator: DeploymentsCreatorGraphQLResponse,
+pub(super) struct DeploymentsDeploymentsStatusNodeGraphQLResponse {
+    pub(super) id: String,
+    pub(super) state: String,
+    pub(super) description: Option<String>,
+    pub(super) created_at: DateTime<Utc>,
+    pub(super) updated_at: DateTime<Utc>,
+    pub(super) environment_url: Option<String>,
+    pub(super) log_url: Option<String>,
+    pub(super) creator: DeploymentsCreatorGraphQLResponse,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentsCreatorGraphQLResponse {
-    pub login: String,
+pub(super) struct DeploymentsCreatorGraphQLResponse {
+    pub(super) login: String,
 }
