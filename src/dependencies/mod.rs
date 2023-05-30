@@ -1,3 +1,3 @@
 pub mod deployments_fetcher;
-pub mod first_commit_getter;
 pub mod project_config_io;
+pub mod two_commits_comparer;

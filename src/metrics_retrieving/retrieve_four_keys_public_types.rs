@@ -4,10 +4,10 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{
-    common_types::date_time_range::DateTimeRange,
+    common_types::{commit::Commit, date_time_range::DateTimeRange},
     dependencies::{
         deployments_fetcher::interface::{DeploymentInfo, DeploymentsFetcherError},
-        first_commit_getter::interface::FirstCommitGetterError,
+        two_commits_comparer::interface::{TwoCommitsComparerError, ValidatedCommitShaPairError},
     },
 };
 
@@ -35,31 +35,21 @@ pub struct RetrieveFourKeysExecutionContext {
 // ------------------------------------
 // outputs from the workflow (success case)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[non_exhaustive]
-pub struct DeploymentCommitItem {
-    pub sha: String,
-    pub message: String,
-    pub resource_path: String,
-    pub committed_at: chrono::DateTime<chrono::Utc>,
-    pub creator_login: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RepositoryInfo {
     pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum FirstCommitOrRepositoryInfo {
-    FirstCommit(DeploymentCommitItem),
+    FirstCommit(Commit),
     RepositoryInfo(RepositoryInfo),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentPerformanceItem {
+pub struct Deployment {
     pub info: DeploymentInfo,
-    pub head_commit: DeploymentCommitItem,
+    pub head_commit: Commit,
     pub first_commit: FirstCommitOrRepositoryInfo,
     pub deployed_at: chrono::DateTime<chrono::Utc>,
     pub lead_time_for_changes_seconds: Option<i64>,
@@ -67,15 +57,15 @@ pub struct DeploymentPerformanceItem {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentPerformanceSummary {
+pub struct DailyDeploymentsSummary {
     pub date: NaiveDate,
     pub deploys: u32,
-    pub items: Vec<DeploymentPerformanceItem>,
+    pub items: Vec<Deployment>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct DeploymentPerformanceLeadTimeForChanges {
+pub struct DeploymentLeadTimeForChanges {
     pub days: i64,
     pub hours: i64,
     pub minutes: i64,
@@ -132,13 +122,13 @@ pub struct DeploymentFrequencyPerformance {
 #[non_exhaustive]
 pub struct DeploymentPerformance {
     pub deployment_frequency: DeploymentFrequencyPerformance,
-    pub lead_time_for_changes: DeploymentPerformanceLeadTimeForChanges,
+    pub lead_time_for_changes: DeploymentLeadTimeForChanges,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct FourKeysResult {
-    pub deployments: Vec<DeploymentPerformanceSummary>,
+    pub deployments: Vec<DailyDeploymentsSummary>,
     pub context: Context,
     pub performance: DeploymentPerformance,
 }
@@ -154,9 +144,11 @@ pub enum RetrieveFourKeysEvent {
 #[derive(Error, Debug)]
 pub enum RetrieveFourKeysEventError {
     #[error("Cannot fetch")]
-    FetchDeploymentsError(#[from] DeploymentsFetcherError),
+    FetchDeployments(#[from] DeploymentsFetcherError),
     #[error("GetFirstCommitFromCompareError: {0}")]
-    GetFirstCommitFromCompareError(#[from] FirstCommitGetterError),
+    TwoCommitsCompare(#[from] TwoCommitsComparerError),
+    #[error("Invalid sha pair: {0}")]
+    InvalidCommitShaPair(#[source] ValidatedCommitShaPairError),
 }
 
 // ------------------------------------

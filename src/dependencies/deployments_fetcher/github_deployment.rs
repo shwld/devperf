@@ -1,10 +1,10 @@
 use super::interface::{
-    BaseCommitShaOrRepositoryInfo, CommitItem, DeploymentInfo, DeploymentLog, DeploymentsFetcher,
+    BaseCommitShaOrRepositoryInfo, DeploymentInfo, DeploymentLog, DeploymentsFetcher,
     DeploymentsFetcherError, DeploymentsFetcherParams,
 };
 use crate::{
     common_types::{
-        github_deployment_environment::ValidatedGitHubDeploymentEnvironment,
+        commit::Commit, github_deployment_environment::ValidatedGitHubDeploymentEnvironment,
         github_owner_repo::ValidatedGitHubOwnerRepo,
         github_personal_token::ValidatedGitHubPersonalToken,
     },
@@ -295,7 +295,7 @@ fn convert_to_items(
             |previous: &mut BaseCommitShaOrRepositoryInfo,
              deployment: &DeploymentsDeploymentsNodeGraphQLResponse| {
                 let status = find_status(deployment);
-                let commit_item = CommitItem {
+                let commit_item = Commit {
                     sha: deployment.clone().commit.sha,
                     message: deployment.clone().commit.message,
                     resource_path: deployment.clone().commit.commit_resource_path,

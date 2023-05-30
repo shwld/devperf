@@ -3,21 +3,11 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::common_types::date_time_range::DateTimeRange;
+use crate::common_types::{commit::Commit, date_time_range::DateTimeRange};
 
 // Input
 pub struct DeploymentsFetcherParams {
     pub timeframe: DateTimeRange,
-}
-
-// Output
-#[derive(Debug, Clone)]
-pub struct CommitItem {
-    pub sha: String,
-    pub message: String,
-    pub resource_path: String,
-    pub committed_at: DateTime<Utc>,
-    pub creator_login: String,
 }
 
 #[derive(Debug, Clone)]
@@ -45,7 +35,7 @@ pub enum DeploymentInfo {
 #[derive(Debug, Clone)]
 pub struct DeploymentLog {
     pub info: DeploymentInfo,
-    pub head_commit: CommitItem,
+    pub head_commit: Commit,
     pub base: BaseCommitShaOrRepositoryInfo,
     pub creator_login: String,
     pub deployed_at: DateTime<Utc>,

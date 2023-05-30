@@ -1,22 +1,5 @@
-use async_std::stream::StreamExt;
 use async_trait::async_trait;
 use futures::future::try_join_all;
-
-use crate::{
-    common_types::{
-        daily_items::DailyItems, date_time_range::DateTimeRange, monthly_items::MonthlyItems,
-        weekly_items::WeeklyItems,
-    },
-    dependencies::{
-        deployments_fetcher::interface::{
-            BaseCommitShaOrRepositoryInfo, DeploymentLog, DeploymentsFetcher,
-            DeploymentsFetcherParams,
-        },
-        first_commit_getter::interface::{FirstCommitGetter, ValidatedFirstCommitGetterParams},
-    },
-    metrics_retrieving::retrieve_four_keys_public_types::FirstCommitOrRepositoryInfo,
-    shared::median::median,
-};
 
 use super::{
     retrieve_four_keys::{
@@ -24,165 +7,91 @@ use super::{
         DeploymentFrequencyPerformanceSurvey2022,
     },
     retrieve_four_keys_internal_types::{
-        AttachFirstOperationToDeploymentLogStep, CalculateDeploymentFrequency, CalculateLeadTime,
-        CalculateLeadTimeForChangesSeconds, CreateEvents, DeploymentLogWithFirstOperation,
-        ExtractItemsInPeriod, FetchDeploymentsParams, FetchDeploymentsStep,
-        GetDeploymentPerformance2022, GetDeploymentPerformanceLabel, RetrieveFourKeysStep,
-        ToMetricItem,
+        CalculateDeploymentFrequency, CalculateLeadTime, CalculateLeadTimeMedian, CreateEvents,
+        DeploymentLogWithFirstOperation, GetDeploymentPerformance2022,
+        GetDeploymentPerformanceLabel, PickFirstCommit, RetrieveFourKeysStep,
     },
     retrieve_four_keys_public_types::{
-        DeploymentCommitItem, DeploymentPerformance, DeploymentPerformanceItem,
-        DeploymentPerformanceLeadTimeForChanges, DeploymentPerformanceSummary, FourKeysResult,
-        RepositoryInfo, RetrieveFourKeys, RetrieveFourKeysEvent, RetrieveFourKeysEventError,
-        RetrieveFourKeysExecutionContext,
+        DailyDeploymentsSummary, Deployment, DeploymentLeadTimeForChanges, DeploymentPerformance,
+        FourKeysResult, RepositoryInfo, RetrieveFourKeys, RetrieveFourKeysEvent,
+        RetrieveFourKeysEventError, RetrieveFourKeysExecutionContext,
     },
+};
+use crate::{
+    common_types::{
+        commit::Commit, daily_items::DailyItems, monthly_items::MonthlyItems,
+        weekly_items::WeeklyItems,
+    },
+    dependencies::{
+        deployments_fetcher::interface::{
+            BaseCommitShaOrRepositoryInfo, DeploymentsFetcher, DeploymentsFetcherParams,
+        },
+        two_commits_comparer::interface::{TwoCommitsComparer, ValidatedCommitShaPair},
+    },
+    metrics_retrieving::retrieve_four_keys_public_types::FirstCommitOrRepositoryInfo,
+    shared::median::median,
 };
 
 // ---------------------------
-// FetchDeploymentsStep
+// PickFirstCommit
 // ---------------------------
-struct FetchDeploymentsStepImpl<F: DeploymentsFetcher> {
-    deployments_fetcher: F,
-}
-#[async_trait]
-impl<F: DeploymentsFetcher + Sync + Send> FetchDeploymentsStep for FetchDeploymentsStepImpl<F> {
-    async fn fetch_deployments(
-        self,
-        params: FetchDeploymentsParams,
-    ) -> Result<Vec<DeploymentLog>, RetrieveFourKeysEventError> {
-        let deployments = self
-            .deployments_fetcher
-            .fetch(DeploymentsFetcherParams {
-                timeframe: params.timeframe,
-            })
-            .await?;
+const pick_first_commit: PickFirstCommit = |commits: Vec<Commit>| -> Option<Commit> {
+    let mut sorted_commits = commits;
+    sorted_commits.sort_by_key(|it| it.committed_at);
+    sorted_commits.first().cloned()
+};
 
-        Ok(deployments)
+// ---------------------------
+// CalculateEachLogLeadTimes
+// ---------------------------
+pub(super) fn calculate_lead_time_for_changes_seconds(
+    log_with_operation: DeploymentLogWithFirstOperation,
+) -> Option<i64> {
+    if let Some(operation) = log_with_operation.first_operation {
+        let first_committed_at = match operation {
+            FirstCommitOrRepositoryInfo::FirstCommit(commit) => commit.committed_at,
+            FirstCommitOrRepositoryInfo::RepositoryInfo(info) => info.created_at,
+        };
+        let deployed_at = log_with_operation.deployment_log.deployed_at;
+        let lead_time_for_changes_seconds = (deployed_at - first_committed_at).num_seconds();
+        Some(lead_time_for_changes_seconds)
+    } else {
+        None
     }
 }
 
-// ---------------------------
-// AttachFirstOperationToDeploymentLogStep
-// ---------------------------
-struct AttachFirstOperationToDeploymentLogStepImpl<F: FirstCommitGetter> {
-    first_commit_getter: F,
-}
-#[async_trait]
-impl<F: FirstCommitGetter + Sync + Send> AttachFirstOperationToDeploymentLogStep
-    for AttachFirstOperationToDeploymentLogStepImpl<F>
-{
-    async fn attach_first_operation_to_deployment_item(
-        &self,
-        deployment_item: DeploymentLog,
-    ) -> Result<DeploymentLogWithFirstOperation, RetrieveFourKeysEventError> {
-        let first_operation: Option<FirstCommitOrRepositoryInfo> =
-            match deployment_item.clone().base {
-                BaseCommitShaOrRepositoryInfo::BaseCommitSha(first_commit_sha) => {
-                    let params = ValidatedFirstCommitGetterParams::new(
-                        first_commit_sha.clone(),
-                        deployment_item.clone().head_commit.sha,
-                    );
-                    if let Ok(params) = params {
-                        let commit = self.first_commit_getter.get(params).await?;
-                        Some(FirstCommitOrRepositoryInfo::FirstCommit(
-                            DeploymentCommitItem {
-                                sha: commit.sha,
-                                message: commit.message,
-                                resource_path: commit.resource_path,
-                                committed_at: commit.committed_at,
-                                creator_login: commit.creator_login,
-                            },
-                        ))
-                    } else {
-                        None
-                    }
-                }
-                BaseCommitShaOrRepositoryInfo::RepositoryCreatedAt(created_at) => Some(
-                    FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo { created_at }),
-                ),
-            };
-        Ok(DeploymentLogWithFirstOperation {
-            deployment: deployment_item,
-            first_operation,
-        })
-    }
+const calculate_lead_time: CalculateLeadTime =
+    |log_with_operation: DeploymentLogWithFirstOperation| -> Deployment {
+        let lead_time_for_changes_seconds =
+            calculate_lead_time_for_changes_seconds(log_with_operation.clone());
 
-    async fn attach_first_operation_to_deployment_items(
-        &self,
-        deployment_items: Vec<DeploymentLog>,
-    ) -> Result<Vec<DeploymentLogWithFirstOperation>, RetrieveFourKeysEventError> {
-        let futures = deployment_items
-            .into_iter()
-            .map(|it| self.attach_first_operation_to_deployment_item(it))
-            .collect::<Vec<_>>();
-        let results = try_join_all(futures).await?;
-        let stream = futures::stream::iter(results);
-        let results = stream
-            .filter_map(|it| it.clone().first_operation.map(|_| it))
-            .collect::<Vec<_>>()
-            .await;
-
-        Ok(results)
-    }
-}
-
-// ---------------------------
-// CalculationEachDeploymentsStep
-// ---------------------------
-pub(super) const calculate_lead_time_for_changes_seconds: CalculateLeadTimeForChangesSeconds =
-    |item: DeploymentLogWithFirstOperation| -> Option<i64> {
-        if let Some(operation) = item.first_operation {
-            let first_committed_at = match operation {
-                FirstCommitOrRepositoryInfo::FirstCommit(commit) => commit.committed_at,
-                FirstCommitOrRepositoryInfo::RepositoryInfo(info) => info.created_at,
-            };
-            let deployed_at = item.deployment.deployed_at;
-            let lead_time_for_changes_seconds = (deployed_at - first_committed_at).num_seconds();
-            Some(lead_time_for_changes_seconds)
-        } else {
-            None
-        }
-    };
-
-// NOTE: Should I write using "From"?
-const to_metric_item: ToMetricItem =
-    |item: DeploymentLogWithFirstOperation| -> DeploymentPerformanceItem {
-        let lead_time_for_changes_seconds = calculate_lead_time_for_changes_seconds(item.clone());
-
-        let head_commit = DeploymentCommitItem {
-            sha: item.deployment.head_commit.sha,
-            message: item.deployment.head_commit.message,
-            resource_path: item.deployment.head_commit.resource_path,
-            committed_at: item.deployment.head_commit.committed_at,
-            creator_login: item.deployment.head_commit.creator_login,
+        let head_commit = Commit {
+            sha: log_with_operation.deployment_log.head_commit.sha,
+            message: log_with_operation.deployment_log.head_commit.message,
+            resource_path: log_with_operation.deployment_log.head_commit.resource_path,
+            committed_at: log_with_operation.deployment_log.head_commit.committed_at,
+            creator_login: log_with_operation.deployment_log.head_commit.creator_login,
         };
         let first_commit =
-            item.first_operation
+            log_with_operation
+                .first_operation
                 .unwrap_or(FirstCommitOrRepositoryInfo::FirstCommit(
                     head_commit.clone(),
                 ));
-        DeploymentPerformanceItem {
-            info: item.deployment.info,
+        Deployment {
+            info: log_with_operation.deployment_log.info,
             head_commit,
             first_commit,
-            deployed_at: item.deployment.deployed_at,
+            deployed_at: log_with_operation.deployment_log.deployed_at,
             lead_time_for_changes_seconds,
         }
     };
 
 // ---------------------------
-// Calculation step
+// Aggregation
 // ---------------------------
-const extract_items_for_period: ExtractItemsInPeriod =
-    |metric_items: Vec<DeploymentPerformanceItem>, timeframe: DateTimeRange| {
-        metric_items
-            .into_iter()
-            .filter(|it| timeframe.is_include(&it.deployed_at))
-            .collect::<Vec<DeploymentPerformanceItem>>()
-    };
-
 const calculate_deployment_frequency: CalculateDeploymentFrequency =
-    |items: Vec<DeploymentPerformanceItem>, context: Context| {
+    |items: Vec<Deployment>, context: Context| {
         let total_deployments = items.len() as u32;
         let deployment_days: i32 = DailyItems::new(
             items.clone(),
@@ -259,8 +168,8 @@ const get_deployment_performance_label: GetDeploymentPerformanceLabel =
         }
     };
 
-const calculate_lead_time: CalculateLeadTime =
-    |items: Vec<DeploymentPerformanceItem>| -> DeploymentPerformanceLeadTimeForChanges {
+const calculate_lead_time_median: CalculateLeadTimeMedian =
+    |items: Vec<Deployment>| -> DeploymentLeadTimeForChanges {
         let durations = items
             .iter()
             .flat_map(|item| item.lead_time_for_changes_seconds)
@@ -271,7 +180,7 @@ const calculate_lead_time: CalculateLeadTime =
         let hours = (median_duration / 3600.0) as i64;
         let minutes = (median_duration.round() as i64 % 3600) / 60;
         let seconds = (median_duration.round() as i64) - (hours * 3600) - (minutes * 60);
-        DeploymentPerformanceLeadTimeForChanges {
+        DeploymentLeadTimeForChanges {
             days,
             hours,
             minutes,
@@ -285,16 +194,16 @@ const calculate_lead_time: CalculateLeadTime =
 // ---------------------------
 struct RetrieveFourKeysStepImpl<
     FDeploymentsFetcher: DeploymentsFetcher,
-    FFirstCommitGetter: FirstCommitGetter,
+    FTwoCommitsComparer: TwoCommitsComparer,
 > {
     pub deployments_fetcher: FDeploymentsFetcher,
-    pub first_commit_getter: FFirstCommitGetter,
+    pub two_commits_comparer: FTwoCommitsComparer,
 }
 #[async_trait]
 impl<
         FDeploymentsFetcher: DeploymentsFetcher + Sync + Send,
-        FFirstCommitGetter: FirstCommitGetter + Sync + Send,
-    > RetrieveFourKeysStep for RetrieveFourKeysStepImpl<FDeploymentsFetcher, FFirstCommitGetter>
+        FTwoCommitsComparer: TwoCommitsComparer + Sync + Send,
+    > RetrieveFourKeysStep for RetrieveFourKeysStepImpl<FDeploymentsFetcher, FTwoCommitsComparer>
 {
     async fn retrieve_four_keys(
         self,
@@ -305,65 +214,92 @@ impl<
             developers: context.project.developer_count,
             working_days_per_week: context.project.working_days_per_week,
         };
-        let fetch_deployments_step = FetchDeploymentsStepImpl {
-            deployments_fetcher: self.deployments_fetcher,
-        };
-        let deployments = fetch_deployments_step
-            .fetch_deployments(FetchDeploymentsParams {
+        let deployment_logs = self
+            .deployments_fetcher
+            .fetch(DeploymentsFetcherParams {
                 timeframe: context.timeframe.clone(),
             })
             .await?;
-        let deployments_with_first_operation = AttachFirstOperationToDeploymentLogStepImpl {
-            first_commit_getter: self.first_commit_getter,
-        }
-        .attach_first_operation_to_deployment_items(deployments)
-        .await?;
-        let metrics_items: Vec<DeploymentPerformanceItem> = deployments_with_first_operation
+        let deployment_logs = deployment_logs
             .into_iter()
-            .map(to_metric_item)
+            .filter(|log| context.timeframe.is_include(&log.deployed_at))
+            .collect::<Vec<_>>();
+        let deployment_with_first_operations =
+            try_join_all(deployment_logs.iter().map(|log| async {
+                let first_operation = match log.base.clone() {
+                    BaseCommitShaOrRepositoryInfo::BaseCommitSha(sha) => {
+                        let commit_sha_pair =
+                            ValidatedCommitShaPair::new(sha.clone(), log.head_commit.sha.clone());
+                        match commit_sha_pair {
+                            Ok(commit_sha_pair) => {
+                                let commits =
+                                    self.two_commits_comparer.compare(commit_sha_pair).await?;
+                                let first_commit = pick_first_commit(commits);
+
+                                Ok(first_commit.map(FirstCommitOrRepositoryInfo::FirstCommit))
+                            }
+                            Err(e) => Err(RetrieveFourKeysEventError::InvalidCommitShaPair(e)),
+                        }
+                    }
+                    BaseCommitShaOrRepositoryInfo::RepositoryCreatedAt(created_at) => Ok(Some(
+                        FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo { created_at }),
+                    )),
+                };
+                match first_operation {
+                    Ok(first_operation) => Ok(DeploymentLogWithFirstOperation {
+                        deployment_log: log.clone(),
+                        first_operation,
+                    }),
+                    Err(e) => Err(e),
+                }
+            }))
+            .await?;
+        let deployments: Vec<Deployment> = deployment_with_first_operations
+            .into_iter()
+            .map(calculate_lead_time)
             .collect();
-        let mut sorted_items = metrics_items;
-        sorted_items.sort_by_key(|item| item.deployed_at);
-        let extracted_items = extract_items_for_period(sorted_items, context.timeframe.clone());
+        let mut sorted_deployments = deployments;
+        sorted_deployments.sort_by_key(|item| item.deployed_at);
 
         let deployment_frequency_value =
-            calculate_deployment_frequency(extracted_items.clone(), context.clone());
+            calculate_deployment_frequency(sorted_deployments.clone(), context.clone());
         let label =
             get_deployment_performance_label(deployment_frequency_value.clone(), context.clone());
+        let performance = get_deployment_performance2022(
+            deployment_frequency_value.clone(),
+            label.clone(),
+            context.clone(),
+        );
         let deployment_frequency = DeploymentFrequencyPerformance {
-            label: label.clone(),
-            value: deployment_frequency_value.clone(),
-            performance: get_deployment_performance2022(
-                deployment_frequency_value,
-                label,
-                context.clone(),
-            ),
+            label,
+            value: deployment_frequency_value,
+            performance,
         };
 
-        let lead_time_for_changes = calculate_lead_time(extracted_items.clone());
+        let lead_time_for_changes = calculate_lead_time_median(sorted_deployments.clone());
 
         let performance = DeploymentPerformance {
             deployment_frequency,
             lead_time_for_changes,
         };
 
-        let deployment_frequencies_by_date = DailyItems::new(
-            extracted_items,
+        let daily_deployment_summaries: Vec<DailyDeploymentsSummary> = DailyItems::new(
+            sorted_deployments,
             |item| item.deployed_at.date_naive(),
             context.timeframe.clone(),
         )
         .iter()
-        .map(|(date, daily_items)| DeploymentPerformanceSummary {
+        .map(|(date, daily_items)| DailyDeploymentsSummary {
             date: *date,
             deploys: daily_items.len() as u32,
             items: daily_items.to_vec(),
         })
-        .collect::<Vec<DeploymentPerformanceSummary>>();
-        let mut sorted_deployment_frequencies_by_date = deployment_frequencies_by_date;
-        sorted_deployment_frequencies_by_date.sort_by_key(|item| item.date);
+        .collect();
+        let mut sorted_daily_deployment_summaries = daily_deployment_summaries;
+        sorted_daily_deployment_summaries.sort_by_key(|item| item.date);
 
         let deployment_frequency = FourKeysResult {
-            deployments: sorted_deployment_frequencies_by_date,
+            deployments: sorted_daily_deployment_summaries,
             context,
             performance,
         };
@@ -384,16 +320,16 @@ const create_events: CreateEvents = |project: FourKeysResult| -> Vec<RetrieveFou
 // ---------------------------
 pub struct RetrieveFourKeysWorkflow<
     FDeploymentsFetcher: DeploymentsFetcher,
-    FFirstCommitGetter: FirstCommitGetter,
+    FTwoCommitsComparer: TwoCommitsComparer,
 > {
     pub deployments_fetcher: FDeploymentsFetcher,
-    pub first_commit_getter: FFirstCommitGetter,
+    pub two_commits_comparer: FTwoCommitsComparer,
 }
 #[async_trait]
 impl<
         FDeploymentsFetcher: DeploymentsFetcher + Sync + Send,
-        FFirstCommitGetter: FirstCommitGetter + Sync + Send,
-    > RetrieveFourKeys for RetrieveFourKeysWorkflow<FDeploymentsFetcher, FFirstCommitGetter>
+        FTwoCommitsComparer: TwoCommitsComparer + Sync + Send,
+    > RetrieveFourKeys for RetrieveFourKeysWorkflow<FDeploymentsFetcher, FTwoCommitsComparer>
 {
     async fn retrieve_four_keys(
         self,
@@ -402,7 +338,7 @@ impl<
         let events = create_events(
             RetrieveFourKeysStepImpl {
                 deployments_fetcher: self.deployments_fetcher,
-                first_commit_getter: self.first_commit_getter,
+                two_commits_comparer: self.two_commits_comparer,
             }
             .retrieve_four_keys(context)
             .await?,
