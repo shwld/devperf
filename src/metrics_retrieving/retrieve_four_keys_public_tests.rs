@@ -73,7 +73,6 @@ mod tests {
                     //   January  3th week: 2
                     //   January  4th week: 4
                     //   January  5th week: 2
-                    //   February 1st week: 3
                     //   February 2nd week: 3
                     //   February 3th week: 2
                     //   February 4th week: 2
@@ -82,8 +81,8 @@ mod tests {
                     //   March    3th week: 2
                     //   March    4th week: 1
                     //   March    5th week: 3
-                    //   [4,3,3,3,3,2,(2,2),2,2,2,2,2,1]
-                    //   -> Median:         2 + 2 / 2 = 2.0
+                    //   [4,3,3,3,2,2,(2),2,2,2,2,2,1]
+                    //   -> Median:         2.0
                     //
                     // deployed_weeks
                     //   January 1st week:  true(1)
@@ -91,7 +90,6 @@ mod tests {
                     //   January 3th week:  true(1)
                     //   January 4th week:  true(1)
                     //   January 5th week:  true(1)
-                    //   February 1st week: true(1)
                     //   February 2nd week: true(1)
                     //   February 3th week: true(1)
                     //   February 4th week: true(1)
@@ -140,8 +138,8 @@ mod tests {
                         assert_eq!(frequency.weekly_deployment_count_median, 2.0);
                         assert_eq!(frequency.month_deployed_median, 1.0);
                         assert_eq!(frequency.week_deployed_median, 1.0);
-                        assert_eq!(frequency.deployment_frequency_per_day, 0.871_111_1);
-                        assert_eq!(frequency.deploys_per_a_day_per_a_developer, 0.435_555_55);
+                        assert_eq!(frequency.deployment_frequency_per_day, 0.871_111_15);
+                        assert_eq!(frequency.deploys_per_a_day_per_a_developer, 0.435_555_58);
                         assert_eq!(label, DeploymentFrequencyLabel::Daily);
                         assert_eq!(performance, DeploymentFrequencyPerformanceSurvey2022::High);
                     }

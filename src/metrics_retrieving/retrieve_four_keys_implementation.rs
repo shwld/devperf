@@ -184,27 +184,33 @@ const extract_items_for_period: ExtractItemsInPeriod =
 const calculate_deployment_frequency: CalculateDeploymentFrequency =
     |items: Vec<DeploymentPerformanceItem>, context: Context| {
         let total_deployments = items.len() as u32;
-        let deployment_frequency_per_day = total_deployments as f32
-            / (context.timeframe.num_days() as f32 * (context.working_days_per_week / 7.0));
-        let deploys_per_a_day_per_a_developer =
-            deployment_frequency_per_day / context.developers as f32;
-
-        let weekly_deployment_counts = WeeklyItems::new(
+        let deployment_days: i32 = DailyItems::new(
             items.clone(),
-            |it| it.deployed_at.date_naive(),
+            |item| item.deployed_at.date_naive(),
             context.timeframe.clone(),
         )
         .iter()
-        .map(|(_week, items)| items.len() as i64)
-        .collect::<Vec<_>>();
+        .map(|(_date, items)| if items.is_empty() { 0 } else { 1 })
+        .sum();
+        let timeframe_days = context.timeframe.num_days() as f32;
+        let deployment_frequency_per_day =
+            deployment_days as f32 / (timeframe_days * (context.working_days_per_week / 7.0));
+        let deploys_per_a_day_per_a_developer =
+            deployment_frequency_per_day / context.developers as f32;
+
         let weekly_deployments = WeeklyItems::new(
             items.clone(),
             |it| it.deployed_at.date_naive(),
             context.timeframe.clone(),
-        )
-        .iter()
-        .map(|(_week, items)| if items.is_empty() { 0 } else { 1 })
-        .collect::<Vec<i64>>();
+        );
+        let weekly_deployment_counts = weekly_deployments
+            .iter()
+            .map(|(_week, items)| items.len() as i64)
+            .collect::<Vec<_>>();
+        let weekly_deployments = weekly_deployments
+            .iter()
+            .map(|(_week, items)| if items.is_empty() { 0 } else { 1 })
+            .collect::<Vec<i64>>();
         let monthly_deployments =
             MonthlyItems::new(items, |it| it.deployed_at.date_naive(), context.timeframe)
                 .iter()
