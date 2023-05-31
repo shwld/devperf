@@ -44,6 +44,12 @@ Explain the structure and options of the configuration file in detail. Explain h
 ## TODO: Examples
 Include a few examples of how the tool can be used, such as fetching data for a project, switching between projects, or analyzing fetched data.
 
+## Profiling
+
+```bash
+cargo test -- --nocapture
+```
+
 ## TODO: Contributing
 If you're open to contributions, provide instructions on how others can contribute to the project.
 

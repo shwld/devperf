@@ -1,4 +1,5 @@
 #![allow(non_upper_case_globals)]
+
 use chrono::{Duration, Utc};
 use clap::Parser;
 
