@@ -8,14 +8,12 @@ use crate::{
         github_owner_repo::ValidatedGitHubOwnerRepo,
         github_personal_token::ValidatedGitHubPersonalToken,
     },
-    dependencies::deployments_fetcher::github_merged_pull_types::MergedPullsResponse,
+    dependencies::deployments_fetcher::github_merged_pull_graphql::MergedPullsResponse,
 };
 
 use super::{
-    github_merged_pull_graphql::merged_pulls_query,
-    github_merged_pull_types::{
-        CollectToItems, GetClient, GitHubMergedPullsFetcher, MergedPullsPullsNode,
-    },
+    github_merged_pull_graphql::{merged_pulls_query, MergedPullsPullsNode},
+    github_merged_pull_types::{CollectToItems, GetClient, GitHubMergedPullsFetcher},
     interface::{
         BaseCommitShaOrRepositoryInfo, DeploymentInfo, DeploymentLog, DeploymentsFetcher,
         DeploymentsFetcherError, DeploymentsFetcherParams,

@@ -1,5 +1,5 @@
 use super::{
-    github_deployment::{
+    github_deployment_graphql::{
         DeploymentsDeploymentsNodeGraphQLResponse, DeploymentsDeploymentsStatusNodeGraphQLResponse,
     },
     github_deployment_types::DeploymentNodeGraphQLResponseOrRepositoryInfo,
