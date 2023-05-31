@@ -12,7 +12,7 @@ pub mod mock;
 pub(super) mod shared;
 
 pub mod github_deployment {
-    pub use super::github_deployment_graphql::*;
+    // pub use super::github_deployment_graphql::*;
     pub use super::github_deployment_impl::*;
     // pub use super::github_deployment_types::*;
 }
