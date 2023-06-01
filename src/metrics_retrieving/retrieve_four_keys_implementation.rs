@@ -7,9 +7,10 @@ use super::{
         DeploymentFrequencyPerformanceSurvey2022,
     },
     retrieve_four_keys_internal_types::{
-        CalculateDeploymentFrequency, CalculateLeadTime, CalculateLeadTimeMedian, CreateEvents,
-        DeploymentLogWithFirstOperation, GetDeploymentPerformance2022,
-        GetDeploymentPerformanceLabel, PickFirstCommit, RetrieveFourKeysStep,
+        CalculateDeploymentFrequency, CalculateDeploymentFrequencyPerDay, CalculateLeadTime,
+        CalculateLeadTimeMedian, CreateEvents, DeploymentLogWithFirstOperation,
+        GetDeploymentPerformance2022, GetDeploymentPerformanceLabel, PickFirstCommit,
+        RetrieveFourKeysStep,
     },
     retrieve_four_keys_public_types::{
         DailyDeploymentsSummary, Deployment, DeploymentLeadTimeForChanges, DeploymentPerformance,
@@ -90,9 +91,8 @@ const calculate_lead_time: CalculateLeadTime =
 // ---------------------------
 // Aggregation
 // ---------------------------
-const calculate_deployment_frequency: CalculateDeploymentFrequency =
-    |items: Vec<Deployment>, context: &Context| {
-        let total_deployments = items.len() as u32;
+const calculate_deployment_frequency_per_day: CalculateDeploymentFrequencyPerDay =
+    |items, context| {
         let deployment_days: i32 = DailyItems::new(
             items.clone(),
             |item| item.deployed_at.date_naive(),
@@ -101,8 +101,15 @@ const calculate_deployment_frequency: CalculateDeploymentFrequency =
         .nonempty_days()
         .count() as i32;
         let timeframe_days = context.timeframe.num_days() as f32;
-        let deployment_frequency_per_day =
-            deployment_days as f32 / (timeframe_days * (context.working_days_per_week / 7.0));
+
+        deployment_days as f32 / (timeframe_days * (context.working_days_per_week / 7.0))
+    };
+
+const calculate_deployment_frequency: CalculateDeploymentFrequency =
+    |items: Vec<Deployment>, context: &Context| {
+        let total_deployments = items.len() as u32;
+        let deployment_frequency_per_day = calculate_deployment_frequency_per_day(&items, context);
+
         let deploys_per_a_day_per_a_developer =
             deployment_frequency_per_day / context.developers as f32;
 

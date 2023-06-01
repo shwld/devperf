@@ -30,6 +30,8 @@ pub(super) type CalculateLeadTime = fn(DeploymentLogWithFirstOperation) -> Deplo
 // ---------------------------
 pub(super) type CalculateDeploymentFrequency = fn(Vec<Deployment>, &Context) -> DeploymentFrequency;
 
+pub(super) type CalculateDeploymentFrequencyPerDay = fn(&Vec<Deployment>, &Context) -> f32;
+
 pub(super) type GetDeploymentPerformance2022 = fn(
     &DeploymentFrequency,
     &DeploymentFrequencyLabel,
