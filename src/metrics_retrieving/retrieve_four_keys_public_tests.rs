@@ -13,7 +13,7 @@ mod tests {
                 RetrieveFourKeysExecutionContextProject, RetrieveFourKeysWorkflow,
             },
             shared::datetime_utc::parse,
-            test::factories::{commit::build_commit, deployment_log::build_deployment_log},
+            tests::factories::{commit::build_commit, deployment_log::build_deployment_log},
         };
 
         #[tokio::test]

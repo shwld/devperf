@@ -32,7 +32,7 @@ impl<T> WeeklyItems<T> {
 mod tests {
     use crate::{
         common_types::date_time_range::DateTimeRange, shared::datetime_utc::parse,
-        test::factories::deployment_log::build_deployment_log,
+        tests::factories::deployment_log::build_deployment_log,
     };
 
     use super::WeeklyItems;

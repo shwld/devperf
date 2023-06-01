@@ -8,7 +8,7 @@ mod tests {
                 },
                 retrieve_four_keys_internal_types::DeploymentLogWithFirstOperation,
             },
-            test::factories::{
+            tests::factories::{
                 commit::build_commit, deployment_log::build_deployment_log,
                 repository_info::build_repository_info,
             },
