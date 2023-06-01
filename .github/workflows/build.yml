@@ -1,12 +1,12 @@
-name: Test
+name: Build
 
 on:
   pull_request:
     paths:
       - '**.rs'
   push:
-    paths:
-      - '**.rs'
+    # paths:
+    #   - '**.rs'
     branches:
       - main
 
