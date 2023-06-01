@@ -98,7 +98,7 @@ const calculate_deployment_frequency: CalculateDeploymentFrequency =
             |item| item.deployed_at.date_naive(),
             context.timeframe.clone(),
         )
-        .nonempty_items()
+        .nonempty_days()
         .count() as i32;
         let timeframe_days = context.timeframe.num_days() as f32;
         let deployment_frequency_per_day =
