@@ -276,17 +276,17 @@ impl DeploymentsFetcher for DeploymentsFetcherWithHerokuRelease {
             )
         }))
         .await?;
-        let repo_creatd_at = get_created_at(
+        let repo_created_at = get_created_at(
             self.github_personal_token.clone(),
             self.github_owner_repo.clone(),
         )
         .await
         .map_err(|e| anyhow::anyhow!(e))
         .map_err(DeploymentsFetcherError::GetRepositoryCreatedAtError)?;
-        log::debug!("repo_created_at: {:#?}", repo_creatd_at);
+        log::debug!("repo_created_at: {:#?}", repo_created_at);
         deployments.push(HerokuReleaseOrRepositoryInfo::RepositoryInfo(
             GitHubRepositoryInfo {
-                created_at: repo_creatd_at,
+                created_at: repo_created_at,
             },
         ));
         let non_empty_nodes = NonEmptyVec::new(deployments)

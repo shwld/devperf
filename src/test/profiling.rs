@@ -13,6 +13,7 @@ mod tests {
         shared::datetime_utc::parse,
         test::factories::{commit::build_commit, deployment_log::build_deployment_log},
     };
+    use insta::assert_debug_snapshot;
 
     #[global_allocator]
     static ALLOC: dhat::Alloc = dhat::Alloc;
