@@ -1,0 +1,12 @@
+---
+source: src/profiling/heap_profiling.rs
+expression: stats
+---
+HeapStats {
+    total_blocks: 3003,
+    total_bytes: 268245,
+    curr_blocks: 0,
+    curr_bytes: 0,
+    max_blocks: 1286,
+    max_bytes: 92393,
+}

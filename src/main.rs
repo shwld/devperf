@@ -7,6 +7,8 @@ mod apps;
 mod common_types;
 mod dependencies;
 mod metrics_retrieving;
+#[cfg(test)]
+mod profiling;
 mod project_creating;
 mod shared;
 #[cfg(test)]
