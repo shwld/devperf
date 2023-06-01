@@ -5,8 +5,8 @@ on:
     paths:
       - '**.rs'
   push:
-    # paths:
-    #   - '**.rs'
+    paths:
+      - '**.rs'
     branches:
       - main
 
