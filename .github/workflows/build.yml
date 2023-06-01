@@ -1,10 +1,14 @@
 name: Test
 
 on:
-  push:
-    branches: [ master ]
   pull_request:
-    branches: [ master ]
+    paths:
+      - '**.rs'
+  push:
+    paths:
+      - '**.rs'
+    branches:
+      - main
 
 jobs:
   build:
