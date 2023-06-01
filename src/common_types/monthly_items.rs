@@ -11,7 +11,7 @@ impl<T> MonthlyItems<T> {
     pub fn new(
         items: Vec<T>,
         naive_date_getter: fn(&T) -> NaiveDate,
-        timeframe: DateTimeRange,
+        timeframe: &DateTimeRange,
     ) -> Self {
         let mut items = items
             .into_iter()

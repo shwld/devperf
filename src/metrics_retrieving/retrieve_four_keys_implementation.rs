@@ -35,8 +35,8 @@ use crate::{
 // ---------------------------
 // PickFirstCommit
 // ---------------------------
-const pick_first_commit: PickFirstCommit = |commits: Vec<Commit>| -> Option<Commit> {
-    let mut sorted_commits = commits;
+const pick_first_commit: PickFirstCommit = |commits: &Vec<Commit>| -> Option<Commit> {
+    let mut sorted_commits = commits.clone();
     sorted_commits.sort_by_key(|it| it.committed_at);
     sorted_commits.first().cloned()
 };
@@ -91,7 +91,7 @@ const calculate_lead_time: CalculateLeadTime =
 // Aggregation
 // ---------------------------
 const calculate_deployment_frequency: CalculateDeploymentFrequency =
-    |items: Vec<Deployment>, context: Context| {
+    |items: Vec<Deployment>, context: &Context| {
         let total_deployments = items.len() as u32;
         let deployment_days: i32 = DailyItems::new(
             items.clone(),
@@ -121,7 +121,7 @@ const calculate_deployment_frequency: CalculateDeploymentFrequency =
             .map(|(_week, items)| if items.is_empty() { 0 } else { 1 })
             .collect::<Vec<i64>>();
         let monthly_deployments =
-            MonthlyItems::new(items, |it| it.deployed_at.date_naive(), context.timeframe)
+            MonthlyItems::new(items, |it| it.deployed_at.date_naive(), &context.timeframe)
                 .iter()
                 .map(|(_month, items)| if items.is_empty() { 0 } else { 1 })
                 .collect::<Vec<i64>>();
@@ -143,9 +143,9 @@ const calculate_deployment_frequency: CalculateDeploymentFrequency =
     };
 
 const get_deployment_performance2022: GetDeploymentPerformance2022 =
-    |_deployment_frequency: DeploymentFrequency,
-     label: DeploymentFrequencyLabel,
-     _context|
+    |_deployment_frequency: &DeploymentFrequency,
+     label: &DeploymentFrequencyLabel,
+     _context: &Context|
      -> DeploymentFrequencyPerformanceSurvey2022 {
         match label {
             DeploymentFrequencyLabel::Daily => DeploymentFrequencyPerformanceSurvey2022::High,
@@ -155,7 +155,7 @@ const get_deployment_performance2022: GetDeploymentPerformance2022 =
     };
 
 const get_deployment_performance_label: GetDeploymentPerformanceLabel =
-    |deployment_frequency: DeploymentFrequency, context| -> DeploymentFrequencyLabel {
+    |deployment_frequency: &DeploymentFrequency, context: &Context| -> DeploymentFrequencyLabel {
         let coefficient = context.working_days_per_week as f64 * (3.0 / 5.0);
         if deployment_frequency.weekly_deployment_count_median > coefficient {
             DeploymentFrequencyLabel::Daily
@@ -169,7 +169,7 @@ const get_deployment_performance_label: GetDeploymentPerformanceLabel =
     };
 
 const calculate_lead_time_median: CalculateLeadTimeMedian =
-    |items: Vec<Deployment>| -> DeploymentLeadTimeForChanges {
+    |items: &Vec<Deployment>| -> DeploymentLeadTimeForChanges {
         let durations = items
             .iter()
             .flat_map(|item| item.lead_time_for_changes_seconds)
@@ -234,7 +234,7 @@ impl<
                             Ok(commit_sha_pair) => {
                                 let commits =
                                     self.two_commits_comparer.compare(commit_sha_pair).await?;
-                                let first_commit = pick_first_commit(commits);
+                                let first_commit = pick_first_commit(&commits);
 
                                 Ok(first_commit.map(FirstCommitOrRepositoryInfo::FirstCommit))
                             }
@@ -262,21 +262,17 @@ impl<
         sorted_deployments.sort_by_key(|item| item.deployed_at);
 
         let deployment_frequency_value =
-            calculate_deployment_frequency(sorted_deployments.clone(), context.clone());
-        let label =
-            get_deployment_performance_label(deployment_frequency_value.clone(), context.clone());
-        let performance = get_deployment_performance2022(
-            deployment_frequency_value.clone(),
-            label.clone(),
-            context.clone(),
-        );
+            calculate_deployment_frequency(sorted_deployments.clone(), &context);
+        let label = get_deployment_performance_label(&deployment_frequency_value, &context);
+        let performance =
+            get_deployment_performance2022(&deployment_frequency_value, &label, &context);
         let deployment_frequency = DeploymentFrequencyPerformance {
             label,
             value: deployment_frequency_value,
             performance,
         };
 
-        let lead_time_for_changes = calculate_lead_time_median(sorted_deployments.clone());
+        let lead_time_for_changes = calculate_lead_time_median(&sorted_deployments);
 
         let performance = DeploymentPerformance {
             deployment_frequency,
