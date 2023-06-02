@@ -147,8 +147,6 @@ pub enum RetrieveFourKeysEventError {
     FetchDeployments(#[from] DeploymentsFetcherError),
     #[error("GetFirstCommitFromCompareError: {0}")]
     TwoCommitsCompare(#[from] TwoCommitsComparerError),
-    #[error("Invalid sha pair: {0}")]
-    InvalidCommitShaPair(#[source] ValidatedCommitShaPairError),
 }
 
 // ------------------------------------

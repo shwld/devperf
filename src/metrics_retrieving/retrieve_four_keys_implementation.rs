@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use futures::future::try_join_all;
+use futures::{future::join_all, TryFutureExt};
 
 use super::{
     retrieve_four_keys::{
@@ -230,36 +230,35 @@ impl<
             .into_iter()
             .filter(|log| context.timeframe.is_include(&log.deployed_at))
             .collect::<Vec<_>>();
-        let deployment_with_first_operations =
-            try_join_all(deployment_logs.iter().map(|log| async {
-                let first_operation = match log.base.clone() {
-                    BaseCommitShaOrRepositoryInfo::BaseCommitSha(sha) => {
-                        let commit_sha_pair =
-                            ValidatedCommitShaPair::new(sha.clone(), log.head_commit.sha.clone());
-                        match commit_sha_pair {
-                            Ok(commit_sha_pair) => {
-                                let commits =
-                                    self.two_commits_comparer.compare(commit_sha_pair).await?;
-                                let first_commit = pick_first_commit(&commits);
-
-                                Ok(first_commit.map(FirstCommitOrRepositoryInfo::FirstCommit))
-                            }
-                            Err(e) => Err(RetrieveFourKeysEventError::InvalidCommitShaPair(e)),
+        let deployment_with_first_operations = join_all(deployment_logs.iter().map(|log| async {
+            let first_operation = match log.base.clone() {
+                BaseCommitShaOrRepositoryInfo::BaseCommitSha(sha) => {
+                    // HACK: use method chain...
+                    if let Ok(commit_sha_pair) =
+                        ValidatedCommitShaPair::new(sha.clone(), log.head_commit.sha.clone())
+                    {
+                        if let Ok(commits) =
+                            self.two_commits_comparer.compare(commit_sha_pair).await
+                        {
+                            let first_commit = pick_first_commit(&commits);
+                            first_commit.map(FirstCommitOrRepositoryInfo::FirstCommit)
+                        } else {
+                            None
                         }
+                    } else {
+                        None
                     }
-                    BaseCommitShaOrRepositoryInfo::RepositoryCreatedAt(created_at) => Ok(Some(
-                        FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo { created_at }),
-                    )),
-                };
-                match first_operation {
-                    Ok(first_operation) => Ok(DeploymentLogWithFirstOperation {
-                        deployment_log: log.clone(),
-                        first_operation,
-                    }),
-                    Err(e) => Err(e),
                 }
-            }))
-            .await?;
+                BaseCommitShaOrRepositoryInfo::RepositoryCreatedAt(created_at) => Some(
+                    FirstCommitOrRepositoryInfo::RepositoryInfo(RepositoryInfo { created_at }),
+                ),
+            };
+            DeploymentLogWithFirstOperation {
+                deployment_log: log.clone(),
+                first_operation,
+            }
+        }))
+        .await;
         let deployments: Vec<Deployment> = deployment_with_first_operations
             .into_iter()
             .map(calculate_lead_time)
