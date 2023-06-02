@@ -7,7 +7,7 @@ use crate::{
     common_types::{commit::Commit, date_time_range::DateTimeRange},
     dependencies::{
         deployments_fetcher::interface::{DeploymentInfo, DeploymentsFetcherError},
-        two_commits_comparer::interface::{TwoCommitsComparerError, ValidatedCommitShaPairError},
+        two_commits_comparer::interface::TwoCommitsComparerError,
     },
 };
 
@@ -147,8 +147,6 @@ pub enum RetrieveFourKeysEventError {
     FetchDeployments(#[from] DeploymentsFetcherError),
     #[error("GetFirstCommitFromCompareError: {0}")]
     TwoCommitsCompare(#[from] TwoCommitsComparerError),
-    #[error("Invalid sha pair: {0}")]
-    InvalidCommitShaPair(#[source] ValidatedCommitShaPairError),
 }
 
 // ------------------------------------

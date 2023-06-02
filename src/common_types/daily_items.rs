@@ -24,4 +24,10 @@ impl<T> DailyItems<T> {
     pub fn iter(&self) -> impl Iterator<Item = (&NaiveDate, &Vec<T>)> {
         self.0.iter()
     }
+    pub fn nonempty_days(&self) -> impl Iterator<Item = &Vec<T>> {
+        self.0
+            .iter()
+            .filter(|(_, days)| !days.is_empty())
+            .map(|(_, days)| days)
+    }
 }

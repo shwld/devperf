@@ -13,7 +13,7 @@ use crate::{
 // ---------------------------
 // PickFirstCommit
 // ---------------------------
-pub(super) type PickFirstCommit = fn(commits: Vec<Commit>) -> Option<Commit>;
+pub(super) type PickFirstCommit = fn(commits: &Vec<Commit>) -> Option<Commit>;
 
 // ---------------------------
 // CalculateEachLogLeadTimes
@@ -28,18 +28,20 @@ pub(super) type CalculateLeadTime = fn(DeploymentLogWithFirstOperation) -> Deplo
 // ---------------------------
 // Aggregation
 // ---------------------------
-pub(super) type CalculateDeploymentFrequency = fn(Vec<Deployment>, Context) -> DeploymentFrequency;
+pub(super) type CalculateDeploymentFrequency = fn(Vec<Deployment>, &Context) -> DeploymentFrequency;
+
+pub(super) type CalculateDeploymentFrequencyPerDay = fn(&Vec<Deployment>, &Context) -> f32;
 
 pub(super) type GetDeploymentPerformance2022 = fn(
-    DeploymentFrequency,
-    DeploymentFrequencyLabel,
-    Context,
+    &DeploymentFrequency,
+    &DeploymentFrequencyLabel,
+    &Context,
 ) -> DeploymentFrequencyPerformanceSurvey2022;
 
 pub(super) type GetDeploymentPerformanceLabel =
-    fn(DeploymentFrequency, Context) -> DeploymentFrequencyLabel;
+    fn(&DeploymentFrequency, &Context) -> DeploymentFrequencyLabel;
 
-pub(super) type CalculateLeadTimeMedian = fn(Vec<Deployment>) -> DeploymentLeadTimeForChanges;
+pub(super) type CalculateLeadTimeMedian = fn(&Vec<Deployment>) -> DeploymentLeadTimeForChanges;
 
 // ---------------------------
 // RetrieveFourKeys

@@ -6,8 +6,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 pub(super) fn deployments_query(
-    owner_repo: ValidatedGitHubOwnerRepo,
-    environment: ValidatedGitHubDeploymentEnvironment,
+    owner_repo: &ValidatedGitHubOwnerRepo,
+    environment: &ValidatedGitHubDeploymentEnvironment,
     after: Option<String>,
 ) -> String {
     let query = format!("
