@@ -7,7 +7,7 @@ use crate::{
     common_types::{commit::Commit, date_time_range::DateTimeRange},
     dependencies::{
         deployments_fetcher::interface::{DeploymentInfo, DeploymentsFetcherError},
-        two_commits_comparer::interface::{TwoCommitsComparerError, ValidatedCommitShaPairError},
+        two_commits_comparer::interface::TwoCommitsComparerError,
     },
 };
 

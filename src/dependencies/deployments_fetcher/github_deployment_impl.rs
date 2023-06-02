@@ -2,7 +2,9 @@ use super::{
     github_deployment_graphql::{
         DeploymentsDeploymentsNodeGraphQLResponse, DeploymentsDeploymentsStatusNodeGraphQLResponse,
     },
-    github_deployment_types::DeploymentNodeGraphQLResponseOrRepositoryInfo,
+    github_deployment_types::{
+        DeploymentNodeGraphQLResponseOrRepositoryInfo, GitHubDeploymentsFetcher,
+    },
     interface::{
         BaseCommitShaOrRepositoryInfo, DeploymentInfo, DeploymentLog, DeploymentsFetcher,
         DeploymentsFetcherError, DeploymentsFetcherParams,
@@ -25,7 +27,7 @@ use async_trait::async_trait;
 use octocrab::Octocrab;
 
 fn get_client(
-    github_personal_token: ValidatedGitHubPersonalToken,
+    github_personal_token: &ValidatedGitHubPersonalToken,
 ) -> Result<Octocrab, DeploymentsFetcherError> {
     let client = Octocrab::builder()
         .personal_token(github_personal_token.to_string())
@@ -36,58 +38,64 @@ fn get_client(
     Ok(client)
 }
 
-async fn fetch_deployments(
-    github_personal_token: ValidatedGitHubPersonalToken,
-    github_owner_repo: ValidatedGitHubOwnerRepo,
-    environment: ValidatedGitHubDeploymentEnvironment,
-) -> Result<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>, DeploymentsFetcherError> {
-    let mut after: Option<String> = None;
-    let mut has_next_page = true;
-    let mut deployment_nodes: Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo> = Vec::new();
-    let github_client = get_client(github_personal_token.clone())?;
+struct GitHubDeploymentsFetcherImpl;
+#[async_trait]
+impl GitHubDeploymentsFetcher for GitHubDeploymentsFetcherImpl {
+    async fn fetch(
+        github_personal_token: &ValidatedGitHubPersonalToken,
+        github_owner_repo: &ValidatedGitHubOwnerRepo,
+        environment: &ValidatedGitHubDeploymentEnvironment,
+        _params: &DeploymentsFetcherParams,
+    ) -> Result<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>, DeploymentsFetcherError> {
+        let mut after: Option<String> = None;
+        let mut has_next_page = true;
+        let mut deployment_nodes: Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo> = Vec::new();
+        let github_client = get_client(github_personal_token)?;
 
-    // 全ページ取得
-    while has_next_page {
-        let query = deployments_query(github_owner_repo.clone(), environment.clone(), after);
+        // 全ページ取得
+        while has_next_page {
+            let query = deployments_query(github_owner_repo, environment, after);
 
-        let results: DeploymentsGraphQLResponse = github_client
-            .graphql(&query)
-            .await
-            .map_err(|e| anyhow!(e))
-            .map_err(DeploymentsFetcherError::FetchError)?;
-        let new_nodes = results.data.repository_owner.repository.deployments.nodes.into_iter().map(DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse).collect::<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>>();
-        deployment_nodes = [&deployment_nodes[..], &new_nodes[..]].concat();
-        has_next_page = results
-            .data
-            .repository_owner
-            .repository
-            .deployments
-            .page_info
-            .has_next_page;
-        after = results
-            .data
-            .repository_owner
-            .repository
-            .deployments
-            .page_info
-            .end_cursor;
+            let results: DeploymentsGraphQLResponse = github_client
+                .graphql(&query)
+                .await
+                .map_err(|e| anyhow!(e))
+                .map_err(DeploymentsFetcherError::FetchError)?;
+            let new_nodes = results.data.repository_owner.repository.deployments.nodes.into_iter().map(DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse).collect::<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>>();
+            deployment_nodes = [&deployment_nodes[..], &new_nodes[..]].concat();
+            has_next_page = results
+                .data
+                .repository_owner
+                .repository
+                .deployments
+                .page_info
+                .has_next_page;
+            after = results
+                .data
+                .repository_owner
+                .repository
+                .deployments
+                .page_info
+                .end_cursor;
 
-        log::debug!("has_next_page: {:#?}", has_next_page);
-        // 初回デプロイとリードタイムを比較するためのリポジトリ作成日を取得
-        if !has_next_page {
-            let repo_created_at =
-                get_created_at(github_personal_token.clone(), github_owner_repo.clone())
+            log::debug!("has_next_page: {:#?}", has_next_page);
+            // 初回デプロイとリードタイムを比較するためのリポジトリ作成日を取得
+            if !has_next_page {
+                let repo_created_at = get_created_at(github_personal_token, github_owner_repo)
                     .await
                     .map_err(|e| anyhow!(e))
                     .map_err(DeploymentsFetcherError::GetRepositoryCreatedAtError)?;
-            log::debug!("repo_created_at: {:#?}", repo_created_at);
-            deployment_nodes.push(
-                DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryCreatedAt(repo_created_at),
-            );
+                log::debug!("repo_created_at: {:#?}", repo_created_at);
+                deployment_nodes.push(
+                    DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryCreatedAt(
+                        repo_created_at,
+                    ),
+                );
+            }
         }
-    }
 
-    Ok(deployment_nodes)
+        Ok(deployment_nodes)
+    }
 }
 
 fn has_success_status(deployment: &DeploymentNodeGraphQLResponseOrRepositoryInfo) -> bool {
@@ -180,12 +188,13 @@ pub struct DeploymentsFetcherWithGithubDeployment {
 impl DeploymentsFetcher for DeploymentsFetcherWithGithubDeployment {
     async fn fetch(
         &self,
-        _params: DeploymentsFetcherParams,
+        params: DeploymentsFetcherParams,
     ) -> Result<Vec<DeploymentLog>, DeploymentsFetcherError> {
-        let deployment_nodes = fetch_deployments(
-            self.github_personal_token.clone(),
-            self.github_owner_repo.clone(),
-            self.environment.clone(),
+        let deployment_nodes = GitHubDeploymentsFetcherImpl::fetch(
+            &self.github_personal_token,
+            &self.github_owner_repo,
+            &self.environment,
+            &params,
         )
         .await?
         .into_iter()

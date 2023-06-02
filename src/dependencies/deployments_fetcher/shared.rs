@@ -15,8 +15,8 @@ pub enum GetCreatedAtError {
 }
 
 pub(super) async fn get_created_at(
-    github_personal_token: ValidatedGitHubPersonalToken,
-    github_owner_repo: ValidatedGitHubOwnerRepo,
+    github_personal_token: &ValidatedGitHubPersonalToken,
+    github_owner_repo: &ValidatedGitHubOwnerRepo,
 ) -> Result<chrono::DateTime<chrono::Utc>, GetCreatedAtError> {
     let octocrab = Octocrab::builder()
         .personal_token(github_personal_token.to_string())

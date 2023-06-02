@@ -276,13 +276,10 @@ impl DeploymentsFetcher for DeploymentsFetcherWithHerokuRelease {
             )
         }))
         .await?;
-        let repo_created_at = get_created_at(
-            self.github_personal_token.clone(),
-            self.github_owner_repo.clone(),
-        )
-        .await
-        .map_err(|e| anyhow::anyhow!(e))
-        .map_err(DeploymentsFetcherError::GetRepositoryCreatedAtError)?;
+        let repo_created_at = get_created_at(&self.github_personal_token, &self.github_owner_repo)
+            .await
+            .map_err(|e| anyhow::anyhow!(e))
+            .map_err(DeploymentsFetcherError::GetRepositoryCreatedAtError)?;
         log::debug!("repo_created_at: {:#?}", repo_created_at);
         deployments.push(HerokuReleaseOrRepositoryInfo::RepositoryInfo(
             GitHubRepositoryInfo {
