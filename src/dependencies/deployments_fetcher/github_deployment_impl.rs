@@ -101,7 +101,7 @@ struct GitHubDeploymentsFetcherStream<T: GitHubDeploymentsFetcher> {
 impl<T: GitHubDeploymentsFetcher> Stream for GitHubDeploymentsFetcherStream<T> {
     type Item = FetchResult;
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if !self.has_next_page {
             return Poll::Ready(None);
         }

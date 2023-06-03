@@ -1,15 +1,9 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 
-use crate::common_types::{
-    github_deployment_environment::ValidatedGitHubDeploymentEnvironment,
-    github_owner_repo::ValidatedGitHubOwnerRepo,
-    github_personal_token::ValidatedGitHubPersonalToken,
-};
-
 use super::{
     github_deployment_graphql::DeploymentsDeploymentsNodeGraphQLResponse,
-    interface::{DeploymentsFetcherError, DeploymentsFetcherParams},
+    interface::DeploymentsFetcherError,
 };
 
 // ---------------------------
