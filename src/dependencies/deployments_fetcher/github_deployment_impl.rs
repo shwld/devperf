@@ -1,9 +1,14 @@
+use std::{
+    pin::Pin,
+    task::{Context, Poll},
+};
+
 use super::{
     github_deployment_graphql::{
         DeploymentsDeploymentsNodeGraphQLResponse, DeploymentsDeploymentsStatusNodeGraphQLResponse,
     },
     github_deployment_types::{
-        DeploymentNodeGraphQLResponseOrRepositoryInfo, GitHubDeploymentsFetcher,
+        DeploymentNodeGraphQLResponseOrRepositoryInfo, FetchResult, GitHubDeploymentsFetcher,
     },
     interface::{
         BaseCommitShaOrRepositoryInfo, DeploymentInfo, DeploymentLog, DeploymentsFetcher,
@@ -24,7 +29,9 @@ use crate::{
 };
 use anyhow::anyhow;
 use async_trait::async_trait;
+use futures::{executor::block_on, pin_mut, Stream, StreamExt};
 use octocrab::Octocrab;
+use pin_project::pin_project;
 
 fn get_client(
     github_personal_token: &ValidatedGitHubPersonalToken,
@@ -38,63 +45,71 @@ fn get_client(
     Ok(client)
 }
 
-struct GitHubDeploymentsFetcherImpl;
+struct GitHubDeploymentsFetcherImpl {
+    github_personal_token: ValidatedGitHubPersonalToken,
+    github_owner_repo: ValidatedGitHubOwnerRepo,
+    environment: ValidatedGitHubDeploymentEnvironment,
+    params: DeploymentsFetcherParams,
+}
 #[async_trait]
 impl GitHubDeploymentsFetcher for GitHubDeploymentsFetcherImpl {
-    async fn fetch(
-        github_personal_token: &ValidatedGitHubPersonalToken,
-        github_owner_repo: &ValidatedGitHubOwnerRepo,
-        environment: &ValidatedGitHubDeploymentEnvironment,
-        _params: &DeploymentsFetcherParams,
-    ) -> Result<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>, DeploymentsFetcherError> {
-        let mut after: Option<String> = None;
-        let mut has_next_page = true;
-        let mut deployment_nodes: Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo> = Vec::new();
-        let github_client = get_client(github_personal_token)?;
+    async fn fetch(&self, after: Option<String>) -> Result<FetchResult, DeploymentsFetcherError> {
+        let github_client = get_client(&self.github_personal_token)?;
 
-        // 全ページ取得
-        while has_next_page {
-            let query = deployments_query(github_owner_repo, environment, after);
+        let query = deployments_query(&self.github_owner_repo, &self.environment, after);
 
-            let results: DeploymentsGraphQLResponse = github_client
-                .graphql(&query)
-                .await
-                .map_err(|e| anyhow!(e))
-                .map_err(DeploymentsFetcherError::FetchError)?;
-            let new_nodes = results.data.repository_owner.repository.deployments.nodes.into_iter().map(DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse).collect::<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>>();
-            deployment_nodes = [&deployment_nodes[..], &new_nodes[..]].concat();
-            has_next_page = results
-                .data
-                .repository_owner
-                .repository
-                .deployments
-                .page_info
-                .has_next_page;
-            after = results
-                .data
-                .repository_owner
-                .repository
-                .deployments
-                .page_info
-                .end_cursor;
+        let results: DeploymentsGraphQLResponse = github_client
+            .graphql(&query)
+            .await
+            .map_err(|e| anyhow!(e))
+            .map_err(DeploymentsFetcherError::FetchError)?;
+        let deployment_nodes = results.data.repository_owner.repository.deployments.nodes.into_iter().map(DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse).collect::<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>>();
+        let has_next_page = results
+            .data
+            .repository_owner
+            .repository
+            .deployments
+            .page_info
+            .has_next_page;
+        let after = results
+            .data
+            .repository_owner
+            .repository
+            .deployments
+            .page_info
+            .end_cursor;
 
-            log::debug!("has_next_page: {:#?}", has_next_page);
-            // 初回デプロイとリードタイムを比較するためのリポジトリ作成日を取得
-            if !has_next_page {
-                let repo_created_at = get_created_at(github_personal_token, github_owner_repo)
-                    .await
-                    .map_err(|e| anyhow!(e))
-                    .map_err(DeploymentsFetcherError::GetRepositoryCreatedAtError)?;
-                log::debug!("repo_created_at: {:#?}", repo_created_at);
-                deployment_nodes.push(
-                    DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryCreatedAt(
-                        repo_created_at,
-                    ),
-                );
-            }
+        log::debug!("has_next_page: {:#?}", has_next_page);
+
+        Ok(FetchResult {
+            data: deployment_nodes,
+            after,
+            has_next_page,
+        })
+    }
+}
+
+#[pin_project]
+struct GitHubDeploymentsFetcherStream<T: GitHubDeploymentsFetcher> {
+    fetcher: T,
+    after: Option<String>,
+    has_next_page: bool,
+}
+impl<T: GitHubDeploymentsFetcher> Stream for GitHubDeploymentsFetcherStream<T> {
+    type Item = FetchResult;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        if !self.has_next_page {
+            return Poll::Ready(None);
         }
-
-        Ok(deployment_nodes)
+        if let Ok(response) = block_on(self.fetcher.fetch(self.after.clone())) {
+            let this = self.project();
+            *this.after = response.after.clone();
+            *this.has_next_page = response.has_next_page;
+            Poll::Ready(Some(response))
+        } else {
+            Poll::Ready(None)
+        }
     }
 }
 
@@ -190,16 +205,45 @@ impl DeploymentsFetcher for DeploymentsFetcherWithGithubDeployment {
         &self,
         params: DeploymentsFetcherParams,
     ) -> Result<Vec<DeploymentLog>, DeploymentsFetcherError> {
-        let deployment_nodes = GitHubDeploymentsFetcherImpl::fetch(
-            &self.github_personal_token,
-            &self.github_owner_repo,
-            &self.environment,
-            &params,
-        )
-        .await?
-        .into_iter()
-        .filter(has_success_status)
-        .collect::<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>>();
+        let fetcher = GitHubDeploymentsFetcherImpl {
+            github_personal_token: self.github_personal_token.to_owned(),
+            github_owner_repo: self.github_owner_repo.to_owned(),
+            environment: self.environment.to_owned(),
+            params,
+        };
+        let stream = GitHubDeploymentsFetcherStream {
+            fetcher,
+            after: None,
+            has_next_page: true,
+        };
+        pin_mut!(stream);
+        let mut deployment_nodes: Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo> = Vec::new();
+        while let Some(response) = stream.next().await {
+            let data: Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo> = response
+                .data
+                .into_iter()
+                .filter(has_success_status)
+                .collect();
+            deployment_nodes = [&deployment_nodes[..], &data[..]].concat();
+
+            if !response.has_next_page {
+                let repo_created_at =
+                    get_created_at(&self.github_personal_token, &self.github_owner_repo)
+                        .await
+                        .map_err(|e| anyhow!(e))
+                        .map_err(DeploymentsFetcherError::GetRepositoryCreatedAtError)?;
+                log::debug!("repo_created_at: {:#?}", repo_created_at);
+                deployment_nodes.push(
+                    DeploymentNodeGraphQLResponseOrRepositoryInfo::RepositoryCreatedAt(
+                        repo_created_at,
+                    ),
+                );
+            }
+        }
+
+        // .into_iter()
+        // .filter(has_success_status)
+        // .collect::<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>>();
         let non_empty_nodes = NonEmptyVec::new(deployment_nodes)
             .map_err(|e| anyhow::anyhow!(e))
             .map_err(DeploymentsFetcherError::DeploymentsFetcherResultIsEmptyList)?;

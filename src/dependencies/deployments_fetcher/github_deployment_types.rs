@@ -23,12 +23,13 @@ pub(super) enum DeploymentNodeGraphQLResponseOrRepositoryInfo {
     RepositoryCreatedAt(DateTime<Utc>),
 }
 
+pub(super) struct FetchResult {
+    pub(super) data: Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>,
+    pub(super) after: Option<String>,
+    pub(super) has_next_page: bool,
+}
+
 #[async_trait]
 pub(super) trait GitHubDeploymentsFetcher {
-    async fn fetch(
-        github_personal_token: &ValidatedGitHubPersonalToken,
-        github_owner_repo: &ValidatedGitHubOwnerRepo,
-        environment: &ValidatedGitHubDeploymentEnvironment,
-        params: &DeploymentsFetcherParams,
-    ) -> Result<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>, DeploymentsFetcherError>;
+    async fn fetch(&self, after: Option<String>) -> Result<FetchResult, DeploymentsFetcherError>;
 }
