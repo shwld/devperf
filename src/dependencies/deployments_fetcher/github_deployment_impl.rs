@@ -17,7 +17,8 @@ use super::{
 };
 use crate::{
     common_types::{
-        commit::Commit, github_deployment_environment::ValidatedGitHubDeploymentEnvironment,
+        commit::Commit, date_time_range::DateTimeRange,
+        github_deployment_environment::ValidatedGitHubDeploymentEnvironment,
         github_owner_repo::ValidatedGitHubOwnerRepo,
         github_personal_token::ValidatedGitHubPersonalToken,
     },
@@ -63,7 +64,9 @@ impl GitHubDeploymentsFetcher for GitHubDeploymentsFetcherImpl {
             .await
             .map_err(|e| anyhow!(e))
             .map_err(DeploymentsFetcherError::FetchError)?;
-        let deployment_nodes = results.data.repository_owner.repository.deployments.nodes.into_iter().map(DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse).collect::<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>>();
+        let deployment_nodes = results.data.repository_owner.repository.deployments.nodes.into_iter().filter(|node| {
+            is_included_timeframe(node, &self.params.timeframe)
+        }).map(DeploymentNodeGraphQLResponseOrRepositoryInfo::DeploymentsDeploymentsNodeGraphQLResponse).collect::<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>>();
         let has_next_page = results
             .data
             .repository_owner
@@ -111,6 +114,15 @@ impl<T: GitHubDeploymentsFetcher> Stream for GitHubDeploymentsFetcherStream<T> {
             Poll::Ready(None)
         }
     }
+}
+
+fn is_included_timeframe(
+    node: &DeploymentsDeploymentsNodeGraphQLResponse,
+    timeframe: &DateTimeRange,
+) -> bool {
+    let status = find_status(node);
+    let deployed_at = status.map_or(node.created_at, |x| x.created_at);
+    timeframe.is_include(&deployed_at)
 }
 
 fn has_success_status(deployment: &DeploymentNodeGraphQLResponseOrRepositoryInfo) -> bool {
