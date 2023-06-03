@@ -1,15 +1,9 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 
-use crate::common_types::{
-    github_deployment_environment::ValidatedGitHubDeploymentEnvironment,
-    github_owner_repo::ValidatedGitHubOwnerRepo,
-    github_personal_token::ValidatedGitHubPersonalToken,
-};
-
 use super::{
     github_deployment_graphql::DeploymentsDeploymentsNodeGraphQLResponse,
-    interface::{DeploymentsFetcherError, DeploymentsFetcherParams},
+    interface::DeploymentsFetcherError,
 };
 
 // ---------------------------
@@ -23,12 +17,13 @@ pub(super) enum DeploymentNodeGraphQLResponseOrRepositoryInfo {
     RepositoryCreatedAt(DateTime<Utc>),
 }
 
+pub(super) struct FetchResult {
+    pub(super) data: Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>,
+    pub(super) after: Option<String>,
+    pub(super) has_next_page: bool,
+}
+
 #[async_trait]
 pub(super) trait GitHubDeploymentsFetcher {
-    async fn fetch(
-        github_personal_token: &ValidatedGitHubPersonalToken,
-        github_owner_repo: &ValidatedGitHubOwnerRepo,
-        environment: &ValidatedGitHubDeploymentEnvironment,
-        params: &DeploymentsFetcherParams,
-    ) -> Result<Vec<DeploymentNodeGraphQLResponseOrRepositoryInfo>, DeploymentsFetcherError>;
+    async fn fetch(&self, after: Option<String>) -> Result<FetchResult, DeploymentsFetcherError>;
 }
