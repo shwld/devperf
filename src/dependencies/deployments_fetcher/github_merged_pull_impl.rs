@@ -204,8 +204,8 @@ mod tests {
                     deploy_trigger_branch: branch_name,
                 };
                 let timeframe = DateTimeRange::new(
-                    datetime_utc::parse("2021-05-01").unwrap(),
-                    datetime_utc::parse("2021-06-01").unwrap(),
+                    datetime_utc::parse("2021-05-01 00:00:00").unwrap(),
+                    datetime_utc::parse("2021-06-01 00:00:00").unwrap(),
                 )
                 .unwrap();
                 let result = fetcher.fetch(DeploymentsFetcherParams { timeframe }).await;
