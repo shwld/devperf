@@ -1,6 +1,5 @@
 use anyhow::anyhow;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use futures::{executor::block_on, pin_mut, Stream, StreamExt};
 use octocrab::Octocrab;
 use pin_project::pin_project;
@@ -14,7 +13,10 @@ use super::{
     github_deployment_graphql::{
         DeploymentsDeploymentsNodeGraphQLResponse, DeploymentsDeploymentsStatusNodeGraphQLResponse,
     },
-    github_deployment_types::{FetchResult, GitHubDeploymentsFetcher},
+    github_deployment_types::{
+        CollectToLogs, FetchResult, GetClient, GetDeployedAt, GetSucceededStatuses,
+        GitHubDeploymentsFetcher, SliceDeploymentNodes,
+    },
     interface::{
         BaseCommitShaOrRepositoryInfo, DeploymentInfo, DeploymentLog, DeploymentsFetcher,
         DeploymentsFetcherError, DeploymentsFetcherParams,
@@ -22,8 +24,7 @@ use super::{
 };
 use crate::{
     common_types::{
-        commit::Commit, date_time_range::DateTimeRange,
-        github_deployment_environment::ValidatedGitHubDeploymentEnvironment,
+        commit::Commit, github_deployment_environment::ValidatedGitHubDeploymentEnvironment,
         github_owner_repo::ValidatedGitHubOwnerRepo,
         github_personal_token::ValidatedGitHubPersonalToken,
     },
@@ -33,9 +34,10 @@ use crate::{
     },
 };
 
-fn get_client(
-    github_personal_token: &ValidatedGitHubPersonalToken,
-) -> Result<Octocrab, DeploymentsFetcherError> {
+// ---------------------------
+// Fetching step
+// ---------------------------
+const get_client: GetClient = |github_personal_token| {
     let client = Octocrab::builder()
         .personal_token(github_personal_token.to_string())
         .build()
@@ -43,7 +45,7 @@ fn get_client(
         .map_err(DeploymentsFetcherError::CreateAPIClientError)?;
 
     Ok(client)
-}
+};
 
 struct GitHubDeploymentsFetcherImpl {
     github_personal_token: ValidatedGitHubPersonalToken,
@@ -69,7 +71,7 @@ impl GitHubDeploymentsFetcher for GitHubDeploymentsFetcherImpl {
             .deployments
             .nodes
             .into_iter()
-            .filter(|node| has_succeeded_status(succeeded_statuses(node)))
+            .filter(|node| !get_succeeded_statuses(node).is_empty())
             .collect();
         let has_next_page = results
             .data
@@ -120,9 +122,16 @@ impl<T: GitHubDeploymentsFetcher> Stream for GitHubDeploymentsFetcherStream<T> {
     }
 }
 
-fn succeeded_statuses(
-    deployment_node: &DeploymentsDeploymentsNodeGraphQLResponse,
-) -> Vec<&DeploymentsDeploymentsStatusNodeGraphQLResponse> {
+// ---------------------------
+// Filtering step
+// ---------------------------
+const get_deployed_at: GetDeployedAt = |deployment_node| {
+    let binding = get_succeeded_statuses(deployment_node);
+    let status = binding.first();
+    status.map_or(deployment_node.created_at, |x| x.created_at)
+};
+
+const get_succeeded_statuses: GetSucceededStatuses = |deployment_node| {
     let statuses: Vec<&DeploymentsDeploymentsStatusNodeGraphQLResponse> = deployment_node
         .statuses
         .nodes
@@ -131,24 +140,12 @@ fn succeeded_statuses(
         .collect();
 
     statuses
-}
-fn has_succeeded_status(statuses: Vec<&DeploymentsDeploymentsStatusNodeGraphQLResponse>) -> bool {
-    !statuses.is_empty()
-}
+};
 
-fn get_deployed_at(deployment_node: &DeploymentsDeploymentsNodeGraphQLResponse) -> DateTime<Utc> {
-    let binding = succeeded_statuses(deployment_node);
-    let status = binding.first();
-    status.map_or(deployment_node.created_at, |x| x.created_at)
-}
-
-fn slice_deployment_nodes(
-    nodes: Vec<DeploymentsDeploymentsNodeGraphQLResponse>,
-    timeframe: &DateTimeRange,
-) -> (
-    Option<DeploymentsDeploymentsNodeGraphQLResponse>,
-    Vec<DeploymentsDeploymentsNodeGraphQLResponse>,
-) {
+// ---------------------------
+// Collecting step
+// ---------------------------
+const slice_deployment_nodes: SliceDeploymentNodes = |nodes, timeframe| {
     let ranged_nodes: Vec<DeploymentsDeploymentsNodeGraphQLResponse> = nodes
         .clone()
         .into_iter()
@@ -164,12 +161,9 @@ fn slice_deployment_nodes(
         })
         .last();
     (last_date_before_since, ranged_nodes)
-}
+};
 
-fn collect_to_logs(
-    first_item: BaseCommitShaOrRepositoryInfo,
-    deployment_nodes: Vec<DeploymentsDeploymentsNodeGraphQLResponse>,
-) -> Vec<DeploymentLog> {
+const collect_to_logs: CollectToLogs = |first_item, deployment_nodes| {
     let deployment_logs = deployment_nodes
         .iter()
         .scan(
@@ -199,8 +193,11 @@ fn collect_to_logs(
         .collect::<Vec<DeploymentLog>>();
 
     deployment_logs
-}
+};
 
+// ---------------------------
+// Workflow
+// ---------------------------
 pub struct DeploymentsFetcherWithGithubDeployment {
     pub github_personal_token: ValidatedGitHubPersonalToken,
     pub github_owner_repo: ValidatedGitHubOwnerRepo,
@@ -235,7 +232,10 @@ impl DeploymentsFetcher for DeploymentsFetcherWithGithubDeployment {
             );
             deployment_nodes = nodes;
 
-            if last_node_before_since.is_some() {
+            if let Some(last_node_before_since) = last_node_before_since {
+                last_commit_before_since_or_repository_created_at = Some(
+                    BaseCommitShaOrRepositoryInfo::BaseCommitSha(last_node_before_since.commit.sha),
+                );
                 break;
             }
 
