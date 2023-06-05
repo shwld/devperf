@@ -38,6 +38,9 @@ show performance metrics.
 devperf four-keys --project hoge
 ```
 
+## Four Key Metrics Calculations
+[Four Keys Metrics calculation doc](/src/metrics_retrieving/retrieve_four_keys_public_tests.rs)
+
 ## Configuration
 
 ```bash
