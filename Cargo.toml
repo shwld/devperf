@@ -1,6 +1,6 @@
 [package]
 name = "devops-metrics-tools"
-version = "0.0.10"
+version = "0.0.11"
 edition = "2021"
 description = "A collection of tools for collecting and reporting on DevOps metrics"
 license = "MIT"
