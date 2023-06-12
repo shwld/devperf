@@ -38,6 +38,10 @@ impl DateTimeRange {
         }
     }
 
+    pub fn get_since(&self) -> DateTime<Utc> {
+        self.since
+    }
+
     pub fn num_days(&self) -> i64 {
         self.until.signed_duration_since(self.since).num_days() + 1
     }

@@ -38,20 +38,21 @@ show performance metrics.
 devperf four-keys --project hoge
 ```
 
-## TODO: Configuration
-Explain the structure and options of the configuration file in detail. Explain how users can configure multiple projects and set up the tool to use either GitHub or Heroku.
+## Four Key Metrics Calculations
+[Four Keys Metrics calculation doc](/src/metrics_retrieving/retrieve_four_keys_public_tests.rs)
 
-## TODO: Examples
-Include a few examples of how the tool can be used, such as fetching data for a project, switching between projects, or analyzing fetched data.
+## Configuration
 
-## TODO: Contributing
-If you're open to contributions, provide instructions on how others can contribute to the project.
+```bash
+# Create after init command
+cat ~/.config/devperf/default-config.toml
+```
 
-## TODO: License
-Specify the license under which your project is distributed.
+## Contributing
+[CONTRIBUTING](/CONTRIBUTING.md)
 
-## TODO: Support
-Provide information on how users can get help with the tool if they encounter issues. This could include linking to an issue tracker, providing your email, etc.
+## License
+[LICENSE](/LICENSE.md)
 
-## TODO: RoadMap
-If you have plans for future updates or features, you can list them here.
+## Support
+https://twitter.com/shwld

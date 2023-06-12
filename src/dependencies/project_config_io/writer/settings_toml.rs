@@ -32,7 +32,11 @@ impl ProjectConfigIOWriter for ProjectConfigIOWriterWithSettingsToml {
             github_deployment_environment: data.github_deployment_environment,
             github_deployment_branch_name: data.github_deployment_branch_name,
             heroku_app_name: data.heroku_app_name,
-            heroku_auth_token: data.heroku_auth_token,
+            heroku_auth_token: if config.heroku_auth_token == data.heroku_auth_token {
+                None
+            } else {
+                data.heroku_auth_token
+            },
             developer_count: data.developer_count,
             working_days_per_week: data.working_days_per_week,
             deployment_source: data.deployment_source,
